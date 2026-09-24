@@ -24,14 +24,3 @@ export async function withTenant<T>(
     throw error;
   }
 }
-
-/** Recompute a tenant's audit hash chain; returns the first broken event id, or null. */
-export async function verifyAuditChain(tx: Connection): Promise<number | null> {
-  const { rows } = await tx.query<{ id: string; ok: boolean }>(`
-    SELECT id, hash = audit_hash(e, lag(hash) OVER (ORDER BY id))
-           AND prev_hash IS NOT DISTINCT FROM lag(hash) OVER (ORDER BY id) AS ok
-    FROM audit_events e
-    ORDER BY id`);
-  const broken = rows.find((r) => !r.ok);
-  return broken ? Number(broken.id) : null;
-}
