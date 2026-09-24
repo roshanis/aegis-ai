@@ -55,9 +55,10 @@
 
 ## Phases
 
-0. **Walking skeleton.** Done: tenancy and RLS, registry, provisioning,
-   intake to triage to case to audit, CI isolation tests. Remaining: a
-   sandbox tenant per visitor and a thin web console over `@aegis/core`.
+0. **Walking skeleton** *(done)*. Tenancy and RLS, registry, provisioning,
+   intake to triage to case to audit, a sandbox tenant per visitor, the
+   console over `@aegis/core`, and CI that runs isolation tests and an
+   end-to-end walk of the console in Chromium.
 1. **Governance core.** Reviews, sign-off, decisions with conditions,
    controls, evidence. Jeeves' tests become acceptance tests.
 2. **Agents and evals.** Durable workflows, drafting and intake agents,
@@ -68,13 +69,17 @@
 
 ## Known gaps
 
-- `withTenant` runs a transaction on the connection it is given, so
-  concurrent requests each need their own connection. The web console must
-  check one out of a pool per request.
-- Tenant offboarding needs a platform procedure: the audit log is
-  append-only even for the owner role.
-- Agents have no read access yet; phase 2 scopes it to the cases they draft
-  for.
+- **No real sign-in yet.** The console knows sandbox sessions only. SSO
+  (OIDC/SAML) per tenant comes before the first customer tenant.
+- **Sandbox creation is not rate-limited.** Expired sandboxes are purged,
+  but nothing stops one visitor opening many.
+- **Offboarding a customer tenant** needs a platform command and a retention
+  decision. The purge path already exists (sandboxes use it): the audit log
+  accepts deletes only for the tenant named in `app.purge_tenant`.
+- **Agents have no read access yet**; phase 2 scopes it to the cases they
+  draft for.
+- **Reviewer sign-offs per domain** are phase 1: triage lists the domains,
+  but approvers decide without collecting each sign-off first.
 
 Framework references in packs mean "helps evidence", never "certifies
 compliance".

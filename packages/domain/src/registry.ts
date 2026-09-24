@@ -82,9 +82,10 @@ export interface CaseSummary {
   readonly decidedAt: Date | null;
 }
 
+/** Whether an asset may be in use, with the case that decides it and, if not, why in plain words. */
 export type Clearance =
   | { readonly cleared: true; readonly caseId: string }
-  | { readonly cleared: false; readonly reason: string };
+  | { readonly cleared: false; readonly reason: string; readonly caseId: string | null };
 
 /**
  * An asset is cleared when its most recently decided case approved it and no
@@ -94,12 +95,12 @@ export type Clearance =
  */
 export function clearance(cases: readonly CaseSummary[]): Clearance {
   const incident = cases.find((c) => c.trigger === "incident" && c.decidedAt === null);
-  if (incident) return { cleared: false, reason: `incident review ${incident.id} is still open` };
+  if (incident) return { cleared: false, reason: "an incident review is still open", caseId: incident.id };
 
   const latest = cases
     .filter((c) => c.decidedAt !== null)
     .reduce<CaseSummary | undefined>((a, c) => (!a || c.decidedAt! > a.decidedAt! ? c : a), undefined);
-  if (!latest) return { cleared: false, reason: "no review has approved it yet" };
+  if (!latest) return { cleared: false, reason: "no review has approved it yet", caseId: null };
   if (isApproving(latest.kind, latest.state)) return { cleared: true, caseId: latest.id };
-  return { cleared: false, reason: `its latest review ${latest.id} was ${latest.state.replaceAll("_", " ")}` };
+  return { cleared: false, reason: `its latest review was ${latest.state.replaceAll("_", " ")}`, caseId: latest.id };
 }

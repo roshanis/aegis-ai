@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendAudit, sha256Hex, withTenant, type AuditPayload, type Connection } from "@aegis/db";
+import { appendAudit, sha256Hex, withTenant, type AuditPayload, type Connection, type Database } from "@aegis/db";
 import {
   ASSET_KINDS,
   CASE_TRIGGERS,
@@ -23,12 +23,14 @@ import {
   type CaseTrigger,
   type Clearance,
   type FastLaneResult,
+  type HumanPrincipal,
   type Principal,
   type Role,
   type SystemPrincipal,
   type TenantId,
   type Tier,
   type TriageResult,
+  type UserId,
 } from "@aegis/domain";
 import type { InitiativePack, PolicyPack } from "@aegis/frameworks";
 import { GovernanceError } from "./errors";
@@ -62,10 +64,26 @@ export interface Case extends CaseSummary {
 
 export interface AssetView {
   readonly asset: Asset;
+  readonly ownerName: string | null;
   readonly cases: readonly Case[];
+  /** The case under way, if any. */
+  readonly openCase: Case | null;
   readonly clearance: Clearance;
   /** What this viewer may do next; the UI offers exactly these. */
-  readonly actions: { readonly asset: readonly AssetAction[]; readonly openCase: readonly string[] };
+  readonly actions: {
+    readonly asset: readonly AssetAction[];
+    readonly openCase: readonly string[];
+    /** Reviews this viewer may open now. */
+    readonly newCase: readonly CaseTrigger[];
+  };
+}
+
+export interface TenantInfo {
+  readonly id: string;
+  readonly name: string;
+  readonly slug: string;
+  /** Set for sandbox tenants, which are purged after this time. */
+  readonly sandboxExpiresAt: Date | null;
 }
 
 export interface SubmitResult {
@@ -178,9 +196,10 @@ function validateAnswers(pack: InitiativePack, answers: Answers): void {
   }
 }
 
-export function createGovernance(db: Connection, options: GovernanceOptions = {}) {
+export function createGovernance(db: Database, options: GovernanceOptions = {}) {
   const now = options.now ?? (() => new Date());
-  const inTenant = <T>(actor: Principal, fn: (tx: Connection) => Promise<T>) => withTenant(db, actor.tenantId, fn);
+  const inTenant = <T>(actor: Principal, fn: (tx: Connection) => Promise<T>) =>
+    db.run((conn) => withTenant(conn, actor.tenantId, fn));
 
   async function loadAsset(tx: Connection, actor: Principal, assetId: string, lock = false): Promise<Asset> {
     const notFound = new GovernanceError("not_found", `asset ${assetId} not found`);
@@ -276,7 +295,7 @@ export function createGovernance(db: Connection, options: GovernanceOptions = {}
   /** Deterministic triage, then the fast lane or a full review. No model is involved. */
   async function triageCase(tx: Connection, submitted: Case, pack: InitiativePack, tenant: TenantId): Promise<SubmitResult> {
     const job: SystemPrincipal = { kind: "system", tenantId: tenant, job: "triage" };
-    const result = triage(pack.triage, submitted.answers);
+    const result = triage(pack.triage, submitted.answers, pack.domains);
     await tx.query("UPDATE cases SET tier = $2, triage = $3 WHERE id = $1", [
       submitted.id,
       result.tier,
@@ -308,11 +327,108 @@ export function createGovernance(db: Connection, options: GovernanceOptions = {}
     return { case: current, fastLane };
   }
 
+  async function buildView(tx: Connection, actor: Principal, asset: Asset): Promise<AssetView> {
+    const cases = await loadCases(tx, asset.id);
+    const owner = await tx.query<{ display_name: string }>("SELECT display_name FROM users WHERE id = $1", [
+      asset.ownerId,
+    ]);
+    const open = cases.find((c) => c.decidedAt === null) ?? null;
+    const isCaseOwner = actor.kind === "human" && open?.ownerId === actor.userId;
+    const caseActions = open
+      ? caseLifecycles[open.kind]
+          .available(open.state, actor, { caseOwnerId: open.ownerId })
+          .filter((a) => (SUBMIT_ACTIONS.has(a) ? isCaseOwner : !SERVICE_ACTIONS.has(a)))
+      : [];
+
+    const isOwner = actor.kind === "human" && actor.userId === asset.ownerId && can(actor, "case.submit");
+    const isOperator = actor.kind === "system" || can(actor, "deployment.operate");
+    const reReviews = CASE_TRIGGERS.filter((t) => t !== "initial");
+    const newCase: CaseTrigger[] =
+      open || asset.state === "retired"
+        ? []
+        : cases.length === 0
+          ? isOwner
+            ? ["initial"]
+            : []
+          : isOwner || isOperator
+            ? reReviews
+            : [];
+
+    return {
+      asset,
+      ownerName: owner.rows[0]?.display_name ?? null,
+      cases,
+      openCase: open,
+      clearance: clearance(cases),
+      actions: { asset: assetLifecycle.available(asset.state, actor), openCase: caseActions, newCase },
+    };
+  }
+
   return {
+    /** The signed-in person, as the tenant currently knows them; null if they are not in it. */
+    principal(tenant: TenantId, user: string): Promise<HumanPrincipal | null> {
+      if (!UUID.test(user)) return Promise.resolve(null);
+      return db.run((conn) =>
+        withTenant(conn, tenant, async (tx) => {
+          const { rows } = await tx.query<{ display_name: string; roles: Role[]; review_domains: string[] }>(
+            "SELECT display_name, roles, review_domains FROM users WHERE id = $1",
+            [user],
+          );
+          const row = rows[0];
+          if (!row) return null;
+          return {
+            kind: "human",
+            tenantId: tenant,
+            userId: user as UserId,
+            displayName: row.display_name,
+            roles: row.roles,
+            reviewDomains: row.review_domains,
+          };
+        }),
+      );
+    },
+
+    tenant(actor: Principal): Promise<TenantInfo> {
+      return inTenant(actor, async (tx) => {
+        const { rows } = await tx.query<{ id: string; name: string; slug: string; sandbox_expires_at: Date | null }>(
+          "SELECT id, name, slug, sandbox_expires_at FROM tenants",
+        );
+        const row = rows[0]!;
+        return {
+          id: row.id,
+          name: row.name,
+          slug: row.slug,
+          sandboxExpiresAt: row.sandbox_expires_at ? new Date(row.sandbox_expires_at) : null,
+        };
+      });
+    },
+
+    /**
+     * The policy pack a new case of this kind would use, or the pack a case
+     * is pinned to. Intake forms render its questions and preview triage
+     * with its exact rules.
+     */
+    policyPack(actor: Principal, target: { caseKind: CaseKind } | { caseId: string }): Promise<PolicyPack | null> {
+      return inTenant(actor, async (tx) => {
+        if ("caseId" in target) return loadPack(tx, await loadCase(tx, actor, target.caseId));
+        const { rows } = await tx.query<{ content: PolicyPack }>(
+          "SELECT content FROM policy_packs WHERE enabled AND content->>'kind' = $1",
+          [PACK_KIND[target.caseKind]],
+        );
+        return rows.length === 1 ? rows[0]!.content : null;
+      });
+    },
+
     /** Add a person to the tenant. Incompatible role pairs are refused at the door. */
     addUser(
       actor: Principal,
-      input: { email: string; displayName: string; roles: readonly Role[]; reviewDomains?: readonly string[] },
+      input: {
+        email: string;
+        displayName: string;
+        title?: string;
+        roles: readonly Role[];
+        reviewDomains?: readonly string[];
+      },
     ): Promise<string> {
       return inTenant(actor, async (tx) => {
         if (!can(actor, "tenant.manage")) throw new GovernanceError("forbidden", "managing people needs tenant.manage");
@@ -326,9 +442,9 @@ export function createGovernance(db: Connection, options: GovernanceOptions = {}
         const id = randomUUID();
         const at = now();
         await tx.query(
-          `INSERT INTO users (id, tenant_id, email, display_name, roles, review_domains)
-           VALUES ($1, current_tenant_id(), $2, $3, $4, $5)`,
-          [id, input.email, input.displayName, input.roles, input.reviewDomains ?? []],
+          `INSERT INTO users (id, tenant_id, email, display_name, title, roles, review_domains)
+           VALUES ($1, current_tenant_id(), $2, $3, $4, $5, $6)`,
+          [id, input.email, input.displayName, input.title ?? null, input.roles, input.reviewDomains ?? []],
         );
         await appendAudit(tx, {
           actorKind: actor.kind,
@@ -508,25 +624,20 @@ export function createGovernance(db: Connection, options: GovernanceOptions = {}
       });
     },
 
+    /** Every asset this viewer can see, each with its cases, clearance and next actions. */
+    listAssetViews(actor: Principal): Promise<AssetView[]> {
+      return inTenant(actor, async (tx) => {
+        const { rows } = await tx.query<AssetRow>("SELECT * FROM assets ORDER BY created_at, id");
+        const visible = rows.map(toAsset).filter((asset) => canSee(actor, asset));
+        const views: AssetView[] = [];
+        for (const asset of visible) views.push(await buildView(tx, actor, asset));
+        return views;
+      });
+    },
+
     /** One asset with its cases, whether it may be in use, and what this viewer can do next. */
     getAsset(actor: Principal, assetId: string): Promise<AssetView> {
-      return inTenant(actor, async (tx) => {
-        const asset = await loadAsset(tx, actor, assetId);
-        const cases = await loadCases(tx, asset.id);
-        const open = cases.find((c) => c.decidedAt === null);
-        const isCaseOwner = actor.kind === "human" && open?.ownerId === actor.userId;
-        const caseActions = open
-          ? caseLifecycles[open.kind]
-              .available(open.state, actor, { caseOwnerId: open.ownerId })
-              .filter((a) => (SUBMIT_ACTIONS.has(a) ? isCaseOwner : !SERVICE_ACTIONS.has(a)))
-          : [];
-        return {
-          asset,
-          cases,
-          clearance: clearance(cases),
-          actions: { asset: assetLifecycle.available(asset.state, actor), openCase: caseActions },
-        };
-      });
+      return inTenant(actor, async (tx) => buildView(tx, actor, await loadAsset(tx, actor, assetId)));
     },
 
     /**

@@ -56,14 +56,14 @@ describe("cases", () => {
 
 describe("clearance", () => {
   it("is withheld until a review approves", () => {
-    expect(clearance([])).toEqual({ cleared: false, reason: "no review has approved it yet" });
+    expect(clearance([])).toEqual({ cleared: false, reason: "no review has approved it yet", caseId: null });
     expect(clearance([review("c1", "in_review", null)]).cleared).toBe(false);
   });
 
   it("follows the most recently decided case", () => {
     expect(clearance([review("c1", "conditionally_approved", 1)])).toEqual({ cleared: true, caseId: "c1" });
     const revoked = clearance([review("c1", "approved", 1), review("c2", "rejected", 5, "periodic")]);
-    expect(revoked).toEqual({ cleared: false, reason: "its latest review c2 was rejected" });
+    expect(revoked).toEqual({ cleared: false, reason: "its latest review was rejected", caseId: "c2" });
     const renewed = clearance([review("c2", "rejected", 5), review("c3", "approved", 9, "change")]);
     expect(renewed).toEqual({ cleared: true, caseId: "c3" });
   });
@@ -73,7 +73,8 @@ describe("clearance", () => {
     expect(clearance([approved, review("c2", "in_review", null, "change")]).cleared).toBe(true);
     expect(clearance([approved, review("c3", "submitted", null, "incident")])).toEqual({
       cleared: false,
-      reason: "incident review c3 is still open",
+      reason: "an incident review is still open",
+      caseId: "c3",
     });
   });
 });

@@ -1,5 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
-import { migrate, verifyAuditChain, withTenant } from "@aegis/db";
+import { serialized, verifyAuditChain, withTenant } from "@aegis/db";
+import { migrate } from "@aegis/db/migrate";
 import { userId, type HumanPrincipal, type Role, type SystemPrincipal, type TenantId } from "@aegis/domain";
 import { financialCommunicationsPack, healthcareAiPack } from "@aegis/frameworks";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -71,7 +72,7 @@ let b: Team;
 beforeAll(async () => {
   db = new PGlite();
   await migrate(db);
-  gov = createGovernance(db, { now: () => new Date((clock += 60_000)) });
+  gov = createGovernance(serialized(db), { now: () => new Date((clock += 60_000)) });
   a = await provisionTeam("00000000-0000-4000-8000-00000000000a", "payer-a");
   b = await provisionTeam("00000000-0000-4000-8000-00000000000b", "payer-b");
 });
@@ -143,7 +144,7 @@ describe("re-review", () => {
     expect(incident.ownerId).toBe(a.requester.userId);
 
     await expect(gov.actOnAsset(a.admin, asset!.id, "resume", "false alarm")).rejects.toThrow(
-      /incident review .* is still open/,
+      /an incident review is still open/,
     );
     await gov.submitCase(a.requester, incident.id, HIGH_RISK);
     await gov.actOnCase(a.approver, incident.id, "reject", "Denial drift unexplained; retrain first");

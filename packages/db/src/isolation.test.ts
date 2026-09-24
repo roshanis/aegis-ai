@@ -2,6 +2,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { tenantId } from "@aegis/domain";
 import { beforeAll, describe, expect, it } from "vitest";
 import { appendAudit, sha256Hex, verifyAuditChain } from "./audit";
+import { serialized } from "./database";
 import { migrate } from "./migrate";
 import { withTenant } from "./tenant";
 
@@ -40,7 +41,12 @@ const audit = (tenant: string, action: string) =>
 
 beforeAll(async () => {
   db = new PGlite();
-  expect(await migrate(db)).toEqual(["0001_tenancy.sql", "0002_registry.sql", "0003_audit_log.sql"]);
+  expect(await migrate(db)).toEqual([
+    "0001_tenancy.sql",
+    "0002_registry.sql",
+    "0003_audit_log.sql",
+    "0004_sandbox.sql",
+  ]);
   expect(await migrate(db)).toEqual([]);
   await seedTenant(A, "tenant-a", userA, assetA);
   await seedTenant(B, "tenant-b", userB, assetB);
@@ -182,6 +188,55 @@ describe("audit log", () => {
       UPDATE audit_events SET action = 'rewritten' WHERE id = (SELECT min(id) FROM audit_events WHERE tenant_id = '${A}');
       ALTER TABLE audit_events ENABLE TRIGGER audit_events_no_update;`);
     expect(await withTenant(db, A, verifyAuditChain)).not.toBeNull();
+    expect(await withTenant(db, B, verifyAuditChain)).toBeNull();
+  });
+});
+
+describe("connections", () => {
+  it("runs concurrent calls on one connection one at a time, each in its own tenant", async () => {
+    const database = serialized(db);
+    const slugs = await Promise.all(
+      [A, B, A, B].map((tenant) =>
+        database.run((conn) =>
+          withTenant(conn, tenant, async (tx) => {
+            const { rows } = await tx.query<{ slug: string }>("SELECT slug FROM tenants");
+            await tx.query("SELECT pg_sleep(0.01)");
+            return rows.map((r) => r.slug);
+          }),
+        ),
+      ),
+    );
+    expect(slugs).toEqual([["tenant-a"], ["tenant-b"], ["tenant-a"], ["tenant-b"]]);
+  });
+
+  it("keeps serving after a call fails", async () => {
+    const database = serialized(db);
+    const failed = database.run((conn) => withTenant(conn, A, (tx) => tx.exec("SELECT * FROM missing_table")));
+    const next = database.run((conn) => withTenant(conn, A, (tx) => tx.query("SELECT 1 AS ok")));
+    await expect(failed).rejects.toThrow(/missing_table/);
+    expect((await next).rows).toEqual([{ ok: 1 }]);
+  });
+});
+
+describe("purging a tenant", () => {
+  const C = "00000000-0000-4000-8000-00000000000c";
+
+  it("deletes only the audit rows of the tenant named for this transaction", async () => {
+    await db.query("INSERT INTO tenants (id, slug, name) VALUES ($1, 'sandbox-c', 'C')", [C]);
+    await withTenant(db, tenantId(C), (tx) => tx.exec(audit(C, "tenant.provision")));
+
+    await db.exec("BEGIN");
+    await db.query("SELECT set_config('app.purge_tenant', $1, true)", [C]);
+    await expect(db.exec(`DELETE FROM audit_events WHERE tenant_id = '${A}'`)).rejects.toThrow(/append-only/);
+    await db.exec("ROLLBACK");
+
+    await db.exec("BEGIN");
+    await db.query("SELECT set_config('app.purge_tenant', $1, true)", [C]);
+    const purged = await db.query(`DELETE FROM audit_events WHERE tenant_id = '${C}' RETURNING id`);
+    await db.exec("COMMIT");
+    expect(purged.rows).toHaveLength(1);
+
+    await expect(db.exec(`DELETE FROM audit_events WHERE tenant_id = '${B}'`)).rejects.toThrow(/append-only/);
     expect(await withTenant(db, B, verifyAuditChain)).toBeNull();
   });
 });
