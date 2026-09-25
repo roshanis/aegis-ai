@@ -84,7 +84,20 @@ export async function purgeTenant(platform: Connection, tenant: TenantId): Promi
     await platform.query("SELECT set_config('app.purge_tenant', $1, true), set_config('app.tenant_id', $1, true)", [
       tenant,
     ]);
-    for (const table of ["audit_events", "notes", "cases", "assets", "policy_packs", "users", "tenants"]) {
+    const tables = [
+      "audit_events",
+      "evidence",
+      "control_exceptions",
+      "conditions",
+      "domain_reviews",
+      "notes",
+      "cases",
+      "assets",
+      "policy_packs",
+      "users",
+      "tenants",
+    ];
+    for (const table of tables) {
       const column = table === "tenants" ? "id" : "tenant_id";
       await platform.query(`DELETE FROM ${table} WHERE ${column} = $1`, [tenant]);
     }

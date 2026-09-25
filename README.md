@@ -9,18 +9,18 @@ Aegis succeeds two earlier projects and folds both in:
 [Jeeves](https://github.com/roshanis/jeeves) (AI initiative governance) and
 Cleared (pre-publication content compliance review).
 
-> **Status: work in progress, phase 0.** The foundation below is tested.
+> **Status: work in progress, phases 0 and 1 built.** The foundation and the governance core below are tested.
 > The plan and the decisions behind it are in [docs/PLAN.md](docs/PLAN.md).
 
 ## What exists today
 
 | Package | What it does |
 |---|---|
-| `packages/domain` | Tenancy types, roles with separation of duties, the registry (assets, their operating lifecycle, and clearance), a declarative lifecycle engine for risk and content review cases, policy-driven triage with plain-language explanations, fast-lane eligibility, and content-review verdicts. Pure TypeScript, no I/O. |
-| `packages/frameworks` | Policy packs as versioned data. `healthcare-ai` reproduces Jeeves' triage exactly (tested across all 64 answer combinations); `financial-communications` carries Cleared's starter rubric. |
+| `packages/domain` | Tenancy types, roles with separation of duties, the registry (assets, their operating lifecycle, and clearance), a declarative lifecycle engine for review cases, domain reviews and decision readiness, controls, conditions and time-boxed exceptions, policy-driven triage with plain-language explanations, fast-lane eligibility, and content-review verdicts. Pure TypeScript, no I/O. |
+| `packages/frameworks` | Policy packs as versioned data. `healthcare-ai` reproduces Jeeves' triage exactly (tested across all 64 answer combinations) and carries its control catalog, applied identically for every tier and answer combination; `financial-communications` carries Cleared's starter rubric. |
 | `packages/db` | SQL migrations (checksummed, so an applied one can't be edited) with Postgres row-level security on every tenant table, a `withTenant` helper that is the only route to tenant data, and a per-tenant, hash-chained, append-only audit log. |
-| `packages/core` | Governance services: tenant provisioning, people, registering assets, opening and submitting cases (triage and fast lane run on submit), decisions, activating and pausing assets, and each asset's history. Every change and its audit event commit together. Also sandbox tenants: created per visitor, seeded through the same rules, purged when they expire. |
-| `apps/web` | The console (Next.js). A registry with a "Needs you" queue, one-form registration with live triage, decisions and operations from the asset page, and a history that answers who decided, why, and under which policy. A visitor opens a private sandbox and switches between requester, approver, admin and auditor to see each seat. |
+| `packages/core` | Governance services: tenant provisioning, people, registering assets, opening and submitting cases (triage and fast lane run on submit), domain sign-offs, evidence, control exceptions, decisions with conditions, activating and pausing assets, and each asset's history. Every change and its audit event commit together. Also sandbox tenants: created per visitor, seeded through the same rules, purged when they expire. |
+| `apps/web` | The console (Next.js). A registry with a "Needs you" queue, one-form registration with live triage, and an asset page with the review, controls and evidence, conditions, and history. A visitor opens a private sandbox and switches between requester, two domain reviewers, approver, admin and auditor to see each seat. |
 
 Guarantees covered by tests:
 
@@ -31,6 +31,10 @@ Guarantees covered by tests:
 - AI agents can never move a case; admins cannot approve; nobody can decide a case they submitted; nobody is given two roles that check each other.
 - An asset can't be activated or resumed until its latest decided review approved it, and an open incident review blocks it.
 - Each asset has at most one open review; a re-review is a new case on the same asset.
+- Every required review domain signs off, or abstains with a recorded reason, before an approver can decide. Nobody reviews a case they submitted, and a change made from a stale screen is refused.
+- A domain cannot be signed while its gate controls lack evidence or an approved exception.
+- Exceptions are time-boxed, and nobody decides one they requested. An expired exception stops covering its control.
+- An asset is cleared for use only when its latest decision approved it, its before-use conditions are met, and its gate controls are covered. That holds for fast-laned assets too.
 - An auditor gets who decided, why, and under which policy version from one call, and on one screen.
 - Sessions are signed: editing the cookie to become someone else signs you out. Switching people is possible only inside a live sandbox.
 - The end-to-end test walks the console in Chromium on every push: intake, triage, decision, activation, audit.

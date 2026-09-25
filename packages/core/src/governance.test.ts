@@ -7,6 +7,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { GovernanceError } from "./errors";
 import { createGovernance, type Governance } from "./governance";
 import { provisionTenant } from "./provision";
+import { ALL_DOMAINS, readyForDecision } from "./test-support";
 
 /** Answers that triage to high risk: PHI, vendor-hosted, a person checks every output. */
 const HIGH_RISK = {
@@ -60,7 +61,7 @@ async function provisionTeam(tenantUuid: string, slug: string): Promise<Team> {
     requester: await add("Riley Requester", ["requester"]),
     otherRequester: await add("Quinn Requester", ["requester"]),
     approver: await add("Avery Approver", ["approver"]),
-    reviewer: await add("Rowan Reviewer", ["reviewer"], ["privacy-hipaa"]),
+    reviewer: await add("Rowan Reviewer", ["reviewer"], ALL_DOMAINS),
     auditor: await add("Aubrey Auditor", ["auditor"]),
     monitor: { kind: "system", tenantId: tenant, job: "drift-monitor" },
   };
@@ -99,7 +100,11 @@ describe("an AI system from intake to use", () => {
     expect((await gov.getAsset(a.requester, asset.id)).actions.openCase).toEqual([]);
 
     await expect(gov.actOnCase(a.requester, draft.id, "approve")).rejects.toThrow(/case.decide/);
-    const decided = await gov.actOnCase(a.approver, draft.id, "conditionally_approve", "Retention control C-12 live before launch");
+    await expect(gov.actOnCase(a.approver, draft.id, "approve")).rejects.toThrow(/Required reviews are incomplete/);
+    await readyForDecision(gov, a.requester, a.reviewer, asset.id);
+    const decided = await gov.actOnCase(a.approver, draft.id, "conditionally_approve", "Retention control C-12 live before launch", {
+      conditions: [{ text: "Re-validate summaries against nurse review every quarter", due: "ongoing" }],
+    });
     expect(decided.state).toBe("conditionally_approved");
     expect(decided.decidedAt).not.toBeNull();
 
@@ -111,7 +116,7 @@ describe("an AI system from intake to use", () => {
   it("answers who approved it, why, and under which policy version", async () => {
     const [asset] = await gov.listAssets(a.auditor);
     const history = await gov.assetHistory(a.auditor, asset!.id);
-    expect(history.map((e) => e.action)).toEqual([
+    expect(history.map((e) => e.action).filter((action) => /^(asset|case)\./.test(action))).toEqual([
       "asset.register",
       "case.open",
       "case.submit",
@@ -127,7 +132,7 @@ describe("an AI system from intake to use", () => {
       actor: { kind: "human", name: "Avery Approver" },
       reason: "Retention control C-12 live before launch",
       reasonStatus: "intact",
-      policy: { packId: "healthcare-ai", packVersion: "1.0.0" },
+      policy: { packId: "healthcare-ai", packVersion: "1.1.0" },
     });
     const triaged = history.find((e) => e.action === "case.triage")!;
     expect(triaged.actor).toMatchObject({ kind: "system", id: "system:triage" });
@@ -164,6 +169,7 @@ describe("re-review", () => {
     const first = await gov.openCase(a.requester, { assetId: asset.id });
     await expect(gov.openCase(a.admin, { assetId: asset.id, trigger: "change" })).rejects.toThrow(/still open/);
     await gov.submitCase(a.requester, first.id, HIGH_RISK);
+    await readyForDecision(gov, a.requester, a.reviewer, asset.id);
     await gov.actOnCase(a.approver, first.id, "approve");
     await expect(gov.openCase(a.requester, { assetId: asset.id })).rejects.toThrow(/reviewed before/);
     expect((await gov.openCase(a.requester, { assetId: asset.id, trigger: "change" })).trigger).toBe("change");

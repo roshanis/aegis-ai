@@ -2,5 +2,8 @@ export * from "./tenancy";
 export * from "./roles";
 export * from "./lifecycle";
 export * from "./registry";
+export * from "./reviews";
+export * from "./controls";
+export * from "./assurance";
 export * from "./triage";
 export * from "./verdict";

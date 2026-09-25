@@ -1,4 +1,4 @@
-import { fastLaneEligibility, referencedFields, triage, type Tier } from "@aegis/domain";
+import { TIERS, controlApplies, fastLaneEligibility, referencedFields, triage, type Tier } from "@aegis/domain";
 import { describe, expect, it } from "vitest";
 import { BUILT_IN_PACKS, financialCommunicationsPack, healthcareAiPack } from "./index";
 
@@ -77,6 +77,64 @@ describe("healthcare-ai pack", () => {
       ...healthcareAiPack.triage.domainRules.flatMap((r) => r.add),
     ];
     expect(used.filter((d) => !defined.includes(d))).toEqual([]);
+  });
+});
+
+/* Reference oracle: Jeeves' control applicability strings (lib/services/applicability.ts). */
+const JEEVES_APPLICABILITY: Record<string, string> = {
+  "L-01": "vendor=Y",
+  "L-02": "member-facing=Y",
+  "P-01": "vendor=Y",
+  "P-02": "vendor=Y",
+  "T-01": "tier>=medium",
+  "T-02": "tier>=high",
+  "R-01": "member-facing=Y or care-coverage=Y",
+  "R-02": "tier>=medium",
+  "S-01": "tier>=high",
+  "S-02": "all",
+  "H-01": "PHI=Y",
+  "H-02": "PHI=Y and vendor=Y",
+  "C-01": "care-coverage=Y",
+  "C-02": "care-coverage=Y",
+  "D-01": "tier>=medium",
+  "D-02": "PHI=Y",
+};
+function jeevesApplies(applicability: string, tier: Tier, f: Flags): boolean {
+  const atom = (a: string): boolean => {
+    if (a === "all") return true;
+    if (a === "vendor=Y") return f.vendorHosted;
+    if (a === "member-facing=Y") return f.memberFacing;
+    if (a === "care-coverage=Y") return f.careCoverageInfluence;
+    if (a === "PHI=Y") return f.phi;
+    const min = a.match(/^tier>=(\w+)$/)?.[1] as Tier;
+    return TIERS.indexOf(tier) >= TIERS.indexOf(min);
+  };
+  if (applicability.includes(" or ")) return applicability.split(" or ").some(atom);
+  if (applicability.includes(" and ")) return applicability.split(" and ").every(atom);
+  return atom(applicability);
+}
+
+describe("healthcare-ai controls", () => {
+  it("carries Jeeves' review-time catalog and applies it identically for every tier and answer combination", () => {
+    expect(healthcareAiPack.controls.map((c) => c.id).sort()).toEqual(Object.keys(JEEVES_APPLICABILITY).sort());
+    for (const control of healthcareAiPack.controls) {
+      for (const tier of TIERS) {
+        for (const flags of allFlagCombos) {
+          expect(controlApplies(control, tier, { ...flags }), `${control.id} ${tier} ${JSON.stringify(flags)}`).toBe(
+            jeevesApplies(JEEVES_APPLICABILITY[control.id]!, tier, flags),
+          );
+        }
+      }
+    }
+  });
+
+  it("assigns every control to a domain the pack defines, and reads only asked questions", () => {
+    const asked = new Set(healthcareAiPack.questions.map((q) => q.field));
+    for (const control of healthcareAiPack.controls) {
+      expect(Object.keys(healthcareAiPack.domains)).toContain(control.domain);
+      const fields = referencedFields({ tierRules: [{ id: "x", when: control.when, tier: "low", because: "" }], defaultTier: "low", baseDomains: { low: [], medium: [], high: [], critical: [] }, domainRules: [] });
+      expect(fields.filter((f) => !asked.has(f))).toEqual([]);
+    }
   });
 });
 

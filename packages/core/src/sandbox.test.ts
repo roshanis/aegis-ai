@@ -33,6 +33,8 @@ describe("sandbox", () => {
       ["Ada Morgan", ["admin"]],
       ["Riley Park", ["requester"]],
       ["Avery Brooks", ["approver"]],
+      ["Rowan Ellis", ["reviewer"]],
+      ["Jordan Lee", ["reviewer"]],
       ["Aubrey Kim", ["auditor"]],
     ]);
     expect(sandbox.personas.every((p) => p.title)).toBe(true);
@@ -43,32 +45,66 @@ describe("sandbox", () => {
     expect(views.map((v) => [v.asset.name, v.asset.state, v.openCase?.state ?? null, v.clearance.cleared])).toEqual([
       ["Prior-auth clinical summarizer", "active", null, true],
       ["Meeting-notes summarizer", "active", null, true],
+      ["Call transcription API", "registered", null, false],
       ["Claims triage agent", "paused", "draft", false],
       ["Provider fraud-scoring model", "registered", null, false],
       ["Member benefits chat assistant", "registered", "in_review", false],
     ]);
+    const transcription = views.find((v) => v.asset.name === "Call transcription API")!;
+    expect(transcription.clearance).toMatchObject({
+      cleared: false,
+      reason: "L-01 Vendor contract AI addendum has no evidence or exception; P-01 Vendor risk assessment has no evidence or exception",
+    });
     expect(await withTenant(pglite, sandbox.tenantId, verifyAuditChain)).toBeNull();
   });
 
   it("leaves each persona something to do", async () => {
-    const todo = async (name: string) =>
-      (await gov.listAssetViews(await as(name)))
-        .filter((v) => v.actions.openCase.length > 0)
-        .map((v) => [v.asset.name, v.actions.openCase]);
-    expect(await todo("Riley Park")).toEqual([["Claims triage agent", ["submit"]]]);
-    expect(await todo("Avery Brooks")).toEqual([
-      ["Member benefits chat assistant", ["approve", "conditionally_approve", "reject"]],
+    const views = async (name: string) => gov.listAssetViews(await as(name));
+    const chat = async (name: string) => (await views(name)).find((v) => v.asset.name === "Member benefits chat assistant")!;
+
+    const riley = await views("Riley Park");
+    expect(riley.filter((v) => v.actions.openCase.length > 0).map((v) => [v.asset.name, v.actions.openCase])).toEqual([
+      ["Claims triage agent", ["submit"]],
     ]);
+
+    const jordan = await chat("Jordan Lee");
+    expect(jordan.assurance.reviews.filter((r) => r.actions.includes("sign")).map((r) => [r.domain, r.uncoveredGates])).toEqual([
+      ["legal", []],
+      ["responsible-ai", ["R-01"]],
+    ]);
+
+    const avery = await chat("Avery Brooks");
+    expect(avery.assurance.readiness).toMatchObject({ canApprove: false, approvalBlockers: ["legal:pending", "responsible-ai:pending"] });
+    expect(avery.assurance.controls.find((c) => c.id === "R-01")?.exception).toMatchObject({
+      state: "requested",
+      actions: ["approve", "reject"],
+    });
+    expect((await chat("Riley Park")).assurance.controls.find((c) => c.id === "R-01")?.exception?.actions).toEqual([]);
   });
 
-  it("dates the seeded history in the past", async () => {
-    const [first] = await gov.listAssetViews(await as("Aubrey Kim"));
-    const history = await gov.assetHistory(await as("Aubrey Kim"), first!.asset.id);
-    expect(history.every((e) => e.at < now)).toBe(true);
+  it("records the conditional approval's conditions and the evidence that met them", async () => {
+    const summarizer = (await gov.listAssetViews(await as("Aubrey Kim"))).find(
+      (v) => v.asset.name === "Prior-auth clinical summarizer",
+    )!;
+    expect(summarizer.assurance.conditions.map((c) => [c.due, c.state, c.evidence.length])).toEqual([
+      ["before_use", "met", 1],
+      ["ongoing", "open", 0],
+    ]);
+    expect(summarizer.assurance.controls.filter((c) => c.enforcement === "gate").every((c) => c.covered)).toBe(true);
+  });
+
+  it("dates all seeded history, evidence included, in the past", async () => {
+    const auditor = await as("Aubrey Kim");
+    for (const view of await gov.listAssetViews(auditor)) {
+      const history = await gov.assetHistory(auditor, view.asset.id);
+      expect(history.every((e) => e.at < now), view.asset.name).toBe(true);
+      const evidence = view.assurance.controls.flatMap((c) => c.evidence);
+      expect(evidence.every((e) => e.addedAt < now), view.asset.name).toBe(true);
+    }
   });
 
   it("offers personas only while the sandbox is live, and never for a real tenant", async () => {
-    expect(await sandboxPersonas(db, sandbox.tenantId, now)).toHaveLength(4);
+    expect(await sandboxPersonas(db, sandbox.tenantId, now)).toHaveLength(6);
     const expired = new Date(now.getTime() + SANDBOX_LIFETIME_MS + 1);
     expect(await sandboxPersonas(db, sandbox.tenantId, expired)).toEqual([]);
 
@@ -93,7 +129,7 @@ describe("sandbox", () => {
       UNION ALL SELECT 'assets', count(*)::int FROM assets WHERE tenant_id = '${sandbox.tenantId}'`);
     expect(counts.rows.every((r) => r.n === 0)).toBe(true);
 
-    expect(await sandboxPersonas(db, second.tenantId, afterFirstExpires)).toHaveLength(4);
+    expect(await sandboxPersonas(db, second.tenantId, afterFirstExpires)).toHaveLength(6);
     expect(await withTenant(pglite, second.tenantId, verifyAuditChain)).toBeNull();
     await expect(pglite.exec(`DELETE FROM audit_events WHERE tenant_id = '${second.tenantId}'`)).rejects.toThrow(
       /append-only/,

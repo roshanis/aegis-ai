@@ -1,4 +1,4 @@
-import type { FastLanePolicy, Rubric, TriagePolicy } from "@aegis/domain";
+import type { ControlDefinition, FastLanePolicy, Rubric, TriagePolicy } from "@aegis/domain";
 
 /**
  * A policy pack is versioned data a tenant enables. Packs never contain
@@ -25,6 +25,8 @@ export interface InitiativePack extends PackBase {
   readonly domains: Readonly<Record<string, string>>;
   readonly triage: TriagePolicy;
   readonly fastLane: FastLanePolicy;
+  /** The control catalog; a case must address those in its review domains that apply. */
+  readonly controls: readonly ControlDefinition[];
 }
 
 export interface ContentPack extends PackBase {

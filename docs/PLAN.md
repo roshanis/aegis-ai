@@ -59,8 +59,15 @@
    intake to triage to case to audit, a sandbox tenant per visitor, the
    console over `@aegis/core`, and CI that runs isolation tests and an
    end-to-end walk of the console in Chromium.
-1. **Governance core.** Reviews, sign-off, decisions with conditions,
-   controls, evidence. Jeeves' tests become acceptance tests.
+1. **Governance core** *(done)*. Domain reviews (sign, return with a
+   question, abstain, resume; revision-checked), decision readiness,
+   Jeeves' control catalog, evidence (links and attestations), time-boxed
+   control exceptions, decisions with before-use and ongoing conditions,
+   and clearance that requires all of it. Jeeves' readiness, abstention,
+   exception and applicability tests are ported as acceptance tests.
+   Deferred: file uploads (with per-tenant keys), exception renewal,
+   evidence re-attestation on each control's cadence, and per-evidence
+   assessments.
 2. **Agents and evals.** Durable workflows, drafting and intake agents,
    golden-set gate, per-tenant model keys.
 3. **Member communications review.** Cleared's engine with a CMS pack.
@@ -77,9 +84,13 @@
   decision. The purge path already exists (sandboxes use it): the audit log
   accepts deletes only for the tenant named in `app.purge_tenant`.
 - **Agents have no read access yet**; phase 2 scopes it to the cases they
-  draft for.
-- **Reviewer sign-offs per domain** are phase 1: triage lists the domains,
-  but approvers decide without collecting each sign-off first.
+  draft for, and produces the `drafted` reviews the readiness rules
+  already accept.
+- **Monitor controls have no due dates yet.** They are tracked but never
+  go overdue; cadence-driven re-attestation comes with evidence storage.
+- **Owners attest control applicability through their answers.** A
+  reviewer sees every control and its evidence before signing, but cannot
+  yet mark evidence insufficient without returning the whole review.
 
 Framework references in packs mean "helps evidence", never "certifies
 compliance".

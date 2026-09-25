@@ -1,8 +1,9 @@
 "use client";
 
-import type { CaseTrigger, Clearance } from "@aegis/domain";
+import type { CaseTrigger, Clearance, DecisionReadiness } from "@aegis/domain";
 import { useActionState, useEffect, useState } from "react";
 import { decide, openReview, operate } from "@/app/(console)/registry/actions";
+import { ActionChooser, ConditionsEditor } from "./Assurance";
 import { IDLE, type ActionState } from "@/lib/action-state";
 import { DECISIONS, OPERATIONS, TRIGGER, type Tone } from "@/lib/labels";
 
@@ -24,61 +25,53 @@ function useChoice(state: ActionState) {
   return [choice, setChoice] as const;
 }
 
-export function DecisionPanel({ caseId, actions }: { caseId: string; actions: readonly string[] }) {
-  const [state, action, pending] = useActionState(decide, IDLE);
-  const [choice, setChoice] = useChoice(state);
-  const meta = choice ? DECISIONS[choice] : null;
+const DECISION_PROMPTS: Record<string, string> = {
+  approve: "Note for the requester and auditors (optional)",
+  conditionally_approve: "Why approve with conditions? The requester and auditors will read this.",
+  reject: "Why? The requester and auditors will read this.",
+  request_changes: "What needs to change?",
+};
 
+export function DecisionPanel({
+  caseId,
+  actions,
+  readiness,
+  proposals,
+}: {
+  caseId: string;
+  actions: readonly string[];
+  readiness: DecisionReadiness | null;
+  proposals: readonly string[];
+}) {
+  const blocked = (action: string): string | null => {
+    if (!readiness) return null;
+    if (action === "approve" && !readiness.canApprove) return `waiting on ${readiness.approvalBlockers.join(", ")}`;
+    if (action === "conditionally_approve" && !readiness.canConditionallyApprove) {
+      return `waiting on ${readiness.conditionalBlockers.join(", ")}`;
+    }
+    return null;
+  };
   return (
-    <form action={action} className="stack">
-      <input type="hidden" name="caseId" value={caseId} />
-      <input type="hidden" name="action" value={choice ?? ""} />
-      <div className="row">
-        {actions.map((a) => (
-          <button
-            key={a}
-            type="button"
-            className={BUTTON[DECISIONS[a]?.tone ?? "neutral"]}
-            aria-pressed={choice === a}
-            style={choice && choice !== a ? { opacity: 0.55 } : undefined}
-            onClick={() => setChoice(a)}
-          >
-            {DECISIONS[a]?.label ?? a}
-          </button>
-        ))}
-      </div>
-      {choice && meta ? (
-        <>
-          <div className="field">
-            <label htmlFor="decision-reason">
-              {meta.needsReason ? "Why? The requester and auditors will read this." : "Note (optional)"}
-            </label>
-            <textarea
-              id="decision-reason"
-              name="reason"
-              required={meta.needsReason}
-              placeholder={
-                choice === "conditionally_approve"
-                  ? "The conditions that must hold, e.g. retention control C-12 live before launch"
-                  : choice === "reject"
-                    ? "What would have to change for this to pass"
-                    : ""
-              }
-              autoFocus
-            />
-          </div>
-          {state.error ? <div className="error">{state.error}</div> : null}
-          <div className="row">
-            <button className="btn btn-primary" type="submit" disabled={pending}>
-              {pending ? "Recording…" : `Confirm: ${meta.label.toLowerCase()}`}
-            </button>
-            <button className="btn" type="button" onClick={() => setChoice(null)}>
-              Cancel
-            </button>
-          </div>
-        </>
+    <div className="stack" style={{ gap: 10 }}>
+      {readiness ? (
+        <p className={readiness.canApprove || readiness.canConditionallyApprove ? "" : "faint"} style={{ fontSize: 13.5 }}>
+          {readiness.reason}
+        </p>
       ) : null}
-    </form>
+      <ActionChooser
+        action={decide}
+        hidden={{ caseId }}
+        choices={actions.map((a) => ({
+          value: a,
+          label: DECISIONS[a]?.label ?? a,
+          tone: DECISIONS[a]?.tone ?? "neutral",
+          needsNote: DECISIONS[a]?.needsReason ?? false,
+          notePrompt: DECISION_PROMPTS[a] ?? "Note",
+          disabledReason: blocked(a),
+        }))}
+        extra={(choice) => (choice === "conditionally_approve" ? <ConditionsEditor proposals={proposals} /> : null)}
+      />
+    </div>
   );
 }
 

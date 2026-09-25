@@ -34,7 +34,7 @@ export async function createSandbox(
   const mail = (name: string) => `${name}@${id.slice(0, 8)}.sandbox.aegis`;
   // Seed two weeks of history so the timeline reads like real use.
   let clock = now.getTime() - 14 * 24 * HOUR;
-  const tick = () => new Date((clock += 3 * HOUR + 17 * 60 * 1000));
+  const tick = () => new Date((clock += 37 * 60 * 1000));
 
   const { tenantId: tenant, adminId } = await db.run((conn) =>
     provisionTenant(
@@ -54,23 +54,42 @@ export async function createSandbox(
   );
 
   const gov = createGovernance(db, { now: tick });
-  const principal = (uid: string, displayName: string, roles: Role[]): HumanPrincipal => ({
+  const principal = (uid: string, displayName: string, roles: Role[], reviewDomains: string[] = []): HumanPrincipal => ({
     kind: "human",
     tenantId: tenant,
     userId: userId(uid),
     displayName,
     roles,
-    reviewDomains: [],
+    reviewDomains,
   });
   const admin = principal(adminId, "Ada Morgan", ["admin"]);
-  const add = async (displayName: string, title: string, roles: Role[]) =>
+  const add = async (displayName: string, title: string, roles: Role[], reviewDomains: string[] = []) =>
     principal(
-      await gov.addUser(admin, { email: mail(displayName.split(" ")[0]!.toLowerCase()), displayName, title, roles }),
+      await gov.addUser(admin, {
+        email: mail(displayName.split(" ")[0]!.toLowerCase()),
+        displayName,
+        title,
+        roles,
+        reviewDomains,
+      }),
       displayName,
       roles,
+      reviewDomains,
     );
   const riley = await add("Riley Park", "Product owner, utilization management", ["requester"]);
   const avery = await add("Avery Brooks", "AI governance lead", ["approver"]);
+  const rowan = await add("Rowan Ellis", "Privacy, security and data reviewer", ["reviewer"], [
+    "privacy-hipaa",
+    "security",
+    "data-governance",
+    "tech-architecture",
+  ]);
+  const jordan = await add("Jordan Lee", "Legal, clinical and responsible-AI reviewer", ["reviewer"], [
+    "legal",
+    "procurement",
+    "clinical-safety",
+    "responsible-ai",
+  ]);
   await add("Aubrey Kim", "Internal audit", ["auditor"]);
   const monitor: SystemPrincipal = { kind: "system", tenantId: tenant, job: "drift-monitor" };
 
@@ -81,37 +100,86 @@ export async function createSandbox(
     return { assetId: asset.id, caseId: submitted.id };
   }
 
-  // In use, with conditions.
-  const summarizer = await review(
-    "Prior-auth clinical summarizer",
-    "ai_system",
-    yesTo("phi", "humanInLoop", "vendorHosted"),
-  );
-  await gov.actOnCase(
-    avery,
-    summarizer.caseId,
-    "conditionally_approve",
-    "Keep PHI inside our Azure tenant, and re-validate summaries against nurse review every quarter.",
-  );
+  /** Riley evidences the gate controls, except any listed. */
+  async function evidence(assetId: string, except: string[] = []) {
+    const { assurance } = await gov.getAsset(riley, assetId);
+    for (const control of assurance.controls) {
+      if (control.enforcement !== "gate" || control.covered || except.includes(control.id)) continue;
+      await gov.addEvidence(riley, {
+        assetId,
+        controlId: control.id,
+        kind: "link",
+        title: control.requiredEvidence,
+        url: `https://northwind.sharepoint.example/governance/${control.id.toLowerCase()}`,
+      });
+    }
+  }
+
+  /** Each reviewer signs the open reviews they can sign, except any listed. */
+  async function sign(assetId: string, except: string[] = [], proposals: Record<string, string[]> = {}) {
+    for (const reviewer of [rowan, jordan]) {
+      const { assurance } = await gov.getAsset(reviewer, assetId);
+      for (const r of assurance.reviews) {
+        if (!r.actions.includes("sign") || except.includes(r.domain)) continue;
+        await gov.reviewDomain(reviewer, r.caseId, r.domain, "sign", {
+          expectedRevision: r.revision,
+          ...(proposals[r.domain] ? { proposedConditions: proposals[r.domain] } : {}),
+        });
+      }
+    }
+  }
+
+  // In use, with one condition met before launch and one ongoing.
+  const summarizer = await review("Prior-auth clinical summarizer", "ai_system", yesTo("phi", "humanInLoop", "vendorHosted"));
+  await evidence(summarizer.assetId);
+  await sign(summarizer.assetId, [], { "privacy-hipaa": ["Keep PHI inside our Azure tenant, with no cross-region replication"] });
+  await gov.actOnCase(avery, summarizer.caseId, "conditionally_approve", "Approved for nurse-reviewed prior-auth summaries.", {
+    conditions: [
+      { text: "Keep PHI inside our Azure tenant, with no cross-region replication", due: "before_use" },
+      { text: "Re-validate summaries against nurse review every quarter", due: "ongoing" },
+    ],
+  });
+  const beforeUse = (await gov.getAsset(riley, summarizer.assetId)).assurance.conditions.find((c) => c.due === "before_use");
+  await gov.addEvidence(riley, {
+    assetId: summarizer.assetId,
+    conditionId: beforeUse!.id,
+    kind: "attestation",
+    title: "Replication disabled",
+    detail: "Geo-replication is off for the summarizer's storage account; region pinned to East US 2.",
+  });
+  await gov.actOnCondition(riley, beforeUse!.id, "submit");
+  await gov.actOnCondition(avery, beforeUse!.id, "accept");
   await gov.actOnAsset(admin, summarizer.assetId, "activate");
 
   // Fast-laned: low risk, under the pre-approved policy.
   const notes = await review("Meeting-notes summarizer", "vendor_model", yesTo());
   await gov.actOnAsset(admin, notes.assetId, "activate");
 
+  // Fast-laned, but its vendor gate controls still need evidence before use.
+  await review("Call transcription API", "vendor_model", yesTo("vendorHosted"));
+
   // Paused by monitoring; an incident review waits on its owner.
   const agent = await review("Claims triage agent", "agent", yesTo("careCoverageInfluence", "phi", "individualImpact"));
+  await evidence(agent.assetId);
+  await sign(agent.assetId);
   await gov.actOnCase(avery, agent.caseId, "approve", "Approved for a two-region pilot with weekly denial-rate reporting.");
   await gov.actOnAsset(admin, agent.assetId, "activate");
   await gov.actOnAsset(monitor, agent.assetId, "pause", "Denial rate drifted 14% above the pilot baseline.");
   await gov.openCase(admin, { assetId: agent.assetId, trigger: "incident" });
 
-  // Rejected, so not cleared for use.
+  // Rejected after the responsible-AI reviewer returned it, so not cleared for use.
   const fraud = await review(
     "Provider fraud-scoring model",
     "vendor_model",
     yesTo("phi", "vendorHosted", "individualImpact", "humanInLoop"),
   );
+  await evidence(fraud.assetId);
+  await sign(fraud.assetId, ["responsible-ai"]);
+  const returned = (await gov.getAsset(jordan, fraud.assetId)).assurance.reviews.find((r) => r.domain === "responsible-ai")!;
+  await gov.reviewDomain(jordan, fraud.caseId, "responsible-ai", "return", {
+    expectedRevision: returned.revision,
+    note: "How does a provider learn why they were scored? I see no reason codes or appeal path.",
+  });
   await gov.actOnCase(
     avery,
     fraud.caseId,
@@ -119,8 +187,16 @@ export async function createSandbox(
     "Providers get no explanation of their scores. Resubmit with reason codes and an appeal path.",
   );
 
-  // Waiting on the approver.
-  await review("Member benefits chat assistant", "ai_system", yesTo("memberFacing", "individualImpact", "humanInLoop"));
+  // In review: most domains signed; fairness testing waits on an exception only the approver can grant.
+  const chat = await review("Member benefits chat assistant", "ai_system", yesTo("memberFacing", "individualImpact", "humanInLoop"));
+  await evidence(chat.assetId, ["R-01"]);
+  await sign(chat.assetId, ["legal", "responsible-ai"]);
+  await gov.requestException(riley, {
+    assetId: chat.assetId,
+    controlId: "R-01",
+    reason: "Fairness testing needs four weeks of pilot conversations; it runs before general availability.",
+    days: 60,
+  });
 
   return { tenantId: tenant, personas: await sandboxPersonas(db, tenant, now) };
 }

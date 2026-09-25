@@ -33,7 +33,25 @@ import {
   type UserId,
 } from "@aegis/domain";
 import type { InitiativePack, PolicyPack } from "@aegis/frameworks";
+import { createAssurance, type Assurance, type NewCondition } from "./assurance";
 import { GovernanceError } from "./errors";
+import {
+  PACK_KIND,
+  SERVICE_ACTIONS,
+  SUBMIT_ACTIONS,
+  UUID,
+  actorId,
+  canSee,
+  toAsset,
+  toCase,
+  type Asset,
+  type AssetRow,
+  type Case,
+  type CaseRow,
+  type Kernel,
+} from "./model";
+
+export { actorId, type Asset, type Case } from "./model";
 
 /**
  * Governance services: the only path from a request to tenant data. Every
@@ -42,33 +60,17 @@ import { GovernanceError } from "./errors";
  * and its audit event commit or fail together.
  */
 
-export interface Asset {
-  readonly id: string;
-  readonly kind: AssetKind;
-  readonly name: string;
-  readonly state: AssetState;
-  readonly ownerId: string;
-  readonly createdAt: Date;
-}
-
-export interface Case extends CaseSummary {
-  readonly assetId: string;
-  readonly ownerId: string;
-  readonly packId: string;
-  readonly packVersion: string;
-  readonly answers: Answers;
-  readonly tier: Tier | null;
-  readonly triage: TriageResult | null;
-  readonly createdAt: Date;
-}
-
 export interface AssetView {
   readonly asset: Asset;
   readonly ownerName: string | null;
+  /** True when the viewer owns this asset. */
+  readonly viewerIsOwner: boolean;
   readonly cases: readonly Case[];
   /** The case under way, if any. */
   readonly openCase: Case | null;
   readonly clearance: Clearance;
+  /** Domain reviews, controls, evidence, exceptions and conditions. */
+  readonly assurance: Assurance;
   /** What this viewer may do next; the UI offers exactly these. */
   readonly actions: {
     readonly asset: readonly AssetAction[];
@@ -112,79 +114,6 @@ export interface HistoryEntry {
 export interface GovernanceOptions {
   readonly now?: () => Date;
 }
-
-/** Case actions that only the service performs, as part of submitting or of automation. */
-const SERVICE_ACTIONS = new Set(["submit", "resubmit", "triage", "fast_lane_approve", "record_ai_review"]);
-const SUBMIT_ACTIONS = new Set(["submit", "resubmit"]);
-const PACK_KIND: Record<CaseKind, PolicyPack["kind"]> = { risk_review: "initiative", content_review: "content" };
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-export function actorId(actor: Principal): string {
-  switch (actor.kind) {
-    case "human":
-      return actor.userId;
-    case "system":
-      return `system:${actor.job}`;
-    case "agent":
-      return `agent:${actor.agent}`;
-  }
-}
-
-function canSee(actor: Principal, asset: Asset): boolean {
-  if (actor.kind === "system") return true;
-  if (can(actor, "case.read_all")) return true;
-  return actor.kind === "human" && can(actor, "case.read_own") && asset.ownerId === actor.userId;
-}
-
-interface AssetRow {
-  id: string;
-  kind: AssetKind;
-  name: string;
-  state: AssetState;
-  owner_id: string;
-  created_at: Date;
-}
-
-interface CaseRow {
-  id: string;
-  asset_id: string;
-  kind: CaseKind;
-  trigger: CaseTrigger;
-  state: string;
-  owner_id: string;
-  pack_id: string;
-  pack_version: string;
-  answers: Answers;
-  tier: Tier | null;
-  triage: TriageResult | null;
-  decided_at: Date | null;
-  created_at: Date;
-}
-
-const toAsset = (r: AssetRow): Asset => ({
-  id: r.id,
-  kind: r.kind,
-  name: r.name,
-  state: r.state,
-  ownerId: r.owner_id,
-  createdAt: new Date(r.created_at),
-});
-
-const toCase = (r: CaseRow): Case => ({
-  id: r.id,
-  assetId: r.asset_id,
-  kind: r.kind,
-  trigger: r.trigger,
-  state: r.state,
-  ownerId: r.owner_id,
-  packId: r.pack_id,
-  packVersion: r.pack_version,
-  answers: r.answers,
-  tier: r.tier,
-  triage: r.triage,
-  decidedAt: r.decided_at ? new Date(r.decided_at) : null,
-  createdAt: new Date(r.created_at),
-});
 
 function validateAnswers(pack: InitiativePack, answers: Answers): void {
   const fields = new Set(pack.questions.map((q) => q.field));
@@ -289,8 +218,13 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
       payload,
       at,
     });
-    return { ...current, state: event.after, decidedAt };
+    const moved = { ...current, state: event.after, decidedAt };
+    if (moved.kind === "risk_review" && moved.state === "in_review") await assurance.openDomainReviews(tx, moved, at);
+    return moved;
   }
+
+  const kernel: Kernel = { now, inTenant, loadAsset, loadCase, loadCases, loadPack, writeNote, moveCase };
+  const assurance = createAssurance(kernel);
 
   /** Deterministic triage, then the fast lane or a full review. No model is involved. */
   async function triageCase(tx: Connection, submitted: Case, pack: InitiativePack, tenant: TenantId): Promise<SubmitResult> {
@@ -357,9 +291,11 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
     return {
       asset,
       ownerName: owner.rows[0]?.display_name ?? null,
+      viewerIsOwner: actor.kind === "human" && actor.userId === asset.ownerId,
       cases,
       openCase: open,
-      clearance: clearance(cases),
+      clearance: await assurance.clearanceFor(tx, cases),
+      assurance: await assurance.view(tx, actor, asset, cases),
       actions: { asset: assetLifecycle.available(asset.state, actor), openCase: caseActions, newCase },
     };
   }
@@ -571,20 +507,56 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
       });
     },
 
-    /** A person acts on a case: start a review, approve, reject, request changes. */
-    actOnCase(actor: Principal, caseId: string, action: string, reason?: string): Promise<Case> {
+    /**
+     * A person acts on a case: start a review, approve, reject, request
+     * changes. Approving a risk review waits until its domain reviews are
+     * ready; a conditional approval carries at least one condition.
+     */
+    actOnCase(
+      actor: Principal,
+      caseId: string,
+      action: string,
+      reason?: string,
+      extras: { conditions?: readonly NewCondition[] } = {},
+    ): Promise<Case> {
       return inTenant(actor, async (tx) => {
         if (SERVICE_ACTIONS.has(action)) throw new GovernanceError("invalid", `'${action}' is not a manual action`);
         const current = await loadCase(tx, actor, caseId);
-        return moveCase(tx, current, action, actor, reason === undefined ? {} : { reason });
+        // Authority, state and reason come first, so readiness is never revealed to someone who cannot decide.
+        caseLifecycles[current.kind].transition(current.state, action, actor, {
+          at: now(),
+          caseOwnerId: current.ownerId,
+          ...(reason === undefined ? {} : { reason }),
+        });
+        const approving = action === "approve" || action === "conditionally_approve";
+        let conditions: NewCondition[] = [];
+        if (current.kind === "risk_review" && approving) {
+          const readiness = await assurance.readinessFor(tx, current);
+          const ready = action === "approve" ? readiness.canApprove : readiness.canConditionallyApprove;
+          if (!ready) {
+            const blockers = action === "approve" ? readiness.approvalBlockers : readiness.conditionalBlockers;
+            throw new GovernanceError("conflict", `${readiness.reason} Waiting on: ${blockers.join(", ")}`);
+          }
+          if (action === "conditionally_approve") conditions = assurance.validateConditions(extras.conditions ?? []);
+        }
+        const moved = await moveCase(tx, current, action, actor, reason === undefined ? {} : { reason });
+        if (conditions.length > 0) await assurance.addConditions(tx, actor, moved, conditions, now());
+        return moved;
       });
     },
+
+    reviewDomain: assurance.reviewDomain,
+    addEvidence: assurance.addEvidence,
+    withdrawEvidence: assurance.withdrawEvidence,
+    requestException: assurance.requestException,
+    actOnException: assurance.actOnException,
+    actOnCondition: assurance.actOnCondition,
 
     /** Activate, pause, resume or retire an asset. Activating and resuming need clearance. */
     actOnAsset(actor: Principal, assetId: string, action: AssetAction, reason?: string): Promise<Asset> {
       return inTenant(actor, async (tx) => {
         const asset = await loadAsset(tx, actor, assetId, true);
-        const cleared = clearance(await loadCases(tx, asset.id));
+        const cleared = await assurance.clearanceFor(tx, await loadCases(tx, asset.id));
         const rule = assetLifecycle.table[asset.state]?.[action];
         if (rule?.requiresClearance && !cleared.cleared) {
           throw new IllegalTransitionError(`'${action}' needs an approved review: ${cleared.reason}`);

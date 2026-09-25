@@ -1,3 +1,13 @@
+export type {
+  Assurance,
+  ConditionView,
+  ControlView,
+  DomainReviewView,
+  EvidenceView,
+  ExceptionView,
+  NewCondition,
+  Person,
+} from "./assurance";
 export { GovernanceError, type GovernanceErrorCode } from "./errors";
 export {
   actorId,
