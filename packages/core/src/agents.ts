@@ -467,7 +467,11 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
         const review = await lockReview(tx, job.reviewId);
         if (!review) return null;
         const c = await loadCaseRow(tx, review.case_id);
-        if (!draftable(review, c, job)) return null;
+        if (!draftable(review, c, job)) {
+          // Still this job's request, but the case was decided or a person acted: nothing left to draft.
+          if (review.draft_request_id === job.requestId) await cancelDraft(tx, review.id);
+          return null;
+        }
         const gate = await gateFor(tx, "review-drafter");
         if (!gate.on || !gate.connection) {
           await tx.query("UPDATE domain_reviews SET draft_status = 'none' WHERE id = $1", [review.id]);

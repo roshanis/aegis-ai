@@ -111,14 +111,32 @@ export interface InlineJobs extends JobQueue {
  */
 export function inlineJobs(
   runtime: () => AgentRuntime,
-  options: { readonly retry?: RetryPolicy; readonly onError?: (error: unknown, job: AgentJob) => void } = {},
+  options: {
+    readonly retry?: RetryPolicy;
+    readonly onError?: (error: unknown, job: AgentJob) => void;
+    /**
+     * Hold jobs until `idle` is called. A draft superseded by a newer
+     * request for the same review then costs one quick check, not a model
+     * call. For batch work such as seeding a sandbox.
+     */
+    readonly holdUntilIdle?: boolean;
+  } = {},
 ): InlineJobs {
   const running = new Map<string, Promise<unknown>>();
+  const held: AgentJob[] = [];
   const steps: Steps = { run: (_name, fn) => fn() };
   const retry = options.retry ?? MODEL_RETRY;
   const onError = options.onError ?? ((error, job) => console.error(`agent job ${jobId(job)} failed`, error));
 
   function enqueue(job: AgentJob): void {
+    if (options.holdUntilIdle) {
+      held.push(job);
+      return;
+    }
+    start(job);
+  }
+
+  function start(job: AgentJob): void {
     const id = jobId(job);
     if (running.has(id)) return;
     const work = (async () => {
@@ -134,11 +152,14 @@ export function inlineJobs(
   return {
     enqueue,
     async idle() {
-      while (running.size > 0) await Promise.allSettled([...running.values()]);
+      while (held.length > 0 || running.size > 0) {
+        held.splice(0).forEach(start);
+        await Promise.allSettled([...running.values()]);
+      }
     },
     async recover() {
       const jobs = await runtime().pendingJobs();
-      jobs.forEach(enqueue);
+      jobs.forEach(start);
       return jobs.length;
     },
   };

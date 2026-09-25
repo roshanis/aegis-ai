@@ -80,8 +80,9 @@
    cases), and an agent can be turned on only after it passes on the
    tenant's current model. Drafting and evaluations are DBOS workflows whose
    checkpoints hold IDs and codes only; on PGlite they run in-process.
-   Deferred: Bedrock and Anthropic providers, spend limits, drafts that
-   refresh when evidence changes, and human-graded or model-graded evals.
+   A draft is redone when evidence or an exception for one of its domain's
+   controls changes. Deferred: Bedrock and Anthropic providers, spend
+   limits, and human-graded or model-graded evals.
 3. **Member communications review.** Cleared's engine with a CMS pack.
 4. **Differentiators.** Agent and MCP tool inventory, evidence connectors,
    more frameworks, dedicated and BYOC deployment.

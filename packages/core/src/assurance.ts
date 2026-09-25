@@ -481,6 +481,24 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
     }
   }
 
+  /**
+   * Evidence or an exception changed for a control, so a draft of that
+   * control's domain review is out of date: draft it again, if the drafter
+   * is on and the review still waits for a signature.
+   */
+  async function redraftFor(tx: Connection, tenant: TenantId, assetId: string, controlId: string): Promise<void> {
+    const focus = focusCase(await k.loadCases(tx, assetId));
+    if (!focus || focus.state !== "in_review") return;
+    const { controls } = await controlsFor(tx, focus);
+    const control = controls.find((c) => c.id === controlId);
+    if (!control) return;
+    const { rows } = await tx.query<{ id: string }>(
+      "SELECT id FROM domain_reviews WHERE case_id = $1 AND domain = $2 AND status IN ('pending', 'drafted')",
+      [focus.id, control.domain],
+    );
+    if (rows[0]) await drafts.queueDraft(tx, tenant, rows[0].id);
+  }
+
   /** Mark approved exceptions past their expiry as expired, as the system. */
   async function expireDue(tx: Connection, actor: Principal, assetId: string, at: Date): Promise<void> {
     const { rows } = await tx.query<{ id: string; control_id: string }>(
@@ -671,6 +689,7 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
           },
           at,
         });
+        if (input.controlId) await redraftFor(tx, actor.tenantId, asset.id, input.controlId);
         return id;
       });
     },
@@ -679,8 +698,8 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
     withdrawEvidence(actor: Principal, assetId: string, evidenceId: string): Promise<void> {
       return k.inTenant(actor, async (tx) => {
         const asset = await k.loadAsset(tx, actor, assetId, true);
-        const { rows } = await tx.query<{ added_by: string }>(
-          "DELETE FROM evidence WHERE id = $1 AND asset_id = $2 AND added_by = $3 RETURNING added_by",
+        const { rows } = await tx.query<{ added_by: string; control_id: string | null }>(
+          "DELETE FROM evidence WHERE id = $1 AND asset_id = $2 AND added_by = $3 RETURNING added_by, control_id",
           [UUID.test(evidenceId) ? evidenceId : null, asset.id, actor.kind === "human" ? actor.userId : null],
         );
         if (rows.length === 0) throw new GovernanceError("not_found", "evidence not found, or not yours to withdraw");
@@ -692,6 +711,7 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
           payload: { evidenceId },
           at: k.now(),
         });
+        if (rows[0]!.control_id) await redraftFor(tx, actor.tenantId, asset.id, rows[0]!.control_id);
       });
     },
 
@@ -794,6 +814,7 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
           },
           at,
         });
+        if (action !== "reject") await redraftFor(tx, actor.tenantId, row.asset_id, row.control_id);
         return event.after;
       });
     },

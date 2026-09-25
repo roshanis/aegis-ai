@@ -112,8 +112,13 @@ describe("sandbox", () => {
     const chat = (await gov.listAssetViews(auditor)).find((v) => v.asset.name === "Member benefits chat assistant")!;
     const history = await gov.assetHistory(auditor, chat.asset.id);
     expect(history.find((h) => h.action === "case.submit")!.payload).toMatchObject({ suggested: expect.any(Number), changed: [] });
-    expect(history.filter((h) => h.action === "review.draft").length).toBe(chat.assurance.reviews.length);
+    const drafted = new Set(history.filter((h) => h.action === "review.draft").map((h) => h.payload.domain));
+    expect(drafted.size).toBe(chat.assurance.reviews.length);
     expect(history.filter((h) => h.action === "review.sign").every((h) => h.payload.fromDraft === "as_drafted")).toBe(true);
+    // Drafts were refreshed as evidence arrived, so no signed memo claims evidence is missing.
+    const signed = chat.assurance.reviews.filter((r) => r.status === "signed");
+    expect(signed.length).toBeGreaterThan(0);
+    expect(signed.every((r) => !/no .* on file\. This gate/.test(r.note ?? ""))).toBe(true);
     await expect(
       gov.connectModel(await as("Ada Morgan"), { provider: "openai-compatible", model: "m", endpoint: "https://llm.example.com/v1", apiKey: "k" }),
     ).rejects.toThrow(/scripted model or OpenAI only/);

@@ -23,7 +23,8 @@ async function answer(page: Page, question: string, yes: boolean) {
 test("an AI system goes from intake through domain reviews, evidence and conditions to use", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Open a sandbox/ }).click();
-  await expect(page).toHaveURL(/\/registry$/);
+  // Seeding runs the agents' golden sets and drafts, which takes a few seconds.
+  await expect(page).toHaveURL(/\/registry$/, { timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "Needs you" })).toBeVisible();
 
   // Requester: one form, with live triage.
@@ -125,7 +126,8 @@ test("an AI system goes from intake through domain reviews, evidence and conditi
 test("a session cookie edited to become the admin gets no one in", async ({ page, context }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Open a sandbox/ }).click();
-  await expect(page).toHaveURL(/\/registry$/);
+  // Seeding runs the agents' golden sets and drafts, which takes a few seconds.
+  await expect(page).toHaveURL(/\/registry$/, { timeout: 30_000 });
   // A real person in the same tenant, so only the signature stands in the way.
   const admin = await page.locator("input[name='userId']").first().inputValue();
   const [session] = await context.cookies();

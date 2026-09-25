@@ -18,7 +18,8 @@ const agentCard = (page: Page, title: string) => page.getByRole("region", { name
 test("agents draft and suggest, people decide, and an admin keeps them behind the golden-set gate", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: /Open a sandbox/ }).click();
-  await expect(page).toHaveURL(/\/registry$/);
+  // Seeding runs the agents' golden sets and drafts, which takes a few seconds.
+  await expect(page).toHaveURL(/\/registry$/, { timeout: 30_000 });
 
   // Requester: describe it, take the suggestions, answer what the assistant could not tell.
   await page.getByRole("link", { name: "+ Register AI" }).click();

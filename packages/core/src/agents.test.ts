@@ -347,6 +347,28 @@ describe("review drafts", () => {
     expect(jobErrors).toEqual([]);
   });
 
+  it("drafts a review again when evidence for one of its controls changes", async () => {
+    behaviour = () => scripted();
+    const { assetId } = await registerAndSubmit("Evidence arrives later", { phi: false, memberFacing: true, careCoverageInfluence: false, humanInLoop: true, vendorHosted: false, individualImpact: false });
+    await jobs.idle();
+    const before = (await reviews(reviewer, assetId)).find((r) => r.domain === "data-governance")!;
+    expect(before.draft.content!.findings.map((f) => f.controlId)).toEqual(["D-01"]);
+    const other = (await reviews(reviewer, assetId)).find((r) => r.domain === "legal")!;
+
+    const evidenceId = await gov.addEvidence(requester, { assetId, controlId: "D-01", kind: "link", title: "Lineage document", url: "https://docs.example.test/d-01" });
+    expect((await reviews(reviewer, assetId)).find((r) => r.domain === "data-governance")!.draft.status).toBe("queued");
+    await jobs.idle();
+    const after = (await reviews(reviewer, assetId)).find((r) => r.domain === "data-governance")!;
+    expect(after.draft.content!.findings).toEqual([]);
+    expect(after.draft.content!.summary).toMatch(/1 of 1 Data Governance controls have evidence/);
+    // Other domains' drafts are left alone.
+    expect((await reviews(reviewer, assetId)).find((r) => r.domain === "legal")!.revision).toBe(other.revision);
+
+    await gov.withdrawEvidence(requester, assetId, evidenceId);
+    await jobs.idle();
+    expect((await reviews(reviewer, assetId)).find((r) => r.domain === "data-governance")!.draft.content!.findings.map((f) => f.controlId)).toEqual(["D-01"]);
+  });
+
   it("drafts again once the owner answers a returned review", async () => {
     behaviour = () => scripted();
     const { assetId, caseId } = await registerAndSubmit("Returned and answered", { phi: false, memberFacing: true, careCoverageInfluence: false, humanInLoop: true, vendorHosted: false, individualImpact: false });
@@ -406,6 +428,8 @@ describe("recovery", () => {
   it("picks up drafts that were queued when the process stopped", async () => {
     behaviour = () => scripted();
     await jobs.idle();
+    // Nothing is left queued once jobs finish, even for cases decided while their drafts were queued.
+    expect((await db.query("SELECT 1 FROM domain_reviews WHERE draft_status = 'queued'")).rows).toEqual([]);
     // A service with nowhere to send jobs, as if the process died right after the commit.
     const orphaned = createGovernance(serialized(db), { now: () => new Date((clock += 60_000)), secrets: ring, models: (c) => behaviour(c) });
     const asset = await orphaned.registerAsset(requester, { kind: "ai_system", name: "Queued at shutdown" });

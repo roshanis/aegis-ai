@@ -58,6 +58,7 @@ export async function createSandbox(
 
   // Seeding waits for each draft and evaluation, so the history reads in order.
   const jobs = inlineJobs(() => gov.agentRuntime, {
+    holdUntilIdle: true,
     onError: (error) => {
       throw error;
     },
@@ -135,6 +136,8 @@ export async function createSandbox(
         url: `https://northwind.sharepoint.example/governance/${control.id.toLowerCase()}`,
       });
     }
+    // Each piece of evidence sends its domain's draft back to the drafter.
+    await jobs.idle();
   }
 
   /** Each reviewer signs the open reviews they can sign, from the drafter's memo, except any listed. */

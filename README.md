@@ -42,7 +42,7 @@ Guarantees covered by tests:
 - An agent may only move a domain review into "drafted". The lifecycle engine refuses, when a lifecycle is defined, any rule that lets an agent into a state that is not a draft state, and no case, asset, exception or condition rule admits one.
 - An agent stays off until it passes its policy pack's golden set on the tenant's current model and an admin turns it on. A different model or endpoint turns it off; a new key for the same model does not.
 - The golden-set gate fails any intake assistant whose suggestions would have under-triaged a case, and any drafter that states a decision, cites a control the case lacks, misses a bare gate control, or repeats instructions planted in evidence.
-- A draft that states a decision or invents a control is discarded before anyone sees it. A person who acts on a review first wins over a draft still in flight.
+- A draft that states a decision or invents a control is discarded before anyone sees it. A person who acts on a review first wins over a draft still in flight. When evidence or an exception changes for a control, that domain's draft is redone, so a draft never argues from stale evidence.
 - The audit log records how each signature used the draft (kept, edited or not used), how many suggested intake answers the requester kept, and which unsigned drafts a conditional approval rested on.
 - Model keys are sealed with a per-tenant data key under the platform master key. A ciphertext copied into another tenant, or read for another purpose, does not open. Endpoints on private or internal addresses are refused.
 - Workflow checkpoints hold IDs and codes only: no system names or draft text reach DBOS's tables. An evaluation killed mid-run resumes without re-running finished cases.
