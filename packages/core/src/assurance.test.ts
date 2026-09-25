@@ -86,7 +86,7 @@ beforeAll(async () => {
     packs: [healthcareAiPack],
   });
   outsider = { ...person(other.adminId, "Other Admin", ["admin"]), tenantId: other.tenantId };
-});
+}, 60_000);
 
 describe("domain reviews", () => {
   it("opens one pending review per required domain when a case enters review", async () => {

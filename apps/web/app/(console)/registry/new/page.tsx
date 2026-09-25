@@ -12,7 +12,9 @@ export const metadata: Metadata = { title: "Register AI" };
 export default async function RegisterPage() {
   const { principal } = await requireViewer();
   if (!can(principal, "asset.register")) redirect("/registry");
-  const pack = (await (await governance()).policyPack(principal, { caseKind: "risk_review" })) as InitiativePack | null;
+  const gov = await governance();
+  const pack = (await gov.policyPack(principal, { caseKind: "risk_review" })) as InitiativePack | null;
+  const assistant = await gov.agentOn(principal, "intake");
 
   return (
     <>
@@ -29,7 +31,7 @@ export default async function RegisterPage() {
         </div>
       </div>
       {pack ? (
-        <IntakeForm pack={pack} mode={{ kind: "register" }} />
+        <IntakeForm pack={{ ...pack, goldenSets: undefined }} mode={{ kind: "register" }} assistant={assistant} />
       ) : (
         <div className="banner tone-warn">
           <p>This tenant has no AI policy pack enabled yet. Ask an admin to enable one.</p>

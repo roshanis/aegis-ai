@@ -1,9 +1,9 @@
 "use client";
 
-import { fastLaneEligibility, triage, type AssetKind } from "@aegis/domain";
+import { fastLaneEligibility, triage, type AssetKind, type IntakeSuggestion } from "@aegis/domain";
 import type { InitiativePack } from "@aegis/frameworks";
-import { useActionState, useMemo, useState } from "react";
-import { registerAndSubmit, submitIntake } from "@/app/(console)/registry/actions";
+import { startTransition, useActionState, useEffect, useMemo, useState } from "react";
+import { registerAndSubmit, submitIntake, suggestAnswers, type SuggestState } from "@/app/(console)/registry/actions";
 import { IDLE } from "@/lib/action-state";
 import { ASSET_KIND, TIER } from "@/lib/labels";
 
@@ -21,8 +21,37 @@ const KINDS: { kind: AssetKind; available: boolean }[] = [
  * own policy pack, so they see the tier, the reviews it triggers, and why,
  * before submitting. The server runs the same rules again on submit.
  */
-export function IntakeForm({ pack, mode }: { pack: InitiativePack; mode: Mode }) {
+const NO_SUGGESTIONS: SuggestState = { error: null };
+
+/**
+ * The intake assistant's suggestions, shown beside each question. It fills
+ * in only questions the requester has not answered, and the requester
+ * submits every answer themselves.
+ */
+function useSuggestions(setAnswers: (update: (answers: Record<string, boolean>) => Record<string, boolean>) => void) {
+  const [state, dispatch, pending] = useActionState(suggestAnswers, NO_SUGGESTIONS);
+  const suggestions = new Map<string, IntakeSuggestion>(state.runId ? state.suggestions.map((s) => [s.field, s]) : []);
+  useEffect(() => {
+    if (!state.runId) return;
+    setAnswers((answers) => {
+      const next = { ...answers };
+      for (const s of state.suggestions) {
+        if (typeof next[s.field] !== "boolean" && s.answer !== "unsure") next[s.field] = s.answer === "yes";
+      }
+      return next;
+    });
+  }, [state, setAnswers]);
+  const ask = (description: string) => {
+    const form = new FormData();
+    form.set("description", description);
+    startTransition(() => dispatch(form));
+  };
+  return { ask, pending, error: state.error, runId: state.runId ?? null, suggestions };
+}
+
+export function IntakeForm({ pack, mode, assistant = false }: { pack: InitiativePack; mode: Mode; assistant?: boolean }) {
   const [state, action, pending] = useActionState(mode.kind === "register" ? registerAndSubmit : submitIntake, IDLE);
+  const [description, setDescription] = useState("");
   const [name, setName] = useState("");
   const [assetKind, setAssetKind] = useState<AssetKind>("ai_system");
   const [answers, setAnswers] = useState<Record<string, boolean>>(() => {
@@ -32,6 +61,7 @@ export function IntakeForm({ pack, mode }: { pack: InitiativePack; mode: Mode })
     );
   });
 
+  const suggest = useSuggestions(setAnswers);
   const left = pack.questions.filter((q) => typeof answers[q.field] !== "boolean").length;
   const complete = left === 0;
   const result = useMemo(() => triage(pack.triage, answers, pack.domains), [pack, answers]);
@@ -41,6 +71,7 @@ export function IntakeForm({ pack, mode }: { pack: InitiativePack; mode: Mode })
   return (
     <form action={action} className="grid-2">
       <input type="hidden" name="answers" value={JSON.stringify(answers)} />
+      {suggest.runId ? <input type="hidden" name="suggestionRunId" value={suggest.runId} /> : null}
       {mode.kind === "case" ? <input type="hidden" name="caseId" value={mode.caseId} /> : null}
 
       <div className="stack" style={{ gap: 20 }}>
@@ -80,6 +111,41 @@ export function IntakeForm({ pack, mode }: { pack: InitiativePack; mode: Mode })
           </div>
         ) : null}
 
+        {assistant ? (
+          <div className="card stack assistant" style={{ gap: 10 }}>
+            <div className="row" style={{ justifyContent: "space-between" }}>
+              <label htmlFor="description">
+                <strong>Describe it in a sentence or two</strong>
+              </label>
+              <span className="agent-badge">AI assistant</span>
+            </div>
+            <textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              maxLength={2000}
+              placeholder="e.g. Reads prior-auth requests and drafts a summary for the nurse reviewer, who reads every one before deciding. Runs on our Azure OpenAI deployment."
+            />
+            <div className="row" style={{ gap: 10 }}>
+              <button
+                className="btn"
+                type="button"
+                disabled={suggest.pending || description.trim().length < 20}
+                onClick={() => suggest.ask(description)}
+              >
+                {suggest.pending ? "Suggesting…" : suggest.runId ? "Suggest again" : "Suggest answers"}
+              </button>
+              <span className="faint" style={{ fontSize: 13 }}>
+                {suggest.runId
+                  ? "Suggestions are below. Check each one: you submit the answers, not the assistant."
+                  : "The intake assistant suggests answers; you check and submit them."}
+              </span>
+            </div>
+            {suggest.error ? <div className="error">{suggest.error}</div> : null}
+          </div>
+        ) : null}
+
         <div className="stack">
           <div className="row" style={{ justifyContent: "space-between" }}>
             {mode.kind === "register" ? (
@@ -94,6 +160,7 @@ export function IntakeForm({ pack, mode }: { pack: InitiativePack; mode: Mode })
               <div className="question-text">
                 <strong>{q.label}</strong>
                 <span>{q.help}</span>
+                <Suggestion suggestion={suggest.suggestions.get(q.field)} answer={answers[q.field]} />
               </div>
               <div className="yesno" role="group" aria-label={q.label}>
                 <button
@@ -169,5 +236,17 @@ export function IntakeForm({ pack, mode }: { pack: InitiativePack; mode: Mode })
         </p>
       </aside>
     </form>
+  );
+}
+
+function Suggestion({ suggestion, answer }: { suggestion: IntakeSuggestion | undefined; answer: boolean | undefined }) {
+  if (!suggestion) return null;
+  const said = suggestion.answer === "unsure" ? null : suggestion.answer === "yes";
+  const changed = said !== null && typeof answer === "boolean" && answer !== said;
+  return (
+    <span className={`suggestion${changed ? " changed" : ""}`}>
+      {said === null ? "Assistant isn't sure" : `Suggested: ${said ? "Yes" : "No"}`}
+      {changed ? " · you changed it" : ""} · {suggestion.why}
+    </span>
   );
 }

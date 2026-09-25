@@ -47,6 +47,7 @@ beforeAll(async () => {
     "0003_audit_log.sql",
     "0004_sandbox.sql",
     "0005_governance_core.sql",
+    "0006_agents.sql",
   ]);
   expect(await migrate(db)).toEqual([]);
   await seedTenant(A, "tenant-a", userA, assetA);
@@ -101,6 +102,30 @@ describe("tenant isolation", () => {
     const rows = await db.query("SELECT id FROM assets");
     await db.exec("COMMIT");
     expect(rows.rows).toEqual([]);
+  });
+
+  it("forces row-level security on every table that carries a tenant_id", async () => {
+    const { rows } = await db.query<{ table: string; rls: boolean; forced: boolean }>(`
+      SELECT c.relname AS table, c.relrowsecurity AS rls, c.relforcerowsecurity AS forced
+      FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped
+      WHERE c.relkind = 'r'
+      ORDER BY c.relname`);
+    expect(rows.map((r) => r.table)).toEqual(
+      expect.arrayContaining(["agent_evals", "agent_runs", "agent_settings", "model_connections", "tenant_keys"]),
+    );
+    expect(rows.filter((r) => !r.rls || !r.forced).map((r) => r.table)).toEqual([]);
+  });
+
+  it("never lets the app role replace or remove a tenant's data key", async () => {
+    await db.query("INSERT INTO tenant_keys (tenant_id, kek_id, wrapped_key, created_at) VALUES ($1, 'k', 'w', now())", [A]);
+    await expect(withTenant(db, A, (tx) => tx.exec("UPDATE tenant_keys SET wrapped_key = 'x'"))).rejects.toThrow(
+      /permission denied/,
+    );
+    await expect(withTenant(db, A, (tx) => tx.exec("DELETE FROM tenant_keys"))).rejects.toThrow(/permission denied/);
+    const seenByB = await withTenant(db, B, (tx) => tx.query("SELECT * FROM tenant_keys"));
+    expect(seenByB.rows).toEqual([]);
   });
 
   it("does not let the app role create tenants", async () => {

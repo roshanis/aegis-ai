@@ -1,14 +1,17 @@
 import { randomUUID } from "node:crypto";
 import { withTenant, type Database } from "@aegis/db";
-import { tenantId, userId, type HumanPrincipal, type Role, type SystemPrincipal, type TenantId } from "@aegis/domain";
+import { draftMemo, tenantId, userId, type HumanPrincipal, type Role, type SystemPrincipal, type TenantId } from "@aegis/domain";
 import { healthcareAiPack } from "@aegis/frameworks";
 import { createGovernance } from "./governance";
+import { inlineJobs } from "./jobs";
 import { provisionTenant, purgeTenant } from "./provision";
 
 /**
  * A sandbox is a real tenant for one visitor, seeded with a small payer's
  * AI inventory so every screen has something to show. It runs on the same
- * rules and audit log as any tenant, and is purged when it expires.
+ * rules and audit log as any tenant, and is purged when it expires. Its
+ * agents run on the scripted model, which has no AI in it and sends
+ * nothing anywhere; an admin can connect OpenAI instead.
  */
 
 export const SANDBOX_LIFETIME_MS = 7 * 24 * 60 * 60 * 1000;
@@ -53,7 +56,13 @@ export async function createSandbox(
     ),
   );
 
-  const gov = createGovernance(db, { now: tick });
+  // Seeding waits for each draft and evaluation, so the history reads in order.
+  const jobs = inlineJobs(() => gov.agentRuntime, {
+    onError: (error) => {
+      throw error;
+    },
+  });
+  const gov = createGovernance(db, { now: tick, jobs });
   const principal = (uid: string, displayName: string, roles: Role[], reviewDomains: string[] = []): HumanPrincipal => ({
     kind: "human",
     tenantId: tenant,
@@ -93,10 +102,23 @@ export async function createSandbox(
   await add("Aubrey Kim", "Internal audit", ["auditor"]);
   const monitor: SystemPrincipal = { kind: "system", tenantId: tenant, job: "drift-monitor" };
 
-  async function review(name: string, kind: "ai_system" | "agent" | "vendor_model", answers: Record<string, boolean>) {
+  // Ada connects the scripted model, both agents pass their golden sets, and she turns them on.
+  await gov.connectModel(admin, { provider: "scripted", model: "scripted" });
+  for (const agent of ["intake", "review-drafter"]) await gov.startEval(admin, agent);
+  await jobs.idle();
+  for (const agent of ["intake", "review-drafter"]) await gov.setAgentEnabled(admin, agent, true);
+
+  async function review(
+    name: string,
+    kind: "ai_system" | "agent" | "vendor_model",
+    answers: Record<string, boolean>,
+    description?: string,
+  ) {
     const asset = await gov.registerAsset(riley, { kind, name });
     const draft = await gov.openCase(riley, { assetId: asset.id });
-    const { case: submitted } = await gov.submitCase(riley, draft.id, answers);
+    const suggested = description ? await gov.suggestIntake(riley, description) : null;
+    const { case: submitted } = await gov.submitCase(riley, draft.id, answers, suggested ? { suggestionRunId: suggested.runId } : {});
+    await jobs.idle();
     return { assetId: asset.id, caseId: submitted.id };
   }
 
@@ -115,7 +137,7 @@ export async function createSandbox(
     }
   }
 
-  /** Each reviewer signs the open reviews they can sign, except any listed. */
+  /** Each reviewer signs the open reviews they can sign, from the drafter's memo, except any listed. */
   async function sign(assetId: string, except: string[] = [], proposals: Record<string, string[]> = {}) {
     for (const reviewer of [rowan, jordan]) {
       const { assurance } = await gov.getAsset(reviewer, assetId);
@@ -123,6 +145,7 @@ export async function createSandbox(
         if (!r.actions.includes("sign") || except.includes(r.domain)) continue;
         await gov.reviewDomain(reviewer, r.caseId, r.domain, "sign", {
           expectedRevision: r.revision,
+          ...(r.draft.content ? { note: draftMemo(r.draft.content) } : {}),
           ...(proposals[r.domain] ? { proposedConditions: proposals[r.domain] } : {}),
         });
       }
@@ -188,7 +211,12 @@ export async function createSandbox(
   );
 
   // In review: most domains signed; fairness testing waits on an exception only the approver can grant.
-  const chat = await review("Member benefits chat assistant", "ai_system", yesTo("memberFacing", "individualImpact", "humanInLoop"));
+  const chat = await review(
+    "Member benefits chat assistant",
+    "ai_system",
+    yesTo("memberFacing", "individualImpact", "humanInLoop"),
+    "A chat assistant on the member portal answers members' questions about their benefits. A service agent approves every answer before the member sees it during the pilot.",
+  );
   await evidence(chat.assetId, ["R-01"]);
   await sign(chat.assetId, ["legal", "responsible-ai"]);
   await gov.requestException(riley, {

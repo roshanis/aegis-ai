@@ -7,6 +7,7 @@ import {
   can,
   canSignDomain,
   clearance as decisionClearance,
+  draftUse,
   conditionLifecycle,
   conditionSettled,
   decisionReadiness,
@@ -27,9 +28,12 @@ import {
   type ExceptionAction,
   type ExceptionState,
   type Principal,
+  type ReviewDraft,
   type SystemPrincipal,
+  type TenantId,
 } from "@aegis/domain";
 import type { InitiativePack, PolicyPack } from "@aegis/frameworks";
+import type { Agents } from "./agents";
 import { GovernanceError } from "./errors";
 import { UUID, actorId, type Asset, type Case, type Kernel } from "./model";
 
@@ -61,6 +65,16 @@ export interface DomainReviewView {
   readonly uncoveredGates: readonly string[];
   /** What this viewer may do on this review. */
   readonly actions: readonly DomainReviewAction[];
+  /** The review drafter's work on this review. */
+  readonly draft: {
+    readonly status: "none" | "queued" | "ready" | "failed";
+    /** Why the last draft failed, as a failure code. */
+    readonly error: string | null;
+    /** The latest draft, unless it has been erased. */
+    readonly content: ReviewDraft | null;
+  };
+  /** Whether this viewer may ask the drafter for a fresh draft. */
+  readonly canRequestDraft: boolean;
 }
 
 export interface EvidenceView {
@@ -115,6 +129,8 @@ export interface Assurance {
   readonly canContribute: boolean;
   /** Whether this viewer may request control exceptions. */
   readonly canRequestExceptions: boolean;
+  /** Whether the review drafter is on for this tenant. */
+  readonly drafterOn: boolean;
 }
 
 export interface NewCondition {
@@ -133,6 +149,9 @@ interface ReviewRow {
   note_id: string | null;
   note_body: string | null;
   proposed_conditions: string[];
+  draft_status: DomainReviewView["draft"]["status"];
+  draft_error: string | null;
+  draft_body: string | null;
 }
 
 interface EvidenceRow {
@@ -178,7 +197,23 @@ const effectiveExceptionState = (row: ExceptionRow, now: Date): ExceptionState =
     ? "expired"
     : row.state;
 
-export function createAssurance(k: Kernel) {
+/** The draft stored in a note, or null if it was erased or does not read as a draft. */
+const parseDraft = (body: string | null): ReviewDraft | null => {
+  if (!body) return null;
+  try {
+    const d = JSON.parse(body) as Partial<ReviewDraft>;
+    const ok =
+      typeof d.summary === "string" &&
+      Array.isArray(d.findings) &&
+      Array.isArray(d.questionsForOwner) &&
+      Array.isArray(d.proposedConditions);
+    return ok ? (d as ReviewDraft) : null;
+  } catch {
+    return null;
+  }
+};
+
+export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "cancelDraft" | "gateFor">) {
   const system = (actor: Principal, job: string): SystemPrincipal => ({ kind: "system", tenantId: actor.tenantId, job });
   const isOwner = (actor: Principal, asset: Asset) => actor.kind === "human" && actor.userId === asset.ownerId;
   const canContribute = (actor: Principal, asset: Asset) =>
@@ -189,10 +224,11 @@ export function createAssurance(k: Kernel) {
   async function reviewRows(tx: Connection, caseId: string): Promise<ReviewRow[]> {
     const { rows } = await tx.query<ReviewRow>(
       `SELECT r.id, r.case_id, r.domain, r.status, r.revision, r.reviewer_id, u.display_name AS reviewer_name,
-              r.note_id, n.body AS note_body, r.proposed_conditions
+              r.note_id, n.body AS note_body, r.proposed_conditions, r.draft_status, r.draft_error, d.body AS draft_body
        FROM domain_reviews r
        LEFT JOIN users u ON u.id = r.reviewer_id
        LEFT JOIN notes n ON n.id = r.note_id
+       LEFT JOIN notes d ON d.id = r.draft_note_id
        WHERE r.case_id = $1
        ORDER BY r.domain`,
       [caseId],
@@ -311,6 +347,7 @@ export function createAssurance(k: Kernel) {
     });
     const caseOwner = new Map(cases.map((c) => [c.id, c.ownerId]));
     const inReview = focus?.state === "in_review";
+    const drafterOn = (await drafts.gateFor(tx, "review-drafter")).on;
 
     return {
       reviews: reviews.map((r) => {
@@ -335,6 +372,14 @@ export function createAssurance(k: Kernel) {
             covered,
           ).map((c) => c.id),
           actions,
+          draft: { status: r.draft_status, error: r.draft_error, content: parseDraft(r.draft_body) },
+          canRequestDraft:
+            drafterOn &&
+            inReview &&
+            (r.status === "pending" || r.status === "drafted") &&
+            r.draft_status !== "queued" &&
+            canSignDomain(actor, r.domain) &&
+            !isCaseOwner,
         };
       }),
       readiness: focus && inReview ? await readinessFor(tx, focus) : null,
@@ -376,19 +421,30 @@ export function createAssurance(k: Kernel) {
       })),
       canContribute: canContribute(actor, asset),
       canRequestExceptions: canContribute(actor, asset) || can(actor, "case.decide"),
+      drafterOn,
     };
+  }
+
+  /** Domains whose review is an agent draft nobody has signed. */
+  async function unsignedDrafts(tx: Connection, caseId: string): Promise<string[]> {
+    const { rows } = await tx.query<{ domain: string }>(
+      "SELECT domain FROM domain_reviews WHERE case_id = $1 AND status = 'drafted' ORDER BY domain",
+      [caseId],
+    );
+    return rows.map((r) => r.domain);
   }
 
   /* ------------------------------------------------------ transaction steps */
 
-  /** Open one pending review per required domain when a case enters review. */
-  async function openDomainReviews(tx: Connection, c: Case, at: Date): Promise<void> {
+  /** Open one pending review per required domain when a case enters review, and queue drafts if the drafter is on. */
+  async function openDomainReviews(tx: Connection, c: Case, at: Date, tenant: TenantId): Promise<void> {
     for (const domain of c.triage?.domains ?? []) {
-      await tx.query(
+      const { rows } = await tx.query<{ id: string }>(
         `INSERT INTO domain_reviews (id, tenant_id, case_id, domain, updated_at)
-         VALUES ($1, current_tenant_id(), $2, $3, $4) ON CONFLICT (tenant_id, case_id, domain) DO NOTHING`,
+         VALUES ($1, current_tenant_id(), $2, $3, $4) ON CONFLICT (tenant_id, case_id, domain) DO NOTHING RETURNING id`,
         [randomUUID(), c.id, domain, at.toISOString()],
       );
+      if (rows[0]) await drafts.queueDraft(tx, tenant, rows[0].id);
     }
   }
 
@@ -452,6 +508,7 @@ export function createAssurance(k: Kernel) {
     view,
     clearanceFor,
     readinessFor,
+    unsignedDrafts,
     openDomainReviews,
     validateConditions,
     addConditions,
@@ -471,7 +528,9 @@ export function createAssurance(k: Kernel) {
       return k.inTenant(actor, async (tx) => {
         const c = await k.loadCase(tx, actor, caseId);
         const { rows } = await tx.query<ReviewRow>(
-          "SELECT *, NULL AS reviewer_name, NULL AS note_body FROM domain_reviews WHERE case_id = $1 AND domain = $2 FOR UPDATE",
+          `SELECT r.*, NULL AS reviewer_name, NULL AS note_body, d.body AS draft_body
+           FROM domain_reviews r LEFT JOIN notes d ON d.id = r.draft_note_id
+           WHERE r.case_id = $1 AND r.domain = $2 FOR UPDATE OF r`,
           [c.id, domain],
         );
         const row = rows[0];
@@ -513,6 +572,8 @@ export function createAssurance(k: Kernel) {
           action === "sign" ? (input.proposedConditions ?? []).map(trimmed).filter((p) => p.length > 0).slice(0, 10) : row.proposed_conditions;
         const written = await k.writeNote(tx, actor, { assetId: c.assetId, caseId: c.id }, event.reason);
         const revision = row.revision + 1;
+        // Signing a draft records whether the reviewer kept its memo, changed it, or wrote none.
+        const fromDraft = action === "sign" && row.status === "drafted" ? draftUse(parseDraft(row.draft_body), note) : null;
         await tx.query(
           `UPDATE domain_reviews
            SET status = $2, revision = $3, reviewer_id = $4, note_id = $5, proposed_conditions = $6, updated_at = $7
@@ -536,9 +597,12 @@ export function createAssurance(k: Kernel) {
           before: event.before,
           after: event.after,
           note: written,
-          payload: { domain, revision, proposedConditions: proposals.length },
+          payload: { domain, revision, proposedConditions: proposals.length, ...(fromDraft ? { fromDraft } : {}) },
           at,
         });
+        // A person acted: a draft in flight no longer applies. A review back at pending gets a fresh one.
+        if (event.after === "pending") await drafts.queueDraft(tx, actor.tenantId, row.id);
+        else await drafts.cancelDraft(tx, row.id);
         return { status: event.after, revision };
       });
     },

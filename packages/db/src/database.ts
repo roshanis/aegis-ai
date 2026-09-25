@@ -30,15 +30,25 @@ export interface PoolLike {
   }>;
 }
 
-/** A connection pool, such as node-postgres' Pool: each call gets its own client. */
+/**
+ * A connection pool, such as node-postgres' Pool: each call gets its own
+ * client. Queries on that client run one after another even when a service
+ * issues several at once, as a transaction must.
+ */
 export function pooled(pool: PoolLike): Database {
   return {
     async run(fn) {
       const client = await pool.connect();
+      let tail: Promise<unknown> = Promise.resolve();
+      const next = <T>(work: () => Promise<T>): Promise<T> => {
+        const result = tail.then(work);
+        tail = result.catch(() => undefined);
+        return result;
+      };
       try {
         return await fn({
-          query: (text, params) => client.query(text, params) as never,
-          exec: (text) => client.query(text),
+          query: (text, params) => next(() => client.query(text, params)) as never,
+          exec: (text) => next(() => client.query(text)),
         });
       } finally {
         client.release();

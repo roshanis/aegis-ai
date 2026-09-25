@@ -1,8 +1,8 @@
 "use server";
 
-import { GovernanceError, type NewCondition } from "@aegis/core";
+import type { IntakeSuggestion } from "@aegis/domain";
+import type { NewCondition } from "@aegis/core";
 import {
-  IllegalTransitionError,
   type AssetAction,
   type AssetKind,
   type CaseTrigger,
@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { ActionState } from "@/lib/action-state";
 import { governance } from "@/lib/db";
+import { refusal } from "@/lib/errors";
 import { requireViewer } from "@/lib/viewer";
 
 /** Run a governance call; turn a refusal into a message for the form, and let anything else fail loudly. */
@@ -20,9 +21,8 @@ async function attempt(fn: () => Promise<unknown>): Promise<ActionState> {
   try {
     await fn();
   } catch (error) {
-    if (error instanceof GovernanceError || error instanceof IllegalTransitionError) {
-      return { error: error.message.replace(/^Illegal transition: /, "") };
-    }
+    const refused = refusal(error);
+    if (refused) return { error: refused.message };
     throw error;
   }
   revalidatePath("/registry", "layout");
@@ -50,7 +50,7 @@ export async function registerAndSubmit(_: ActionState, form: FormData): Promise
     const asset = await gov.registerAsset(principal, { kind: text(form, "kind") as AssetKind, name: text(form, "name") });
     assetId = asset.id;
     const draft = await gov.openCase(principal, { assetId: asset.id });
-    await gov.submitCase(principal, draft.id, answers(form));
+    await gov.submitCase(principal, draft.id, answers(form), suggestion(form));
   });
   // Once registered, the asset page is the place to finish, even if submitting failed.
   if (assetId) redirect(`/registry/${assetId}`);
@@ -60,7 +60,34 @@ export async function registerAndSubmit(_: ActionState, form: FormData): Promise
 export async function submitIntake(_: ActionState, form: FormData): Promise<ActionState> {
   const { principal } = await requireViewer();
   const gov = await governance();
-  return attempt(() => gov.submitCase(principal, text(form, "caseId"), answers(form)));
+  return attempt(() => gov.submitCase(principal, text(form, "caseId"), answers(form), suggestion(form)));
+}
+
+const suggestion = (form: FormData) => (optional(form, "suggestionRunId") ? { suggestionRunId: text(form, "suggestionRunId") } : {});
+
+export type SuggestState =
+  | { readonly error: string | null; readonly runId?: undefined }
+  | { readonly error: null; readonly runId: string; readonly suggestions: readonly IntakeSuggestion[] };
+
+/** Ask the intake assistant for suggested answers. Nothing is saved but the run's record. */
+export async function suggestAnswers(_: SuggestState, form: FormData): Promise<SuggestState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  try {
+    const { runId, suggestions } = await gov.suggestIntake(principal, text(form, "description"));
+    return { error: null, runId, suggestions };
+  } catch (error) {
+    const refused = refusal(error);
+    if (refused) return { error: refused.message };
+    throw error;
+  }
+}
+
+/** Ask the review drafter for a fresh draft of one domain review. */
+export async function requestDraft(_: ActionState, form: FormData): Promise<ActionState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  return attempt(() => gov.requestDraft(principal, text(form, "caseId"), text(form, "domain")));
 }
 
 function conditions(form: FormData): NewCondition[] {

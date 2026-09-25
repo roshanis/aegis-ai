@@ -33,6 +33,7 @@ import {
   type UserId,
 } from "@aegis/domain";
 import type { InitiativePack, PolicyPack } from "@aegis/frameworks";
+import { createAgents, type AgentOptions } from "./agents";
 import { createAssurance, type Assurance, type NewCondition } from "./assurance";
 import { GovernanceError } from "./errors";
 import {
@@ -111,7 +112,7 @@ export interface HistoryEntry {
   readonly payload: AuditPayload;
 }
 
-export interface GovernanceOptions {
+export interface GovernanceOptions extends AgentOptions {
   readonly now?: () => Date;
 }
 
@@ -127,8 +128,27 @@ function validateAnswers(pack: InitiativePack, answers: Answers): void {
 
 export function createGovernance(db: Database, options: GovernanceOptions = {}) {
   const now = options.now ?? (() => new Date());
-  const inTenant = <T>(actor: Principal, fn: (tx: Connection) => Promise<T>) =>
-    db.run((conn) => withTenant(conn, actor.tenantId, fn));
+  const hooks = new WeakMap<Connection, (() => void)[]>();
+  async function inTenant<T>(actor: Principal, fn: (tx: Connection) => Promise<T>): Promise<T> {
+    const committed: (() => void)[] = [];
+    const result = await db.run((conn) =>
+      withTenant(conn, actor.tenantId, async (tx) => {
+        hooks.set(tx, committed);
+        try {
+          return await fn(tx);
+        } finally {
+          hooks.delete(tx);
+        }
+      }),
+    );
+    for (const hook of committed) hook();
+    return result;
+  }
+  function afterCommit(tx: Connection, hook: () => void): void {
+    const pending = hooks.get(tx);
+    if (!pending) throw new Error("afterCommit needs an open tenant transaction");
+    pending.push(hook);
+  }
 
   async function loadAsset(tx: Connection, actor: Principal, assetId: string, lock = false): Promise<Asset> {
     const notFound = new GovernanceError("not_found", `asset ${assetId} not found`);
@@ -219,12 +239,15 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
       at,
     });
     const moved = { ...current, state: event.after, decidedAt };
-    if (moved.kind === "risk_review" && moved.state === "in_review") await assurance.openDomainReviews(tx, moved, at);
+    if (moved.kind === "risk_review" && moved.state === "in_review") {
+      await assurance.openDomainReviews(tx, moved, at, actor.tenantId);
+    }
     return moved;
   }
 
-  const kernel: Kernel = { now, inTenant, loadAsset, loadCase, loadCases, loadPack, writeNote, moveCase };
-  const assurance = createAssurance(kernel);
+  const kernel: Kernel = { now, inTenant, afterCommit, loadAsset, loadCase, loadCases, loadPack, writeNote, moveCase };
+  const agents = createAgents(kernel, db, options);
+  const assurance = createAssurance(kernel, agents);
 
   /** Deterministic triage, then the fast lane or a full review. No model is involved. */
   async function triageCase(tx: Connection, submitted: Case, pack: InitiativePack, tenant: TenantId): Promise<SubmitResult> {
@@ -488,7 +511,12 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
      * answered, then is triaged at once and either fast-laned or sent to
      * review, all in the same transaction.
      */
-    submitCase(actor: Principal, caseId: string, answers: Answers = {}): Promise<SubmitResult> {
+    submitCase(
+      actor: Principal,
+      caseId: string,
+      answers: Answers = {},
+      extras: { suggestionRunId?: string } = {},
+    ): Promise<SubmitResult> {
       return inTenant(actor, async (tx) => {
         const current = await loadCase(tx, actor, caseId);
         if (actor.kind !== "human" || actor.userId !== current.ownerId) {
@@ -502,7 +530,11 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
         }
         validateAnswers(pack, answers);
         await tx.query("UPDATE cases SET answers = $2 WHERE id = $1", [current.id, JSON.stringify(answers)]);
-        const submitted = await moveCase(tx, { ...current, answers }, action, actor);
+        // Record how the submission relates to the intake assistant's suggestions, if it used them.
+        const suggestion = extras.suggestionRunId
+          ? await agents.claimSuggestion(tx, actor, extras.suggestionRunId, current, answers)
+          : {};
+        const submitted = await moveCase(tx, { ...current, answers }, action, actor, {}, suggestion);
         return triageCase(tx, submitted, pack, actor.tenantId);
       });
     },
@@ -530,6 +562,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
         });
         const approving = action === "approve" || action === "conditionally_approve";
         let conditions: NewCondition[] = [];
+        let payload: AuditPayload = {};
         if (current.kind === "risk_review" && approving) {
           const readiness = await assurance.readinessFor(tx, current);
           const ready = action === "approve" ? readiness.canApprove : readiness.canConditionallyApprove;
@@ -537,15 +570,29 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
             const blockers = action === "approve" ? readiness.approvalBlockers : readiness.conditionalBlockers;
             throw new GovernanceError("conflict", `${readiness.reason} Waiting on: ${blockers.join(", ")}`);
           }
-          if (action === "conditionally_approve") conditions = assurance.validateConditions(extras.conditions ?? []);
+          if (action === "conditionally_approve") {
+            conditions = assurance.validateConditions(extras.conditions ?? []);
+            // Jeeves' rule lets a conditional approval rest on agent drafts nobody signed; say which.
+            const drafted = await assurance.unsignedDrafts(tx, current.id);
+            if (drafted.length > 0) payload = { unsignedDrafts: drafted };
+          }
         }
-        const moved = await moveCase(tx, current, action, actor, reason === undefined ? {} : { reason });
+        const moved = await moveCase(tx, current, action, actor, reason === undefined ? {} : { reason }, payload);
         if (conditions.length > 0) await assurance.addConditions(tx, actor, moved, conditions, now());
         return moved;
       });
     },
 
     reviewDomain: assurance.reviewDomain,
+    requestDraft: agents.requestDraft,
+    agentsOverview: agents.agentsOverview,
+    agentOn: agents.agentOn,
+    connectModel: agents.connectModel,
+    startEval: agents.startEval,
+    setAgentEnabled: agents.setAgentEnabled,
+    suggestIntake: agents.suggestIntake,
+    /** The steps agent workflows run, for a workflow engine. */
+    agentRuntime: agents.runtime,
     addEvidence: assurance.addEvidence,
     withdrawEvidence: assurance.withdrawEvidence,
     requestException: assurance.requestException,

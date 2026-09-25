@@ -1,3 +1,4 @@
+import { healthcareAiGoldenSets } from "./healthcare-ai-golden";
 import type { InitiativePack } from "./types";
 
 /**
@@ -7,12 +8,13 @@ import type { InitiativePack } from "./types";
  * review-time control catalog (lib/demo/reference-data.ts). The
  * equivalence tests prove both.
  *
- * 1.1.0 adds the control catalog.
+ * 1.1.0 adds the control catalog. 1.2.0 adds the golden sets agents must
+ * pass before a tenant can turn them on.
  */
 export const healthcareAiPack: InitiativePack = {
   kind: "initiative",
   id: "healthcare-ai",
-  version: "1.1.0",
+  version: "1.2.0",
   title: "Healthcare AI initiatives",
   summary: "Risk tiers and review routing for AI that touches members, PHI, or care and coverage decisions.",
   frameworkRefs: ["NIST AI RMF 1.0", "HIPAA Privacy Rule", "ISO/IEC 42001", "EU AI Act (Annex III)"],
@@ -257,4 +259,5 @@ export const healthcareAiPack: InitiativePack = {
       frameworkRefs: ["HIPAA Security Rule §164.310(d)(2)"],
     },
   ],
+  goldenSets: healthcareAiGoldenSets,
 };

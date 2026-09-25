@@ -21,7 +21,7 @@ export async function startSandbox(): Promise<void> {
   redirect("/registry");
 }
 
-const SAFE_RETURN = /^\/registry(\/[a-z0-9-]+)*$/;
+const SAFE_RETURN = /^\/(registry(\/[a-z0-9-]+)*|agents)$/;
 
 /** Act as someone else in the same sandbox. Refused for any tenant that is not a live sandbox. */
 export async function switchPersona(formData: FormData): Promise<void> {

@@ -59,6 +59,8 @@ test("an AI system goes from intake through domain reviews, evidence and conditi
   ] as const) {
     await actAs(page, reviewer);
     await page.goto(asset);
+    // The review drafter works in the background; the page refreshes itself until its drafts land.
+    await expect(page.getByText("is drafting this review")).toHaveCount(0, { timeout: 20_000 });
     for (const domain of domains) {
       const review = page.locator("article").filter({ has: page.locator("strong", { hasText: new RegExp(`^${domain}$`) }) });
       await review.getByRole("button", { name: "Sign off" }).click();
@@ -73,7 +75,12 @@ test("an AI system goes from intake through domain reviews, evidence and conditi
   await expect(page.getByText("All required reviews signed; ready for approval.").first()).toBeVisible();
   await page.getByRole("button", { name: "Approve with conditions" }).click();
   await page.getByLabel(/Why approve with conditions/).fill("Fine for members once the AI disclosure is live.");
+  // The reviewers signed from the drafter's drafts, which proposed a condition for each monitor control.
+  await expect(page.locator(".condition-row")).toHaveCount(3);
   await page.getByLabel("Condition 1", { exact: true }).fill("Show members an AI disclosure before the first answer");
+  for (const n of [2, 3]) {
+    await page.getByRole("group", { name: `When condition ${n} is due` }).getByRole("button", { name: "Ongoing" }).click();
+  }
   await page.getByRole("button", { name: "Confirm: approve with conditions" }).click();
   await expect(page.locator(".banner")).toContainText("1 condition must be met before use");
 
@@ -110,7 +117,7 @@ test("an AI system goes from intake through domain reviews, evidence and conditi
   const decision = page.locator(".event[data-decision='true']").first();
   await expect(decision).toContainText("Avery Brooks approved it with conditions");
   await expect(decision).toContainText("Fine for members once the AI disclosure is live.");
-  await expect(decision).toContainText("Policy healthcare-ai v1.1.0");
+  await expect(decision).toContainText("Policy healthcare-ai v1.2.0");
   await expect(page.locator(".event", { hasText: "Jordan Lee signed off Responsible AI" })).toBeVisible();
   await expect(page.locator("main button")).toHaveCount(0);
 });

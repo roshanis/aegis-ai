@@ -6,14 +6,16 @@ import { can, type Permission, type Principal } from "./roles";
  * content reviews) share one set of authority rules:
  *
  * - AI agents can never move a case. They draft; people and deterministic
- *   system jobs act.
+ *   system jobs act. A rule admits an agent only when it names the "agent"
+ *   authority and lands in a state the lifecycle declares as a draft state,
+ *   and that is checked when the lifecycle is defined, not when it runs.
  * - Nobody decides a case they submitted.
  * - Actions marked `requiresReason` need a written note, which lands in the
  *   audit event.
  * - The pure function never reads the clock; callers pass `at`.
  */
 
-export type Authority = Permission | "system";
+export type Authority = Permission | "system" | "agent";
 
 export interface TransitionRule<S extends string> {
   readonly to: S;
@@ -61,7 +63,7 @@ const filled = (value: string | undefined) =>
 
 function authorized(actor: Principal, by: readonly Authority[]): boolean {
   return by.some((authority) =>
-    authority === "system" ? actor.kind === "system" : can(actor, authority),
+    authority === "system" || authority === "agent" ? actor.kind === authority : can(actor, authority),
   );
 }
 
@@ -76,6 +78,8 @@ function decidesOwnCase(actor: Principal, by: readonly Authority[], caseOwnerId:
 
 export interface Lifecycle<S extends string, A extends string> {
   readonly table: TransitionTable<S, A>;
+  /** States an agent may move something into. Empty for every lifecycle that decides anything. */
+  readonly draftStates: readonly S[];
   transition(state: S, action: A, actor: Principal, context: TransitionContext): TransitionEvent<S, A>;
   /** Actions this actor may take from this state; drives which buttons the UI shows. */
   available(state: S, actor: Principal, context?: Pick<TransitionContext, "caseOwnerId">): A[];
@@ -83,11 +87,22 @@ export interface Lifecycle<S extends string, A extends string> {
 
 export function defineLifecycle<S extends string, A extends string>(
   table: TransitionTable<S, A>,
+  options: { readonly draftStates?: readonly S[] } = {},
 ): Lifecycle<S, A> {
+  const draftStates = options.draftStates ?? [];
+  for (const [from, rules] of Object.entries(table) as [S, Partial<Record<A, TransitionRule<S>>>][]) {
+    for (const [action, rule] of Object.entries(rules) as [A, TransitionRule<S>][]) {
+      if (!rule.by.includes("agent")) continue;
+      if (!draftStates.includes(rule.to) || rule.by.length > 1) {
+        throw new Error(`'${action}' from '${from}' admits an agent but is not an agent-only move into a draft state`);
+      }
+    }
+  }
+
   function transition(state: S, action: A, actor: Principal, context: TransitionContext) {
     const rule = table[state]?.[action];
     if (!rule) throw new IllegalTransitionError(`no '${action}' from '${state}'`);
-    if (actor.kind === "agent") {
+    if (actor.kind === "agent" && !rule.by.includes("agent")) {
       throw new IllegalTransitionError(`agent '${actor.agent}' cannot perform '${action}'; agents only draft`);
     }
     if (!authorized(actor, rule.by)) {
@@ -116,7 +131,6 @@ export function defineLifecycle<S extends string, A extends string>(
   }
 
   function available(state: S, actor: Principal, context: Pick<TransitionContext, "caseOwnerId"> = {}): A[] {
-    if (actor.kind === "agent") return [];
     const rules: Partial<Record<A, TransitionRule<S>>> = table[state] ?? {};
     return (Object.keys(rules) as A[]).filter((action) => {
       const { by } = rules[action]!;
@@ -124,7 +138,7 @@ export function defineLifecycle<S extends string, A extends string>(
     });
   }
 
-  return { table, transition, available };
+  return { table, draftStates, transition, available };
 }
 
 /* ---------------------------------------------------------------------------

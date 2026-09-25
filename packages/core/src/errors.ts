@@ -1,9 +1,10 @@
-export type GovernanceErrorCode = "not_found" | "forbidden" | "invalid" | "conflict";
+export type GovernanceErrorCode = "not_found" | "forbidden" | "invalid" | "conflict" | "unavailable";
 
 /**
  * A request the service refuses. Lifecycle violations surface as the
  * domain's IllegalTransitionError instead. Records the caller cannot see
- * are reported as not_found, so their existence never leaks.
+ * are reported as not_found, so their existence never leaks. `unavailable`
+ * means a model the request depended on failed; trying again may work.
  */
 export class GovernanceError extends Error {
   constructor(

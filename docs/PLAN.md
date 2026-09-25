@@ -32,17 +32,18 @@
    re-review (change, periodic, incident) is a new case on the same asset.
    An asset is cleared for use when its latest decided case approved it and
    no incident review is open.
-2. **Postgres-native workflows** with DBOS (decided above).
+2. **Postgres-native workflows** with DBOS (decided above) *(done for agent
+   jobs)*.
 3. **One wedge**: healthcare payers (decided above).
-4. **Evals ship with the first agent.** A golden-set gate blocks any agent
-   from customer use until it passes.
+4. **Evals ship with the first agent** *(done)*. A golden-set gate blocks
+   any agent from use until it passes on the tenant's own model.
 5. **Audit rows hold no personal data or document text** *(done)*. Events
    carry IDs, states, codes and the SHA-256 of any written reason; the text
    lives in `notes`, which can be deleted for an erasure request without
    breaking the chain. Per-tenant keys for content come with document
    storage.
-6. **Model-provider agnostic.** OpenAI Agents SDK by default behind
-   `AgentPort`; Azure OpenAI, Bedrock or a customer endpoint per tenant.
+6. **Model-provider agnostic** *(done, except Bedrock)*. OpenAI Agents SDK;
+   OpenAI, Azure OpenAI or any OpenAI-compatible endpoint per tenant.
 7. **Cut for now:** org/workspace hierarchy, SCIM. **Added:** audited
    support access, tenant provisioning *(done)*, a sandbox tenant per visitor.
 
@@ -68,8 +69,19 @@
    Deferred: file uploads (with per-tenant keys), exception renewal,
    evidence re-attestation on each control's cadence, and per-evidence
    assessments.
-2. **Agents and evals.** Durable workflows, drafting and intake agents,
-   golden-set gate, per-tenant model keys.
+2. **Agents and evals** *(done)*. The intake assistant suggests intake
+   answers the requester checks and submits; the review drafter drafts each
+   domain review, which a reviewer signs, edits or ignores. Both run on the
+   OpenAI Agents SDK with structured output, no tools, and SDK tracing off.
+   An agent may only move a review into "drafted", enforced when a lifecycle
+   is defined. Each tenant connects its own model; keys are sealed with a
+   per-tenant data key under the platform master key. Golden sets ship in
+   the policy pack (`healthcare-ai` 1.2.0: 12 intake cases, 9 drafting
+   cases), and an agent can be turned on only after it passes on the
+   tenant's current model. Drafting and evaluations are DBOS workflows whose
+   checkpoints hold IDs and codes only; on PGlite they run in-process.
+   Deferred: Bedrock and Anthropic providers, spend limits, drafts that
+   refresh when evidence changes, and human-graded or model-graded evals.
 3. **Member communications review.** Cleared's engine with a CMS pack.
 4. **Differentiators.** Agent and MCP tool inventory, evidence connectors,
    more frameworks, dedicated and BYOC deployment.
@@ -83,9 +95,21 @@
 - **Offboarding a customer tenant** needs a platform command and a retention
   decision. The purge path already exists (sandboxes use it): the audit log
   accepts deletes only for the tenant named in `app.purge_tenant`.
-- **Agents have no read access yet**; phase 2 scopes it to the cases they
-  draft for, and produces the `drafted` reviews the readiness rules
-  already accept.
+- **Agents read only what they are handed.** The drafter's context is built
+  from one case under row-level security; it has no tools and no database
+  access. Jeeves' rule still lets a conditional approval rest on drafts
+  nobody signed; the decision's audit event lists them.
+- **No spend or rate limits on model calls.** A tenant's own key pays, but
+  nothing caps how often drafts or evaluations run, and a sandbox visitor
+  can connect an OpenAI key.
+- **Endpoint checks resolve names before each call,** so a public name that
+  points at a private address is refused; a resolver that changes its answer
+  between the check and the connection is not.
+- **The scripted model is tuned to the pack's golden sets.** It shows how the
+  gate works; its passing scores say nothing about a real model. The golden
+  sets are small (21 cases) and graded in code only.
+- **Sandbox seeding runs its agent jobs in-process,** not on DBOS, so a
+  sandbox is complete when the visitor lands in it.
 - **Monitor controls have no due dates yet.** They are tracked but never
   go overdue; cadence-driven re-attestation comes with evidence storage.
 - **Owners attest control applicability through their answers.** A

@@ -138,4 +138,16 @@ describe("domain review lifecycle", () => {
     expect(() => domainReviewLifecycle.transition("drafted", "sign", agent, { at })).toThrow(/agents only draft/);
     expect(domainReviewLifecycle.available("signed", reviewer)).toEqual([]);
   });
+
+  it("lets only the drafter draft, and only a pending or drafted review", () => {
+    expect(domainReviewLifecycle.transition("pending", "draft", agent, { at }).after).toBe("drafted");
+    expect(domainReviewLifecycle.transition("drafted", "draft", agent, { at }).after).toBe("drafted");
+    expect(domainReviewLifecycle.available("pending", agent)).toEqual(["draft"]);
+    for (const state of ["returned", "abstained", "signed"] as const) {
+      expect(domainReviewLifecycle.available(state, agent)).toEqual([]);
+    }
+    // People sign drafts; they do not write them through the agent's door.
+    expect(() => domainReviewLifecycle.transition("pending", "draft", reviewer, { at })).toThrow(/requires one of \[agent\]/);
+    expect(domainReviewLifecycle.available("drafted", reviewer)).not.toContain("draft");
+  });
 });

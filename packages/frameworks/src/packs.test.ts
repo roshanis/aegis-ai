@@ -1,4 +1,4 @@
-import { TIERS, controlApplies, fastLaneEligibility, referencedFields, triage, type Tier } from "@aegis/domain";
+import { ASSET_KINDS, TIERS, controlApplies, fastLaneEligibility, referencedFields, requiredControls, triage, type Tier } from "@aegis/domain";
 import { describe, expect, it } from "vitest";
 import { BUILT_IN_PACKS, financialCommunicationsPack, healthcareAiPack } from "./index";
 
@@ -135,6 +135,59 @@ describe("healthcare-ai controls", () => {
       const fields = referencedFields({ tierRules: [{ id: "x", when: control.when, tier: "low", because: "" }], defaultTier: "low", baseDomains: { low: [], medium: [], high: [], critical: [] }, domainRules: [] });
       expect(fields.filter((f) => !asked.has(f))).toEqual([]);
     }
+  });
+});
+
+describe("healthcare-ai golden sets", () => {
+  const sets = healthcareAiPack.goldenSets!;
+  const fields = healthcareAiPack.questions.map((q) => q.field);
+
+  it("score only questions the pack asks, with unique case ids", () => {
+    for (const set of [sets.intake, sets.reviewDrafter]) {
+      const ids = set.cases.map((c) => c.id);
+      expect(new Set(ids).size, set.id).toBe(ids.length);
+      expect(set.threshold).toBeGreaterThan(0);
+      expect(set.threshold).toBeLessThanOrEqual(1);
+    }
+    for (const c of sets.intake.cases) {
+      expect(Object.keys(c.expected).filter((f) => !fields.includes(f)), c.id).toEqual([]);
+      expect(Object.keys(c.expected).length, c.id).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it("include intake cases that land in the critical, high and low tiers", () => {
+    const tiers = sets.intake.cases.map((c) => triage(healthcareAiPack.triage, c.expected).tier);
+    expect(tiers).toEqual(expect.arrayContaining(["critical", "high", "low"]));
+  });
+
+  it("draft only domains triage requires, against controls the case really has", () => {
+    for (const c of sets.reviewDrafter.cases) {
+      expect(fields.every((f) => typeof c.answers[f] === "boolean"), c.id).toBe(true);
+      expect(ASSET_KINDS).toContain(c.asset.kind);
+      const result = triage(healthcareAiPack.triage, c.answers);
+      expect(result.domains, c.id).toContain(c.domain);
+      const inDomain = requiredControls(healthcareAiPack.controls, result, c.answers)
+        .filter((control) => control.domain === c.domain)
+        .map((control) => control.id);
+      expect(inDomain.length, c.id).toBeGreaterThan(0);
+      expect(Object.keys(c.evidence).filter((id) => !inDomain.includes(id)), c.id).toEqual([]);
+      expect((c.exceptions ?? []).filter((id) => !inDomain.includes(id)), c.id).toEqual([]);
+    }
+  });
+
+  it("include drafts with a gate control missing and drafts with every gate covered", () => {
+    const gaps = sets.reviewDrafter.cases.map((c) => {
+      const result = triage(healthcareAiPack.triage, c.answers);
+      return requiredControls(healthcareAiPack.controls, result, c.answers).filter(
+        (control) =>
+          control.domain === c.domain &&
+          control.enforcement === "gate" &&
+          !(control.id in c.evidence) &&
+          !(c.exceptions ?? []).includes(control.id),
+      ).length;
+    });
+    expect(gaps.filter((n) => n > 0).length).toBeGreaterThanOrEqual(3);
+    expect(gaps.filter((n) => n === 0).length).toBeGreaterThanOrEqual(3);
   });
 });
 

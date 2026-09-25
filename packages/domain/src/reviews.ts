@@ -10,23 +10,28 @@ import { defineLifecycle } from "./lifecycle";
 
 export const DOMAIN_REVIEW_STATUSES = ["pending", "drafted", "signed", "returned", "abstained"] as const;
 export type DomainReviewStatus = (typeof DOMAIN_REVIEW_STATUSES)[number];
-export type DomainReviewAction = "sign" | "return" | "abstain" | "resume" | "respond";
+export type DomainReviewAction = "sign" | "return" | "abstain" | "resume" | "respond" | "draft";
 
 const review = {
   sign: { to: "signed", by: ["review.sign"] },
   return: { to: "returned", by: ["review.sign"], requiresReason: true },
   abstain: { to: "abstained", by: ["review.sign"], requiresReason: true },
+  // The review drafter writes (or rewrites) a draft for a person to sign, edit or discard.
+  draft: { to: "drafted", by: ["agent"] },
 } as const;
 
-export const domainReviewLifecycle = defineLifecycle<DomainReviewStatus, DomainReviewAction>({
-  pending: review,
-  drafted: review,
-  returned: {
-    respond: { to: "pending", by: ["case.submit"], requiresReason: true },
-    abstain: review.abstain,
+export const domainReviewLifecycle = defineLifecycle<DomainReviewStatus, DomainReviewAction>(
+  {
+    pending: review,
+    drafted: review,
+    returned: {
+      respond: { to: "pending", by: ["case.submit"], requiresReason: true },
+      abstain: review.abstain,
+    },
+    abstained: { resume: { to: "pending", by: ["review.sign"] } },
   },
-  abstained: { resume: { to: "pending", by: ["review.sign"] } },
-});
+  { draftStates: ["drafted"] },
+);
 
 export interface ReviewReadinessInput {
   /** The case's lifecycle state; decisions exist only while it is in review. */

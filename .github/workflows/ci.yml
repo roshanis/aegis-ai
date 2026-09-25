@@ -7,6 +7,18 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      # DBOS durability tests need a real Postgres; in CI they may never be skipped.
+      AEGIS_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+      AEGIS_REQUIRE_POSTGRES: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -21,6 +33,20 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # PGlite runs agent jobs in-process; Postgres runs them on DBOS, as production does.
+        database: [pglite, postgres]
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: aegis_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -31,8 +57,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @aegis/web exec playwright install --with-deps chromium
       - run: pnpm --filter @aegis/web e2e
+        env:
+          E2E_DATABASE_URL: ${{ matrix.database == 'postgres' && 'postgres://postgres:postgres@localhost:5432/aegis_e2e' || '' }}
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-traces
+          name: playwright-traces-${{ matrix.database }}
           path: apps/web/test-results/

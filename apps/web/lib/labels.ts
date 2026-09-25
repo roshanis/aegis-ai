@@ -69,7 +69,7 @@ export const OPERATIONS: Record<string, { label: string; tone: Tone; needsReason
 
 export const REVIEW_STATUS: Record<DomainReviewStatus, { label: string; tone: Tone }> = {
   pending: { label: "Waiting for review", tone: "neutral" },
-  drafted: { label: "Draft ready", tone: "info" },
+  drafted: { label: "Draft ready to sign", tone: "info" },
   signed: { label: "Signed", tone: "good" },
   returned: { label: "Question for the owner", tone: "warn" },
   abstained: { label: "Abstained", tone: "neutral" },
@@ -110,11 +110,67 @@ const SYSTEM_JOBS: Record<string, string> = {
   "system:exception-expiry": "Exception expiry",
   "system:drift-monitor": "Drift monitor",
   "system:provisioning": "Provisioning",
+  "system:agent-evals": "Golden-set evaluation",
+  "system:review-drafter": "Review drafter",
+  "agent:review-drafter": "Review drafter",
+  "agent:intake": "Intake assistant",
 };
 
 export function actorName(actor: HistoryEntry["actor"]): string {
   if (actor.kind === "human") return actor.name ?? "A person who has been removed";
   return SYSTEM_JOBS[actor.id] ?? actor.id.replace(/^(system|agent):/, "");
+}
+
+export const AGENT_STATUS: Record<string, { label: string; tone: Tone }> = {
+  on: { label: "On", tone: "good" },
+  ready: { label: "Passed · off", tone: "info" },
+  blocked: { label: "Off", tone: "neutral" },
+  evaluating: { label: "Evaluating", tone: "info" },
+  failed: { label: "Failed its golden set", tone: "bad" },
+};
+
+export const PROVIDERS: Record<string, { label: string; help: string }> = {
+  scripted: { label: "Scripted demo", help: "Deterministic rules and templates. No AI, and nothing leaves Aegis." },
+  openai: { label: "OpenAI", help: "Your organization's OpenAI API key." },
+  "azure-openai": { label: "Azure OpenAI", help: "A deployment in your own Azure tenant." },
+  "openai-compatible": { label: "Compatible endpoint", help: "Any server that speaks the OpenAI chat API over https." },
+};
+
+/** Why an agent run or a golden case failed, in plain words. */
+export const FAILURE: Record<string, string> = {
+  timeout: "didn't answer in time",
+  rate_limited: "was rate limited by the model provider",
+  provider_error: "couldn't reach the model provider",
+  auth_failed: "was refused by the provider; check the key",
+  bad_request: "was refused by the provider; check the model settings",
+  endpoint_blocked: "was blocked: the endpoint is a private address",
+  no_key: "has no readable key; enter it again",
+  invalid_output: "answered in the wrong shape",
+  decision_language: "tried to state a decision",
+  unknown_control: "cited a control this case doesn't have",
+  interrupted: "was interrupted by a restart",
+  under_triage: "would have put the system in too low a risk tier",
+  model_changed: "stopped because the model changed",
+  incomplete: "stopped before finishing",
+};
+
+/** One golden-set failure code, e.g. "missed_gate:S-01" or "wrong:phi", in plain words. */
+export function evalFinding(code: string, fields: Readonly<Record<string, string>> = {}): string {
+  const [kind, subject = ""] = code.split(":");
+  switch (kind) {
+    case "missed_gate":
+      return `missed gate control ${subject} with nothing on file`;
+    case "contradicts_evidence":
+      return `said ${subject} had no evidence when it did`;
+    case "no_question":
+      return "asked the owner nothing when evidence was missing";
+    case "wrong":
+      return `answered "${fields[subject] ?? subject}" wrongly`;
+    case "unsure":
+      return `was unsure about "${fields[subject] ?? subject}"`;
+    default:
+      return FAILURE[kind!] ?? code;
+  }
 }
 
 /** One line in plain language for an audit event. `labels` names review domains. */
@@ -123,7 +179,13 @@ export function describe(entry: HistoryEntry, labels: Readonly<Record<string, st
   const domain = typeof p.domain === "string" ? (labels[p.domain] ?? p.domain) : "";
   switch (entry.action) {
     case "review.sign":
-      return `signed off ${domain}`;
+      return p.fromDraft === "as_drafted"
+        ? `signed off ${domain}, keeping the drafter's memo`
+        : p.fromDraft === "edited"
+          ? `signed off ${domain}, editing the drafter's memo`
+          : `signed off ${domain}`;
+    case "review.draft":
+      return `drafted the ${domain} review`;
     case "review.return":
       return `asked the owner a question on ${domain}`;
     case "review.respond":
@@ -162,7 +224,9 @@ export function describe(entry: HistoryEntry, labels: Readonly<Record<string, st
       return `opened ${(TRIGGER[p.trigger as CaseTrigger] ?? "a review").toLowerCase()}`;
     case "case.submit":
     case "case.resubmit":
-      return "submitted the intake";
+      return typeof p.suggested === "number" && p.suggested > 0
+        ? `submitted the intake, keeping ${String(p.keptAsSuggested)} of ${p.suggested} suggested answers`
+        : "submitted the intake";
     case "case.triage":
       return `triaged it as ${(TIER[p.tier as Tier]?.label ?? "unknown risk").toLowerCase()}`;
     case "case.start_review":
@@ -204,8 +268,14 @@ export function nextStep(view: AssetView): NextStep | null {
     return { label: `Answer the ${trigger} intake`, tone: "warn" };
   }
   if (reviews.some((r) => r.actions.includes("respond"))) return { label: "Answer a reviewer's question", tone: "warn" };
-  const toSign = reviews.filter((r) => r.actions.includes("sign")).length;
-  if (toSign > 0) return { label: `Review ${plural(toSign, "domain")}`, tone: "accent" };
+  const toSign = reviews.filter((r) => r.actions.includes("sign"));
+  if (toSign.length > 0) {
+    const drafted = toSign.filter((r) => r.status === "drafted").length;
+    return {
+      label: `Review ${plural(toSign.length, "domain")}${drafted > 0 ? ` · ${drafted === toSign.length ? "drafts" : `${drafted} drafts`} ready` : ""}`,
+      tone: "accent",
+    };
+  }
   if (caseActions.includes("approve") && (readiness?.canApprove || readiness?.canConditionallyApprove)) {
     const tier = view.openCase?.tier ? `${TIER[view.openCase.tier].label.toLowerCase()} ` : "";
     return { label: `Decide on this ${tier}review`, tone: "accent" };

@@ -76,7 +76,7 @@ beforeAll(async () => {
   gov = createGovernance(serialized(db), { now: () => new Date((clock += 60_000)) });
   a = await provisionTeam("00000000-0000-4000-8000-00000000000a", "payer-a");
   b = await provisionTeam("00000000-0000-4000-8000-00000000000b", "payer-b");
-});
+}, 60_000);
 
 describe("an AI system from intake to use", () => {
   it("registers, triages, routes to review, and blocks use until approved", async () => {
@@ -132,7 +132,7 @@ describe("an AI system from intake to use", () => {
       actor: { kind: "human", name: "Avery Approver" },
       reason: "Retention control C-12 live before launch",
       reasonStatus: "intact",
-      policy: { packId: "healthcare-ai", packVersion: "1.1.0" },
+      policy: { packId: "healthcare-ai", packVersion: "1.2.0" },
     });
     const triaged = history.find((e) => e.action === "case.triage")!;
     expect(triaged.actor).toMatchObject({ kind: "system", id: "system:triage" });

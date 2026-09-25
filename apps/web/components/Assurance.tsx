@@ -1,10 +1,12 @@
 "use client";
 
+import { draftMemo, type ReviewDraft } from "@aegis/domain";
 import { useActionState, useEffect, useState, type ReactNode } from "react";
 import {
   addEvidence,
   conditionAction,
   exceptionAction,
+  requestDraft,
   requestException,
   reviewAction,
   withdrawEvidence,
@@ -29,6 +31,8 @@ export interface Choice {
   readonly tone: Tone;
   readonly needsNote: boolean;
   readonly notePrompt?: string;
+  /** Text the note starts with, such as an agent's draft, for the person to edit. */
+  readonly defaultNote?: string;
   /** Why this choice is unavailable right now, if it is. */
   readonly disabledReason?: string | null;
 }
@@ -93,7 +97,15 @@ export function ActionChooser({
           {chosen.needsNote || chosen.notePrompt ? (
             <div className="field">
               <label htmlFor={`note-${Object.values(hidden).join("-")}`}>{chosen.notePrompt ?? "Why?"}</label>
-              <textarea id={`note-${Object.values(hidden).join("-")}`} name={noteField} required={chosen.needsNote} autoFocus />
+              <textarea
+                key={chosen.value}
+                id={`note-${Object.values(hidden).join("-")}`}
+                name={noteField}
+                required={chosen.needsNote}
+                defaultValue={chosen.defaultNote}
+                rows={chosen.defaultNote ? Math.min(12, chosen.defaultNote.split("\n").length + 2) : undefined}
+                autoFocus
+              />
             </div>
           ) : null}
           {extra?.(chosen.value)}
@@ -120,13 +132,20 @@ export function ReviewActions({
   revision,
   actions,
   uncoveredGates,
+  draft,
 }: {
   caseId: string;
   domain: string;
   revision: number;
   actions: readonly string[];
   uncoveredGates: readonly string[];
+  /** The drafter's draft, which the memo and proposals start from. */
+  draft?: ReviewDraft | null;
 }) {
+  const defaults: Record<string, string | undefined> = {
+    sign: draft ? draftMemo(draft) : undefined,
+    return: draft && draft.questionsForOwner.length > 0 ? draft.questionsForOwner.join("\n") : undefined,
+  };
   return (
     <ActionChooser
       action={reviewAction}
@@ -136,18 +155,45 @@ export function ReviewActions({
       choices={actions.map((a) => ({
         value: a,
         ...REVIEW_ACTIONS[a]!,
+        ...(defaults[a]
+          ? {
+              defaultNote: defaults[a],
+              notePrompt:
+                a === "sign" ? "Memo for the approver, starting from the draft. Edit it as you see fit." : "Your question for the owner, from the draft",
+            }
+          : {}),
         disabledReason:
           a === "sign" && uncoveredGates.length > 0 ? `needs evidence or an exception for ${uncoveredGates.join(", ")}` : null,
       }))}
       extra={(choice) =>
         choice === "sign" ? (
           <div className="field">
-            <label>Conditions you want attached (optional, one per line)</label>
-            <textarea name="proposals" placeholder="e.g. Keep PHI inside our Azure tenant" />
+            <label htmlFor={`proposals-${domain}`}>Conditions you want attached (optional, one per line)</label>
+            <textarea
+              id={`proposals-${domain}`}
+              name="proposals"
+              placeholder="e.g. Keep PHI inside our Azure tenant"
+              defaultValue={draft?.proposedConditions.join("\n")}
+            />
           </div>
         ) : null
       }
     />
+  );
+}
+
+/** Ask the review drafter for a fresh draft. */
+export function RequestDraft({ caseId, domain, again }: { caseId: string; domain: string; again: boolean }) {
+  const [state, submit, pending] = useActionState(requestDraft, IDLE);
+  return (
+    <form action={submit} className="row" style={{ gap: 8 }}>
+      <input type="hidden" name="caseId" value={caseId} />
+      <input type="hidden" name="domain" value={domain} />
+      <button className="link-button" type="submit" disabled={pending}>
+        {pending ? "Asking…" : again ? "Draft it again" : "Ask the drafter"}
+      </button>
+      {state.error ? <span className="error-inline">{state.error}</span> : null}
+    </form>
   );
 }
 

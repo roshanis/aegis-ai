@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { contentLifecycle, IllegalTransitionError, riskReviewLifecycle } from "./lifecycle";
+import { conditionLifecycle, exceptionLifecycle } from "./assurance";
+import { contentLifecycle, defineLifecycle, IllegalTransitionError, riskReviewLifecycle, type Lifecycle } from "./lifecycle";
+import { assetLifecycle } from "./registry";
+import { domainReviewLifecycle } from "./reviews";
 import { agent, human, system } from "./test-principals";
 
 const at = new Date("2026-09-24T12:00:00Z");
@@ -90,5 +93,42 @@ describe("content lifecycle", () => {
     });
     expect(changes.after).toBe("changes_requested");
     expect(contentLifecycle.transition("changes_requested", "resubmit", author, { at }).after).toBe("submitted");
+  });
+});
+
+describe("agent authority", () => {
+  const lifecycles: Record<string, Lifecycle<string, string>> = {
+    riskReview: riskReviewLifecycle,
+    content: contentLifecycle,
+    asset: assetLifecycle,
+    exception: exceptionLifecycle,
+    condition: conditionLifecycle,
+    domainReview: domainReviewLifecycle,
+  };
+
+  it("admits agents only into draft states, and only domain reviews have one", () => {
+    const agentRules = Object.entries(lifecycles).flatMap(([name, lifecycle]) =>
+      Object.entries(lifecycle.table).flatMap(([from, rules]) =>
+        Object.entries(rules ?? {})
+          .filter(([, rule]) => rule!.by.includes("agent"))
+          .map(([action, rule]) => `${name}: ${from} -${action}-> ${rule!.to}`),
+      ),
+    );
+    expect(agentRules).toEqual(["domainReview: pending -draft-> drafted", "domainReview: drafted -draft-> drafted"]);
+    for (const [name, lifecycle] of Object.entries(lifecycles)) {
+      expect(lifecycle.draftStates, name).toEqual(name === "domainReview" ? ["drafted"] : []);
+    }
+  });
+
+  it("refuses to define a lifecycle that lets an agent decide", () => {
+    expect(() =>
+      defineLifecycle<"open" | "approved", "approve">({ open: { approve: { to: "approved", by: ["agent"] } } }),
+    ).toThrow(/admits an agent/);
+    expect(() =>
+      defineLifecycle<"open" | "drafted", "draft">(
+        { open: { draft: { to: "drafted", by: ["agent", "case.decide"] } } },
+        { draftStates: ["drafted"] },
+      ),
+    ).toThrow(/agent-only/);
   });
 });

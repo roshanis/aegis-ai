@@ -12,9 +12,11 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@aegis/agents": "workspace:*",
     "@aegis/db": "workspace:*",
     "@aegis/domain": "workspace:*",
-    "@aegis/frameworks": "workspace:*"
+    "@aegis/frameworks": "workspace:*",
+    "@openai/agents-core": "0.18.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",

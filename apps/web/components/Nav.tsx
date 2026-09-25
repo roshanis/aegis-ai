@@ -23,6 +23,9 @@ export function Nav({ assets, needsYou, canRegister }: { assets: number; needsYo
           Register AI
         </Link>
       ) : null}
+      <Link href="/agents" aria-current={current("/agents")}>
+        Agents
+      </Link>
     </nav>
   );
 }

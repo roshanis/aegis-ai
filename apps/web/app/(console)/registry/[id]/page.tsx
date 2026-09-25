@@ -1,12 +1,13 @@
 import {
-  GovernanceError,
   type AssetView,
   type Case,
   type ConditionView,
   type ControlView,
+  type DomainReviewView,
   type EvidenceView,
   type HistoryEntry,
 } from "@aegis/core";
+import type { ReviewDraft } from "@aegis/domain";
 import type { InitiativePack } from "@aegis/frameworks";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -16,19 +17,23 @@ import {
   EvidenceForm,
   ExceptionActions,
   ExceptionRequestForm,
+  RequestDraft,
   ReviewActions,
   WithdrawEvidence,
 } from "@/components/Assurance";
+import { AutoRefresh } from "@/components/AutoRefresh";
 import { IntakeForm } from "@/components/IntakeForm";
 import { DecisionPanel, OpenReviewForm, OperatePanel } from "@/components/Panels";
 import { Pill } from "@/components/Pill";
 import { governance } from "@/lib/db";
+import { refusal } from "@/lib/errors";
 import {
   ASSET_KIND,
   ASSET_STATE,
   CASE_STATE,
   CONDITION_STATE,
   EXCEPTION_STATE,
+  FAILURE,
   REVIEW_STATUS,
   TIER,
   TRIGGER,
@@ -237,6 +242,118 @@ function ConditionsTab({ view }: { view: AssetView }) {
   );
 }
 
+const CONCERN: Record<string, string> = {
+  missing_evidence: "Missing evidence",
+  weak_evidence: "Weak evidence",
+  risk: "Risk",
+  note: "Note",
+};
+
+/**
+ * The review drafter's work on one review: in progress, failed, or a draft
+ * for a person to sign, edit or ignore. Drafts the viewer cannot act on are
+ * folded, so each reviewer sees their own work first.
+ */
+function DraftBlock({ review }: { review: DomainReviewView }) {
+  const { draft } = review;
+  if (review.status !== "pending" && review.status !== "drafted") return null;
+  if (draft.status === "queued") {
+    return (
+      <p className="drafting" role="status">
+        <span className="spinner" aria-hidden /> The review drafter is drafting this review…
+      </p>
+    );
+  }
+  if (draft.status === "failed") {
+    return (
+      <div className="draft draft-failed">
+        <p>
+          The review drafter {FAILURE[draft.error ?? ""] ?? "failed"}, so there is no draft. Review it yourself
+          {review.canRequestDraft ? ", or ask again." : "."}
+        </p>
+        {review.canRequestDraft ? <RequestDraft caseId={review.caseId} domain={review.domain} again /> : null}
+      </div>
+    );
+  }
+  if (review.status === "drafted" && draft.content) {
+    const { summary, findings, questionsForOwner, proposedConditions } = draft.content;
+    const head = (
+      <div className="draft-head">
+        <span className="agent-badge">AI draft</span>
+        <span className="faint">
+          Review drafter · {findings.length} finding{findings.length === 1 ? "" : "s"} · nobody has signed this yet
+        </span>
+      </div>
+    );
+    if (review.actions.length === 0) {
+      return (
+        <details className="draft draft-folded">
+          <summary>{head}</summary>
+          <p>{summary}</p>
+          {findings.length > 0 ? (
+            <ul className="draft-findings">
+              {findings.map((f, i) => (
+                <li key={i}>
+                  {f.controlId ? <span className="mono chip">{f.controlId}</span> : null}
+                  <span className={`concern concern-${f.concern}`}>{CONCERN[f.concern] ?? f.concern}</span> {f.text}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </details>
+      );
+    }
+    return (
+      <div className="draft">
+        {head}
+        <p>{summary}</p>
+        {findings.length > 0 ? (
+          <ul className="draft-findings">
+            {findings.map((f, i) => (
+              <li key={i}>
+                {f.controlId ? <span className="mono chip">{f.controlId}</span> : null}
+                <span className={`concern concern-${f.concern}`}>{CONCERN[f.concern] ?? f.concern}</span> {f.text}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {questionsForOwner.length > 0 ? (
+          <div className="stack" style={{ gap: 4 }}>
+            <span className="label">Questions for the owner</span>
+            <ul className="reasons">
+              {questionsForOwner.map((q) => (
+                <li key={q}>{q}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {proposedConditions.length > 0 ? (
+          <div className="stack" style={{ gap: 4 }}>
+            <span className="label">Conditions it suggests</span>
+            <ul className="reasons">
+              {proposedConditions.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {review.canRequestDraft ? <RequestDraft caseId={review.caseId} domain={review.domain} again /> : null}
+      </div>
+    );
+  }
+  return review.canRequestDraft ? <RequestDraft caseId={review.caseId} domain={review.domain} again={false} /> : null;
+}
+
+function draftSummary(body: string | null): string | null {
+  try {
+    const draft = JSON.parse(body ?? "") as ReviewDraft;
+    const n = draft.findings.length;
+    return `${draft.summary}${n > 0 ? ` (${n} finding${n === 1 ? "" : "s"})` : ""}`;
+  } catch {
+    return body;
+  }
+}
+
 function Reason({ entry }: { entry: HistoryEntry }) {
   if (entry.reasonStatus === "none") return null;
   if (entry.reasonStatus === "erased") {
@@ -244,7 +361,7 @@ function Reason({ entry }: { entry: HistoryEntry }) {
   }
   return (
     <p className={`quote${entry.reasonStatus === "altered" ? " altered" : ""}`}>
-      {entry.reason}
+      {entry.action === "review.draft" ? draftSummary(entry.reason) : entry.reason}
       {entry.reasonStatus === "altered" ? (
         <strong style={{ color: "var(--bad)", display: "block", fontSize: 12.5 }}>
           This text no longer matches what the audit log recorded.
@@ -276,7 +393,14 @@ function HistoryTab({
             <span className="dot" aria-hidden />
             <div className="event-body">
               <span>
-                <strong>{actorName(entry.actor)}</strong> {describe(entry, labels)}
+                <strong>{actorName(entry.actor)}</strong>
+                {entry.actor.kind === "agent" ? (
+                  <>
+                    {" "}
+                    <span className="agent-badge">AI agent</span>
+                  </>
+                ) : null}{" "}
+                {describe(entry, labels)}
                 {entry.decision ? (
                   <>
                     {" "}
@@ -322,7 +446,7 @@ export default async function AssetPage({
   try {
     view = await gov.getAsset(principal, id);
   } catch (error) {
-    if (error instanceof GovernanceError && error.code === "not_found") notFound();
+    if (refusal(error)?.code === "not_found") notFound();
     throw error;
   }
   const history = (await gov.assetHistory(principal, id)).slice().reverse();
@@ -332,6 +456,7 @@ export default async function AssetPage({
   const mustAnswer = openCase && (actions.openCase.includes("submit") || actions.openCase.includes("resubmit"));
   const decisions = actions.openCase.filter((a) => a !== "submit" && a !== "resubmit");
   const pack = mustAnswer ? ((await gov.policyPack(principal, { caseId: openCase.id })) as InitiativePack) : null;
+  const assistant = mustAnswer ? await gov.agentOn(principal, "intake") : false;
   const previous = view.cases.filter((c) => Object.keys(c.answers).length > 0).at(-1)?.answers ?? {};
   const triggerOf = new Map(view.cases.map((c) => [c.id, c.trigger]));
   const latest = openCase ?? view.cases.at(-1) ?? null;
@@ -341,6 +466,7 @@ export default async function AssetPage({
   ]);
   const proposals = assurance.reviews.flatMap((r) => r.proposedConditions);
   const blockers = clearance.cleared ? [] : clearance.reason.split("; ");
+  const drafting = assurance.reviews.some((r) => r.draft.status === "queued");
   const signed = assurance.reviews.filter((r) => r.status === "signed" || r.status === "abstained").length;
   const covered = assurance.controls.filter((c) => c.covered).length;
   const openConditions = assurance.conditions.filter((c) => c.state === "open" || c.state === "submitted").length;
@@ -353,6 +479,7 @@ export default async function AssetPage({
 
   return (
     <>
+      {drafting ? <AutoRefresh /> : null}
       <div className="page-head">
         <div>
           <div className="crumbs">
@@ -403,7 +530,7 @@ export default async function AssetPage({
       {mustAnswer && pack ? (
         <section className="stack">
           <h2>Answer the {TRIGGER[openCase.trigger].toLowerCase()}</h2>
-          <IntakeForm pack={pack} mode={{ kind: "case", caseId: openCase.id, previous }} />
+          <IntakeForm pack={{ ...pack, goldenSets: undefined }} mode={{ kind: "case", caseId: openCase.id, previous }} assistant={assistant} />
         </section>
       ) : null}
 
@@ -487,6 +614,7 @@ export default async function AssetPage({
                           </Link>
                         </p>
                       ) : null}
+                      <DraftBlock review={r} />
                       {r.actions.length > 0 ? (
                         <ReviewActions
                           caseId={r.caseId}
@@ -494,6 +622,7 @@ export default async function AssetPage({
                           revision={r.revision}
                           actions={r.actions}
                           uncoveredGates={r.uncoveredGates}
+                          draft={r.status === "drafted" ? r.draft.content : null}
                         />
                       ) : null}
                     </article>

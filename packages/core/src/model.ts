@@ -115,6 +115,8 @@ export const toCase = (r: CaseRow): Case => ({
 export interface Kernel {
   readonly now: () => Date;
   inTenant<T>(actor: Principal, fn: (tx: Connection) => Promise<T>): Promise<T>;
+  /** Run `hook` once this transaction has committed; never if it rolls back. */
+  afterCommit(tx: Connection, hook: () => void): void;
   loadAsset(tx: Connection, actor: Principal, assetId: string, lock?: boolean): Promise<Asset>;
   loadCase(tx: Connection, actor: Principal, caseId: string): Promise<Case>;
   loadCases(tx: Connection, assetId: string): Promise<Case[]>;

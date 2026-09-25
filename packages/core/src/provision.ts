@@ -86,6 +86,11 @@ export async function purgeTenant(platform: Connection, tenant: TenantId): Promi
     ]);
     const tables = [
       "audit_events",
+      "agent_runs",
+      "agent_settings",
+      "agent_evals",
+      "model_connections",
+      "tenant_keys",
       "evidence",
       "control_exceptions",
       "conditions",

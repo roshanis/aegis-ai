@@ -25,7 +25,7 @@ beforeAll(async () => {
   db = serialized(pglite);
   gov = createGovernance(db, { now: () => now });
   sandbox = await createSandbox(db, now);
-});
+}, 60_000);
 
 describe("sandbox", () => {
   it("gives the visitor one persona per role, with job titles", () => {
@@ -73,8 +73,14 @@ describe("sandbox", () => {
       ["responsible-ai", ["R-01"]],
     ]);
 
+    // The drafter drafted both; nobody has signed them, so only a conditional approval is open.
+    expect(jordan.assurance.reviews.filter((r) => r.status === "drafted").map((r) => r.domain)).toEqual(["legal", "responsible-ai"]);
     const avery = await chat("Avery Brooks");
-    expect(avery.assurance.readiness).toMatchObject({ canApprove: false, approvalBlockers: ["legal:pending", "responsible-ai:pending"] });
+    expect(avery.assurance.readiness).toMatchObject({
+      canApprove: false,
+      canConditionallyApprove: true,
+      approvalBlockers: ["legal:drafted", "responsible-ai:drafted"],
+    });
     expect(avery.assurance.controls.find((c) => c.id === "R-01")?.exception).toMatchObject({
       state: "requested",
       actions: ["approve", "reject"],
@@ -93,6 +99,26 @@ describe("sandbox", () => {
     expect(summarizer.assurance.controls.filter((c) => c.enforcement === "gate").every((c) => c.covered)).toBe(true);
   });
 
+  it("turns both agents on after they pass, and shows their work", async () => {
+    const overview = await gov.agentsOverview(await as("Ada Morgan"));
+    expect(overview.connection?.label).toBe("Scripted demo model");
+    expect(overview.sandbox).toBe(true);
+    expect(overview.providers).toEqual(["scripted", "openai"]);
+    expect(overview.agents.map((a) => [a.id, a.status])).toEqual([
+      ["intake", "on"],
+      ["review-drafter", "on"],
+    ]);
+    const auditor = await as("Aubrey Kim");
+    const chat = (await gov.listAssetViews(auditor)).find((v) => v.asset.name === "Member benefits chat assistant")!;
+    const history = await gov.assetHistory(auditor, chat.asset.id);
+    expect(history.find((h) => h.action === "case.submit")!.payload).toMatchObject({ suggested: expect.any(Number), changed: [] });
+    expect(history.filter((h) => h.action === "review.draft").length).toBe(chat.assurance.reviews.length);
+    expect(history.filter((h) => h.action === "review.sign").every((h) => h.payload.fromDraft === "as_drafted")).toBe(true);
+    await expect(
+      gov.connectModel(await as("Ada Morgan"), { provider: "openai-compatible", model: "m", endpoint: "https://llm.example.com/v1", apiKey: "k" }),
+    ).rejects.toThrow(/scripted model or OpenAI only/);
+  });
+
   it("dates all seeded history, evidence included, in the past", async () => {
     const auditor = await as("Aubrey Kim");
     for (const view of await gov.listAssetViews(auditor)) {
@@ -101,6 +127,13 @@ describe("sandbox", () => {
       const evidence = view.assurance.controls.flatMap((c) => c.evidence);
       expect(evidence.every((e) => e.addedAt < now), view.asset.name).toBe(true);
     }
+    const latest = await pglite.query<{ at: Date }>(
+      `SELECT max(greatest(started_at, finished_at)) AS at FROM agent_runs WHERE tenant_id = $1
+       UNION ALL SELECT max(greatest(started_at, finished_at)) FROM agent_evals WHERE tenant_id = $1
+       UNION ALL SELECT max(at) FROM audit_events WHERE tenant_id = $1`,
+      [sandbox.tenantId],
+    );
+    expect(latest.rows.every((r) => new Date(r.at) < now)).toBe(true);
   });
 
   it("offers personas only while the sandbox is live, and never for a real tenant", async () => {
@@ -123,16 +156,23 @@ describe("sandbox", () => {
     const afterFirstExpires = new Date(now.getTime() + SANDBOX_LIFETIME_MS + 1);
     expect(await purgeExpiredSandboxes(db, afterFirstExpires)).toBe(1);
 
-    const counts = await pglite.query<{ table: string; n: number }>(`
-      SELECT 'tenants' AS table, count(*)::int AS n FROM tenants WHERE id = '${sandbox.tenantId}'
-      UNION ALL SELECT 'audit_events', count(*)::int FROM audit_events WHERE tenant_id = '${sandbox.tenantId}'
-      UNION ALL SELECT 'assets', count(*)::int FROM assets WHERE tenant_id = '${sandbox.tenantId}'`);
-    expect(counts.rows.every((r) => r.n === 0)).toBe(true);
+    // Every table that holds tenant rows, found from the catalog so a new table cannot be missed.
+    const { rows: tables } = await pglite.query<{ table: string }>(`
+      SELECT c.relname AS table FROM pg_class c
+      JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+      JOIN pg_attribute a ON a.attrelid = c.oid AND a.attname = 'tenant_id' AND NOT a.attisdropped
+      WHERE c.relkind = 'r'`);
+    expect(tables.length).toBeGreaterThanOrEqual(15);
+    for (const { table } of tables) {
+      const left = await pglite.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${table} WHERE tenant_id = $1`, [sandbox.tenantId]);
+      expect(left.rows[0]!.n, table).toBe(0);
+    }
+    expect((await pglite.query("SELECT 1 FROM tenants WHERE id = $1", [sandbox.tenantId])).rows).toEqual([]);
 
     expect(await sandboxPersonas(db, second.tenantId, afterFirstExpires)).toHaveLength(6);
     expect(await withTenant(pglite, second.tenantId, verifyAuditChain)).toBeNull();
     await expect(pglite.exec(`DELETE FROM audit_events WHERE tenant_id = '${second.tenantId}'`)).rejects.toThrow(
       /append-only/,
     );
-  });
+  }, 30_000);
 });
