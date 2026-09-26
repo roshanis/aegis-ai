@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Registry</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+a{color:#D4FF3A}a:hover{color:#E6FF8A}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; --focus: {{t.focus}}; color-scheme: {{t.name}}; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="height: 60px; flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 0 24px; border-bottom: 1px solid {{t.line}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{t.brand}}" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6l8-3z"></path><path d="M8.5 12l2.5 2.5 4.5-5"></path></svg>
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 27px; line-height: 1">Aegis</span>
+</div>
+<span style="color: {{t.muted}}" aria-hidden="true">/</span>
+<span style="font-size: 14px; font-weight: 500">Northwind Health Plan</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 6px; border: 1px solid {{t.line}}; color: {{t.muted}}">SANDBOX · SHARED CLOUD</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="width: 480px; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-radius: 10px; background: {{t.raised}}; border: 1px solid {{t.line}}; color: {{t.muted}}; font-size: 14px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg><span style="flex-grow: 1; text-align: left">Search cases, systems, people and policies</span><kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 2px 6px; border-radius: 5px; border: 1px solid {{t.line}}">⌘K</kbd></button>
+<div style="flex-grow: 1"></div>
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 32px; height: 32px; border-radius: 50%; background: #D4FF3A; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">LP</span>
+<div style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 500">Lee Park</span><span style="font-size: 12px; color: {{t.muted}}">Program office</span></div>
+</div>
+</header>
+
+<div style="flex-grow: 1; min-height: 0; display: flex">
+<nav aria-label="Primary" style="width: 84px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 0; border-right: 1px solid {{t.line}}">
+<a href="Registry.dc.html" aria-current="page" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 600; color: {{t.text}}; background: {{t.raised}}; box-shadow: inset 0 0 0 1px {{t.line}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>Registry</a>
+<a href="Main.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Intake</a>
+<a href="Review.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13.5l2.5-8h12l2.5 8v5h-17z"></path><path d="M3.5 13.5h5l1 2h5l1-2h5"></path></svg>Reviews · 3</a>
+<a href="Audit.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="6" height="8" rx="1.5"></rect><rect x="15" y="8" width="6" height="8" rx="1.5"></rect><path d="M9 12h6"></path></svg>Audit</a>
+<a href="Language.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg>Packs</a>
+<a href="Language.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2.4" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle></svg>Agents</a>
+</nav>
+
+<main style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 28px 36px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-family: 'Geist Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: {{t.muted}}">REGISTRY · SYSTEMS, AGENTS, VENDOR MODELS</div>
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 46px; line-height: 1.05">Registered <em style="color: {{t.link}}">AI systems</em></h1>
+</div>
+<a href="Main.dc.html" style="height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 20px; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnFg}}; font-size: 15px; font-weight: 600; text-decoration: none"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Register a system</a>
+</div>
+
+<div role="group" aria-label="Filter by operating state" style="display: flex; gap: 8px">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+<button type="button" aria-pressed="{{f.on}}" onClick="{{f.pick}}" style="height: 44px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 500; cursor: pointer; border: 1px solid {{f.border}}; background: {{f.bg}}; color: {{f.fg}}">{{f.label}} <span style="font-family: 'Geist Mono', monospace; font-size: 12px; opacity: 0.7">{{f.count}}</span></button>
+</sc-for>
+</div>
+
+<section aria-label="Registered systems" style="border-radius: 18px; background: {{t.panel}}; border: 1px solid {{t.line}}; overflow: hidden">
+<table style="width: 100%; border-collapse: collapse; font-size: 14px">
+<thead>
+<tr style="text-align: left; font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: {{t.muted}}">
+<th scope="col" style="padding: 14px 22px; font-weight: 500">SYSTEM</th>
+<th scope="col" style="padding: 14px 12px; font-weight: 500">TIER</th>
+<th scope="col" style="padding: 14px 12px; font-weight: 500">STAGE · INTAKE → REVIEW → DECIDED → LIVE → RE-REVIEW</th>
+<th scope="col" style="padding: 14px 12px; font-weight: 500">OPEN CASE</th>
+<th scope="col" style="padding: 14px 22px; font-weight: 500">NEXT REVIEW</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<tr style="border-top: 1px solid {{t.line}}">
+<td style="padding: 13px 22px">
+<div style="display: flex; align-items: center; gap: 12px">
+<sc-if value="{{r.isAgent}}" hint-placeholder-val="{{false}}"><span title="Agent" style="box-sizing: border-box; width: 18px; height: 18px; flex-shrink: 0; border-radius: 50%; border: 2px dashed {{t.agent}}"></span></sc-if>
+<sc-if value="{{r.isModel}}" hint-placeholder-val="{{true}}"><span title="System or model" style="width: 14px; height: 14px; margin: 2px; flex-shrink: 0; border-radius: 3px; border: 2px solid {{t.muted}}; box-sizing: border-box"></span></sc-if>
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-weight: 500">{{r.name}}</span>
+<span style="font-size: 12px; color: {{t.muted}}">{{r.owner}} · {{r.kind}}</span>
+</div>
+</div>
+</td>
+<td style="padding: 13px 12px"><span style="font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; color: {{r.tierFg}}">{{r.tier}}</span></td>
+<td style="padding: 13px 12px">
+<div style="display: flex; align-items: center; gap: 10px">
+<div style="display: flex; align-items: center" aria-hidden="true">
+<sc-for list="{{r.steps}}" as="s" hint-placeholder-count="5">
+<span style="box-sizing: border-box; width: {{s.size}}; height: {{s.size}}; border-radius: 50%; background: {{s.bg}}; border: {{s.border}}"></span>
+<sc-if value="{{s.bar}}" hint-placeholder-val="{{true}}"><span style="width: 22px; height: 2px; background: {{s.barC}}"></span></sc-if>
+</sc-for>
+</div>
+<span style="font-size: 13px; color: {{r.opFg}}">{{r.op}}</span>
+</div>
+</td>
+<td style="padding: 13px 12px">
+<sc-if value="{{r.hasCase}}" hint-placeholder-val="{{true}}"><a href="Review.dc.html" style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.link}}">{{r.caseId}}</a> <span style="font-size: 12px; color: {{t.muted}}">{{r.caseState}}</span></sc-if>
+<sc-if value="{{r.noCase}}" hint-placeholder-val="{{false}}"><span style="color: {{t.muted}}">—</span></sc-if>
+</td>
+<td style="padding: 13px 22px; font-size: 13px; font-weight: {{r.dueWeight}}; color: {{r.dueFg}}">{{r.due}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</section>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  dark: { name: 'dark', bg: '#0B0E13', panel: '#12161E', raised: '#1A1F2A', line: '#262D3B', line2: '#6B7488', text: '#EDE9E0', muted: '#A3ABB9', brand: '#D4FF3A', link: '#D4FF3A', focus: '#5B9BFF',
+    sealEdge: 'transparent', sealRing: '#D4FF3A', check: '#D4FF3A', current: '#D4FF3A', system: '#8C95A6', agent: '#62D0FF', agentText: '#8EDDFF', agentTint: 'rgba(98,208,255,0.08)', glow: 'rgba(212,255,58,0.18)',
+    btnBg: '#D4FF3A', btnFg: '#0B0E13', ok: '#8FE3B5', warn: '#F6D37A', bad: '#FFA36E', high: '#FFA36E', major: '#FFA36E', minor: '#F6D37A', off: '#2A3140',
+    tier: { low: '#8FE3B5', medium: '#F6D37A', high: '#FFA36E', critical: '#FF7B7B' }, seg: ['#3E9E6E', '#D8A935', '#F07A36', '#E5484D'] },
+  light: { name: 'light', bg: '#EEECE6', panel: '#FFFFFF', raised: '#F4F2EC', line: '#DCD8CE', line2: '#858073', text: '#0F1216', muted: '#525964', brand: '#0F1216', link: '#3D5200', focus: '#1F5FD6',
+    sealEdge: 'rgba(15,18,22,0.45)', sealRing: '#4D6B00', check: '#4D6B00', current: '#4D6B00', system: '#6A7280', agent: '#0070A8', agentText: '#005A88', agentTint: 'rgba(0,112,168,0.07)', glow: 'rgba(77,107,0,0.18)',
+    btnBg: '#0F1216', btnFg: '#D4FF3A', ok: '#1B6B44', warn: '#7A5600', bad: '#A33A00', high: '#A33A00', major: '#A33A00', minor: '#7A5600', off: '#E4E0D6',
+    tier: { low: '#1B6B44', medium: '#7A5600', high: '#A33A00', critical: '#B3261E' }, seg: ['#2F8A5B', '#9A7000', '#C4501A', '#B3261E'] }
+};
+// 'auto' follows the viewer's system setting; every pair above is checked for WCAG AA (text 4.5:1, UI 3:1).
+function pickTheme(p) {
+  if (p === 'dark' || p === 'light') return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+// stage: 0 intake · 1 review · 2 decided · 3 live · 4 re-review
+var ROWS = [
+  { name: 'Prior-auth letter summarizer', owner: 'Utilization Mgmt', kind: 'Vendor model', tier: 'High', stage: 2, op: 'Decided, not live', caseId: 'CASE-0142', caseState: 'conditions open', due: 'Before deploy' },
+  { name: 'Member benefits chat', owner: 'Member Services', kind: 'AI system', tier: 'High', stage: 4, op: 'Live · re-review', caseId: 'CASE-0131', caseState: '5 of 7 signed', due: 'Overdue · Sep 1', overdue: true },
+  { name: 'Claims anomaly scorer', owner: 'Payment Integrity', kind: 'AI system', tier: 'Critical', stage: 3, op: 'Paused', paused: true, caseId: 'CASE-0138', caseState: '3 of 8 signed', due: 'In review' },
+  { name: 'Provider directory cleaner', owner: 'Network Ops', kind: 'Agent', tier: 'Low', stage: 3, op: 'Live · fast lane', caseId: '', caseState: '', due: 'Mar 2027' },
+  { name: 'Call summary notes', owner: 'Member Services', kind: 'Vendor model', tier: 'Medium', stage: 3, op: 'Live', caseId: '', caseState: '', due: 'Jan 2027' },
+  { name: 'Care gap outreach drafts', owner: 'Care Management', kind: 'Agent', tier: 'High', stage: 3, op: 'Live', caseId: '', caseState: '', due: 'Nov 2026' },
+  { name: 'Formulary Q&A (MCP tool)', owner: 'Pharmacy', kind: 'Agent tool', tier: 'Medium', stage: 1, op: 'In review', caseId: 'CASE-0145', caseState: '1 of 5 signed', due: 'In review' },
+  { name: 'Legacy fax classifier', owner: 'Operations', kind: 'Vendor model', tier: 'Medium', stage: -1, op: 'Retired', caseId: '', caseState: '', due: '—' }
+];
+var FILTERS = [
+  { label: 'All', test: function () { return true; } },
+  { label: 'Live', test: function (r) { return r.stage >= 3 && !r.paused; } },
+  { label: 'Paused', test: function (r) { return !!r.paused; } },
+  { label: 'In review', test: function (r) { return r.stage >= 0 && r.stage < 3; } },
+  { label: 'Retired', test: function (r) { return r.stage === -1; } }
+];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var pick = (this.state && this.state.filter) || 'All';
+    var active = FILTERS.filter(function (f) { return f.label === pick; })[0] || FILTERS[0];
+    return {
+      t: t,
+      filters: FILTERS.map(function (f) {
+        var on = f.label === pick;
+        return { label: f.label, count: String(ROWS.filter(f.test).length), on: on,
+          bg: on ? t.text : 'transparent', fg: on ? t.bg : t.text, border: on ? t.text : t.line2,
+          pick: function () { self.setState({ filter: f.label }); } };
+      }),
+      rows: ROWS.filter(active.test).map(function (r) {
+        var retired = r.stage === -1;
+        var steps = [0, 1, 2, 3, 4].map(function (i) {
+          var done = !retired && i < r.stage;
+          var cur = !retired && i === r.stage;
+          var curC = r.paused ? t.warn : t.current;
+          return {
+            size: cur ? '14px' : '10px',
+            bg: cur ? curC : (done ? t.muted : 'transparent'),
+            border: cur ? '0' : (done ? '0' : '1.5px solid ' + t.line2),
+            bar: i < 4, barC: done ? t.muted : t.line
+          };
+        });
+        return Object.assign({}, r, {
+          steps: steps,
+          isAgent: r.kind.indexOf('Agent') === 0, isModel: r.kind.indexOf('Agent') !== 0,
+          tierFg: t.tier[r.tier.toLowerCase()], tier: r.tier.toUpperCase(),
+          opFg: r.paused ? t.warn : (retired ? t.muted : t.text),
+          hasCase: !!r.caseId, noCase: !r.caseId,
+          dueFg: r.overdue ? t.bad : t.muted, dueWeight: r.overdue ? '600' : '400'
+        });
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

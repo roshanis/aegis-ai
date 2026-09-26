@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The Aegis Docket</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}a:hover{color:var(--hover)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px;border-radius:6px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; padding: 26px 48px 28px; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --hover: {{t.red}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<div style="display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 10px">
+<div style="width: 280px; font-size: 12px; line-height: 1.5">Vol. 1 · No. 268<br>Northwind Health Plan edition</div>
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 92px; line-height: 0.9; letter-spacing: -0.01em">The Aegis Docket</h1>
+<div style="width: 280px; text-align: right; font-size: 12px; line-height: 1.5">Friday, 25 September 2026<br>Morning edition · 07:00</div>
+</div>
+<div style="border-top: 4px solid {{t.text}}; border-bottom: 1px solid {{t.text}}; height: 3px"></div>
+<nav aria-label="Sections" style="display: flex; justify-content: center; gap: 28px; padding: 10px 0; border-bottom: 1px solid {{t.text}}; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase">
+<a href="Docket.dc.html" style="text-decoration: none">Front page</a>
+<a href="Table.dc.html" style="text-decoration: none">Your reviews · 3</a>
+<a href="Sentence.dc.html" style="text-decoration: none">Register a system</a>
+<a href="#registry" style="text-decoration: none">Registry</a>
+<a href="#ledger" style="text-decoration: none">Audit log</a>
+<a href="#packs" style="text-decoration: none">Policy packs</a>
+</nav>
+
+<div style="flex-grow: 1; min-height: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 32px; padding-top: 22px">
+
+<article style="grid-column: span 7; display: flex; flex-direction: column; gap: 14px; padding-right: 32px; border-right: 1px solid {{t.text}}">
+<div style="font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: {{t.red}}">DECIDED YESTERDAY · HIGH RISK</div>
+<h2 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 64px; line-height: 0.98; letter-spacing: 0">Prior-auth summarizer cleared for pilot, on three conditions</h2>
+<p style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 21px; line-height: 1.4">Approver Marcus Lee signed after all eight review teams signed. The vendor must amend its BAA before a single letter is summarized.</p>
+<div style="font-family: 'Geist Mono', monospace; font-size: 12px; padding: 8px 0; border-top: 1px solid {{t.text}}; border-bottom: 1px solid {{t.text}}">healthcare-ai@1.0.0 · rule care-with-human · 8/8 sign-offs · audit log #7c1e</div>
+<div style="column-count: 2; column-gap: 28px; font-family: 'Geist', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+<p style="margin: 0 0 12px"><span style="float: left; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 64px; line-height: 0.85; padding: 4px 8px 0 0">T</span>he system reads provider letters and drafts a summary for prior-authorization nurses. Because it can shape a coverage decision, the triage rules placed it in the high tier on intake, with a person reviewing every output.</p>
+<p style="margin: 0 0 12px">Privacy signed with two conditions: only the claim under review goes to the model, and the vendor’s BAA is amended to cover the summarization API. Clinical Safety added a monthly sample of 50 summaries checked against their source letters.</p>
+<p style="margin: 0">No agent took part in the decision. The privacy agent’s draft is on the record as a draft.</p>
+</div>
+</article>
+
+<div style="grid-column: span 5; display: flex; flex-direction: column; gap: 20px">
+<section aria-labelledby="seal-h" style="border-top: 4px solid {{t.text}}; padding-top: 10px; display: flex; flex-direction: column">
+<h3 id="seal-h" style="margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em">WAITING FOR YOUR REVIEW</h3>
+<a href="Table.dc.html" style="display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid {{t.rule}}; text-decoration: none">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 23px; font-weight: 400; line-height: 1.2">Formulary Q&amp;A tool asks for Privacy sign-off</span><span style="font-family: 'Geist Mono', monospace; font-size: 12px; white-space: nowrap">MEDIUM · 2d</span></a>
+<a href="Table.dc.html" style="display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-bottom: 1px solid {{t.rule}}; text-decoration: none">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 23px; font-weight: 400; line-height: 1.2">Claims anomaly scorer, paused, needs re-review</span><span style="font-family: 'Geist Mono', monospace; font-size: 12px; white-space: nowrap; color: {{t.red}}">CRITICAL · 5d</span></a>
+<a href="Table.dc.html" style="display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; text-decoration: none">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 23px; font-weight: 400; line-height: 1.2">Call summary notes: annual privacy check</span><span style="font-family: 'Geist Mono', monospace; font-size: 12px; white-space: nowrap">MEDIUM · 9d</span></a>
+</section>
+
+<section aria-labelledby="late-h" style="padding: 14px 16px; background: {{t.box}}; color: {{t.boxText}}">
+<h3 id="late-h" style="margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: {{t.boxLabel}}">OVERDUE</h3>
+<p style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 22px; line-height: 1.25">Member benefits chat is 24 days past its re-review. It is still live.</p>
+</section>
+
+<section aria-labelledby="desk-h" style="padding: 14px 16px; border: 2px dashed {{t.agent}}; border-radius: 16px; background: {{t.agentTint}}">
+<h3 id="desk-h" style="margin: 0 0 8px; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.agentText}}">AGENT DRAFTS · NOT DECISIONS</h3>
+<ul style="margin: 0; padding-left: 16px; font-size: 14px; line-height: 1.6">
+<li>privacy-agent drafted 3 reviews overnight; 1 flagged low confidence</li>
+<li>intake-agent pre-filled the Formulary Q&amp;A intake from its README</li>
+<li>eval gate: all agents passing golden set v4</li>
+</ul>
+</section>
+</div>
+
+<div style="grid-column: span 12; margin-top: 20px; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: 32px; border-top: 1px solid {{t.text}}; padding-top: 12px">
+<section aria-labelledby="corr-h" style="grid-column: span 5">
+<h3 id="corr-h" style="margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em">POLICY CHANGES</h3>
+<p style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 16px; line-height: 1.45">Proposed: <em>healthcare-ai@1.1</em> adds Security review for every vendor-hosted system. Three live systems would need a Security review. <a href="#diff">Read the diff</a>.</p>
+</section>
+<section aria-labelledby="rec-h" style="grid-column: span 7">
+<h3 id="rec-h" style="margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.12em">AUDIT LOG · LAST 24 HOURS · HASH CHAIN VERIFIED</h3>
+<ol style="margin: 0; padding: 0; list-style: none; font-family: 'Geist Mono', monospace; font-size: 12px; line-height: 1.8">
+<li>16:41 · M. Lee · conditionally_approve CASE-0142 · #7c1e</li>
+<li>10:18 · A. Duarte · sign clinical-safety CASE-0142 · #f3a8</li>
+<li>09:02 · router · start_review CASE-0145 · #e4b0</li>
+</ol>
+</section>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  // Values from the Aegis design system (ds/aegis/tokens.json).
+  light: { scheme: 'light', bg: '#EEECE6', text: '#0F1216', red: '#A33A00', rule: '#DCD8CE', box: '#0F1216', boxText: '#EEECE6', boxLabel: '#FFA36E', agent: '#0070A8', agentText: '#005A88', agentTint: 'rgba(0,112,168,0.07)', focus: '#1F5FD6' },
+  dark: { scheme: 'dark', bg: '#0B0E13', text: '#EDE9E0', red: '#FFA36E', rule: '#262D3B', box: '#EDE9E0', boxText: '#0B0E13', boxLabel: '#A33A00', agent: '#62D0FF', agentText: '#8EDDFF', agentTint: 'rgba(98,208,255,0.08)', focus: '#5B9BFF' }
+};
+// 'auto' follows the viewer's system setting; every text pair meets WCAG AA 4.5:1, controls 3:1.
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  renderVals() { return { t: pickTheme(this.props.theme) }; }
+}
+</script>
+</body>
+</html>

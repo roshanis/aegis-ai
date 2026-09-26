@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Decide CASE-0142</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 40px; border-bottom: 1px solid {{t.line}}">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 26px">Aegis</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">Northwind Health Plan</span>
+<div style="flex-grow: 1"></div>
+<nav aria-label="Primary" style="display: flex; gap: 4px; font-size: 14px">
+<a href="L3Home.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Home</a>
+<a href="L1Register.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Register</a>
+<a href="L5Decide.dc.html" aria-current="page" style="padding: 12px; border-radius: 8px; text-decoration: none; font-weight: 600; background: {{t.raised}}">Decisions · 1</a>
+<a href="L6Audit.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">ML</span>
+<span style="font-size: 13px">Marcus Lee</span>
+</header>
+
+<main style="flex-grow: 1; min-height: 0; box-sizing: border-box; padding: 32px 40px; display: flex; gap: 32px">
+<section style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 34px">Prior-auth letter summarizer</h1>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}">CASE-0142</span>
+<span style="font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}; color: {{t.high}}">High risk</span>
+<span style="font-size: 13px; font-weight: 600; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}; color: {{t.ok}}">8/8 signed</span>
+<span style="font-size: 13px; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}">3 conditions</span>
+</div>
+</div>
+
+<h2 style="margin: 0; font-size: 15px; font-weight: 600">Sign-offs</h2>
+<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{signoffs}}" as="s" hint-placeholder-count="8">
+<li style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: {{t.panel}}; border: 1px solid {{t.line}}">
+<span aria-hidden="true" style="width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">{{s.ini}}</span>
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 15px; font-weight: 600">{{s.team}}</span>
+<span style="font-size: 13px; color: {{t.soft}}">{{s.who}}</span>
+</div>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 4px 8px; border-radius: 6px; background: {{t.raised}}; color: {{s.tagC}}">{{s.tag}}</span>
+</li>
+</sc-for>
+</ul>
+</section>
+
+<aside aria-labelledby="dec-h" style="width: 420px; flex-shrink: 0; box-sizing: border-box; padding: 22px; border-radius: 16px; background: {{t.panel}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<h2 id="dec-h" style="margin: 0; font-size: 17px; font-weight: 600">Your decision</h2>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: {{t.ok}}">YOU DIDN’T SUBMIT THIS ✓</span>
+</div>
+<div role="radiogroup" aria-label="Decision" style="display: flex; flex-direction: column; gap: 6px">
+<sc-for list="{{options}}" as="o" hint-placeholder-count="3">
+<button type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="height: 44px; padding: 0 14px; text-align: left; border-radius: 10px; font-size: 15px; cursor: pointer; border: {{o.border}}; background: {{o.bg}}; color: {{t.text}}; font-weight: {{o.weight}}">{{o.label}}</button>
+</sc-for>
+</div>
+<sc-if value="{{showConds}}" hint-placeholder-val="{{true}}">
+<fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 2px">
+<legend style="padding: 0 0 6px; font-size: 13px; font-weight: 600">Conditions</legend>
+<label style="display: flex; align-items: center; gap: 10px; min-height: 34px; font-size: 14px; color: {{t.soft}}"><input type="checkbox" checked disabled style="width: 18px; height: 18px; accent-color: {{t.ring}}">3 set by the teams</label>
+<label style="display: flex; align-items: center; gap: 10px; min-height: 34px; font-size: 14px"><input type="checkbox" checked="{{extra}}" onChange="{{flipExtra}}" style="width: 18px; height: 18px; accent-color: {{t.ring}}">Re-review in 6 months</label>
+</fieldset>
+</sc-if>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="why" style="font-size: 13px; font-weight: 600">Reason <span style="font-weight: 400; color: {{t.soft}}">· required</span></label>
+<input id="why" type="text" defaultValue="Pilot only, with the privacy and clinical conditions." style="height: 44px; box-sizing: border-box; padding: 0 12px; font-size: 14px; border-radius: 10px; border: 1px solid {{t.btn2}}; background: {{t.raised}}; color: {{t.text}}">
+</div>
+<div style="margin-top: auto; padding: 12px 14px; border-radius: 10px; background: {{t.raised}}; font-size: 14px" aria-live="polite">{{readback}}</div>
+<a href="L6Audit.dc.html" style="height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 16px; font-weight: 600; text-decoration: none">{{primary}}</a>
+</aside>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":900}}'>
+var THEMES = {
+  dark: { scheme: 'dark', bg: '#0B0E13', panel: '#12161E', raised: '#1A1F2A', line: '#262D3B', text: '#EDE9E0', soft: '#A3ABB9', btnBg: '#D4FF3A', btnText: '#0B0E13', btn2: '#6B7488',
+    focus: '#5B9BFF', seal: '#D4FF3A', sealEdge: 'transparent', ring: '#D4FF3A', ok: '#8FE3B5', warn: '#F6D37A', high: '#FFA36E' },
+  light: { scheme: 'light', bg: '#EEECE6', panel: '#FFFFFF', raised: '#F4F2EC', line: '#DCD8CE', text: '#0F1216', soft: '#525964', btnBg: '#0F1216', btnText: '#D4FF3A', btn2: '#858073',
+    focus: '#1F5FD6', seal: '#D4FF3A', sealEdge: 'rgba(15,18,22,0.45)', ring: '#4D6B00', ok: '#1B6B44', warn: '#7A5600', high: '#A33A00' }
+};
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var SIGNOFFS = [
+  { ini: 'PR', team: 'Privacy', who: 'Priya Raman', conds: 2 },
+  { ini: 'AD', team: 'Clinical Safety', who: 'Ana Duarte', conds: 1 },
+  { ini: 'JB', team: 'Legal', who: 'Jordan Blake', conds: 0 },
+  { ini: 'RC', team: 'Security', who: 'Rui Chen', conds: 0 },
+  { ini: 'KO', team: 'Data Governance', who: 'Kemi Okafor', conds: 0 },
+  { ini: 'TN', team: 'Tech Architecture', who: 'Tom Nguyen', conds: 0 },
+  { ini: 'AS', team: 'Responsible AI', who: 'Aisha Siddiqui', conds: 0 },
+  { ini: 'NB', team: 'Procurement', who: 'Nia Brooks', conds: 0 }
+];
+var OPTIONS = ['Approve for a pilot', 'Approve for full use', 'Reject'];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._on = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._on); } catch (e) {}
+  }
+  componentWillUnmount() { try { this._mq.removeEventListener('change', this._on); } catch (e) {} }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var s = this.state || {};
+    var d = typeof s.d === 'number' ? s.d : 0;
+    var extra = s.extra !== false;
+    var n = 3 + (extra ? 1 : 0);
+    var readback = d === 2 ? 'You reject CASE-0142. Dana Ortiz sees your reason.'
+      : 'You approve CASE-0142 for ' + (d === 0 ? 'a pilot' : 'full use') + ' with ' + n + ' conditions.';
+    return {
+      t: t,
+      signoffs: SIGNOFFS.map(function (x) {
+        return Object.assign({}, x, { tag: x.conds ? x.conds + (x.conds === 1 ? ' CONDITION' : ' CONDITIONS') : 'SIGNED', tagC: x.conds ? t.warn : t.ok });
+      }),
+      options: OPTIONS.map(function (label, i) {
+        var on = i === d;
+        return { label: label, on: on, bg: on ? t.raised : 'transparent', border: on ? '2px solid ' + t.ring : '1px solid ' + t.btn2, weight: on ? '600' : '400', pick: function () { self.setState({ d: i }); } };
+      }),
+      showConds: d < 2, extra: extra, flipExtra: function () { self.setState({ extra: !extra }); },
+      readback: readback,
+      primary: d === 2 ? 'Reject' : 'Approve with ' + n + ' conditions'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+<!-- @dsCard group="Actions" height=100 subtitle="Primary, secondary, segmented, pill" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Button</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;display=swap">
+<style>
+  body { margin: 0; background: var(--surface-page); color: var(--ink); font-family: var(--font-sans); }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 22px; }
+  button { font-family: var(--font-sans); cursor: pointer; }
+  button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .primary { height: 48px; padding: 0 20px; border: 0; border-radius: 12px; background: var(--action); color: var(--on-action); font-size: 15px; font-weight: 600; }
+  .secondary { height: 48px; padding: 0 18px; border: 1px solid var(--border-control); border-radius: 12px; background: transparent; color: var(--ink); font-size: 15px; font-weight: 500; }
+  .seg { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-raised); }
+  .seg button { height: var(--target); width: 72px; border: 0; border-radius: 9px; font-size: 14px; font-weight: 600; background: transparent; color: var(--ink-muted); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface-page); }
+  .pill { height: var(--target); padding: 0 16px; border-radius: var(--radius-pill); border: 1px solid var(--border-control); background: transparent; color: var(--ink); font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="row">
+  <button type="button" class="primary">Sign with 2 conditions</button>
+  <button type="button" class="secondary">Request changes</button>
+  <div class="seg" role="group" aria-label="Uses PHI"><button type="button" aria-pressed="true">Yes</button><button type="button" aria-pressed="false">No</button></div>
+  <button type="button" class="pill">Which conditions are still open?</button>
+</div>
+</body>
+</html>

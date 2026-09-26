@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Audit log</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+a{color:#D4FF3A}a:hover{color:#E6FF8A}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; --focus: {{t.focus}}; color-scheme: {{t.name}}; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="height: 60px; flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 0 24px; border-bottom: 1px solid {{t.line}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{t.brand}}" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6l8-3z"></path><path d="M8.5 12l2.5 2.5 4.5-5"></path></svg>
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 27px; line-height: 1">Aegis</span>
+</div>
+<span style="color: {{t.muted}}" aria-hidden="true">/</span>
+<span style="font-size: 14px; font-weight: 500">Northwind Health Plan</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 6px; border: 1px solid {{t.line}}; color: {{t.muted}}">SANDBOX · SHARED CLOUD</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="width: 480px; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-radius: 10px; background: {{t.raised}}; border: 1px solid {{t.line}}; color: {{t.muted}}; font-size: 14px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg><span style="flex-grow: 1; text-align: left">Search cases, systems, people and policies</span><kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 2px 6px; border-radius: 5px; border: 1px solid {{t.line}}">⌘K</kbd></button>
+<div style="flex-grow: 1"></div>
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 32px; height: 32px; border-radius: 50%; background: #D4FF3A; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">SW</span>
+<div style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 500">Sam Whitfield</span><span style="font-size: 12px; color: {{t.muted}}">Auditor · read-only</span></div>
+</div>
+</header>
+
+<div style="flex-grow: 1; min-height: 0; display: flex">
+<nav aria-label="Primary" style="width: 84px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 0; border-right: 1px solid {{t.line}}">
+<a href="Registry.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>Registry</a>
+<a href="Main.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Intake</a>
+<a href="Review.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13.5l2.5-8h12l2.5 8v5h-17z"></path><path d="M3.5 13.5h5l1 2h5l1-2h5"></path></svg>Reviews · 3</a>
+<a href="Audit.dc.html" aria-current="page" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 600; color: {{t.text}}; background: {{t.raised}}; box-shadow: inset 0 0 0 1px {{t.line}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="6" height="8" rx="1.5"></rect><rect x="15" y="8" width="6" height="8" rx="1.5"></rect><path d="M9 12h6"></path></svg>Audit</a>
+<a href="Language.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg>Packs</a>
+<a href="Language.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2.4" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle></svg>Agents</a>
+</nav>
+
+<main style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 28px 36px; display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div style="font-family: 'Geist Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: {{t.muted}}">AUDIT LOG · APPEND-ONLY · HASH-CHAINED PER TENANT</div>
+<div role="search" style="display: flex; align-items: center; gap: 14px; height: 64px; padding: 0 10px 0 20px; border-radius: 16px; background: {{t.panel}}; border: 1.5px solid {{t.line2}}">
+<label for="q" style="font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 24px; color: {{t.muted}}; white-space: nowrap">Search the audit log</label>
+<input id="q" type="search" value="Who approved CASE-0142, why, and under which policy?" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: {{t.text}}; font-size: 18px">
+<button type="button" style="height: 46px; padding: 0 20px; border-radius: 11px; border: 0; background: {{t.btnBg}}; color: {{t.btnFg}}; font-size: 15px; font-weight: 600; cursor: pointer">Search</button>
+</div>
+</div>
+
+<section aria-labelledby="ans" style="display: flex; gap: 28px; padding: 26px 28px; border-radius: 20px; background: {{t.panel}}; border: 1px solid {{t.line}}">
+<div style="width: 120px; height: 120px; flex-shrink: 0; border-radius: 50%; border: 2px solid {{t.sealRing}}; display: flex; align-items: center; justify-content: center">
+<span style="width: 96px; height: 96px; border-radius: 50%; background: #D4FF3A; color: #0B0E13; display: flex; align-items: center; justify-content: center; font-family: 'Instrument Serif', Georgia, serif; font-size: 44px">ML</span>
+</div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: {{t.muted}}">BASED ON 8 EVENTS</div>
+<h2 id="ans" style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 32px; line-height: 1.15"><em style="color: {{t.link}}">Conditionally approved</em> by Marcus Lee (Approver) on Sep 24, 2026 at 16:41 UTC</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.55; color: {{t.muted}}">“Approve for the pilot with the privacy conditions. Clinical Safety asked for a monthly sample of 50 summaries against source letters.”</p>
+<div style="display: flex; gap: 10px; margin-top: 4px">
+<button type="button" style="height: 44px; padding: 0 18px; border-radius: 11px; border: 0; background: {{t.btnBg}}; color: {{t.btnFg}}; font-size: 14px; font-weight: 600; cursor: pointer">Export evidence pack</button>
+<button type="button" style="height: 44px; padding: 0 18px; border-radius: 11px; background: transparent; border: 1px solid {{t.line2}}; color: {{t.text}}; font-size: 14px; font-weight: 500; cursor: pointer">Copy link</button>
+</div>
+</div>
+<dl style="width: 300px; flex-shrink: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 18px; align-content: start; padding-left: 26px; border-left: 1px solid {{t.line}}">
+<div><dt style="font-size: 12px; color: {{t.muted}}">Policy</dt><dd style="margin: 3px 0 0; font-family: 'Geist Mono', monospace; font-size: 13px">healthcare-ai@1.0.0</dd></div>
+<div><dt style="font-size: 12px; color: {{t.muted}}">Rule fired</dt><dd style="margin: 3px 0 0; font-family: 'Geist Mono', monospace; font-size: 13px">care-with-human</dd></div>
+<div><dt style="font-size: 12px; color: {{t.muted}}">Sign-offs</dt><dd style="margin: 3px 0 0; font-size: 14px">8 of 8</dd></div>
+<div><dt style="font-size: 12px; color: {{t.muted}}">Conditions</dt><dd style="margin: 3px 0 0; font-size: 14px">3 open</dd></div>
+<div><dt style="font-size: 12px; color: {{t.muted}}">Fast lane</dt><dd style="margin: 3px 0 0; font-size: 14px">Not used</dd></div>
+<div><dt style="font-size: 12px; color: {{t.muted}}">Agent actions</dt><dd style="margin: 3px 0 0; font-size: 14px">1 draft</dd></div>
+</dl>
+</section>
+
+<section aria-labelledby="chain-h" style="display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<h2 id="chain-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.muted}}">EVENTS FOR CASE-0142</h2>
+<span style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; color: {{t.ok}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Hash chain verified · latest #7c1e</span>
+</div>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; align-items: stretch">
+<sc-for list="{{events}}" as="e" hint-placeholder-count="8">
+<li style="display: flex; align-items: center; flex-grow: 1; min-width: 0">
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; background: {{e.bg}}; border: {{e.border}}">
+<div style="display: flex; align-items: center; gap: 8px">
+<sc-if value="{{e.isHuman}}" hint-placeholder-val="{{true}}"><span style="width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; background: #D4FF3A; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 600">{{e.ini}}</span></sc-if>
+<sc-if value="{{e.isSystem}}" hint-placeholder-val="{{false}}"><span style="width: 14px; height: 14px; margin: 4px; flex-shrink: 0; border-radius: 3px; background: {{t.system}}"></span></sc-if>
+<sc-if value="{{e.isAgent}}" hint-placeholder-val="{{false}}"><span style="box-sizing: border-box; width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; border: 2px dashed {{t.agent}}"></span></sc-if>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: {{t.muted}}">{{e.at}}</span>
+</div>
+<div style="font-size: 13px; font-weight: 500; line-height: 1.3">{{e.action}}</div>
+<div style="font-size: 12px; color: {{t.muted}}">{{e.actor}}</div>
+<div style="font-family: 'Geist Mono', monospace; font-size: 11px; color: {{t.muted}}">#{{e.hash}}</div>
+</div>
+<sc-if value="{{e.link}}" hint-placeholder-val="{{true}}"><span aria-hidden="true" style="width: 12px; height: 2px; flex-shrink: 0; background: {{t.line2}}"></span></sc-if>
+</li>
+</sc-for>
+</ol>
+<p style="margin: 0; font-size: 12px; color: {{t.muted}}">The log stores only IDs, states and hashes. Names are looked up when you view it, so deleting a person’s data doesn’t break the chain.</p>
+</section>
+
+<section aria-labelledby="next-h" style="margin-top: auto; display: flex; align-items: center; gap: 10px; flex-wrap: wrap">
+<h2 id="next-h" style="margin: 0 6px 0 0; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-weight: 400; font-size: 20px; color: {{t.muted}}">Related searches</h2>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 999px; background: transparent; border: 1px solid {{t.line2}}; color: {{t.text}}; font-size: 14px; cursor: pointer">Which conditions are still open?</button>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 999px; background: transparent; border: 1px solid {{t.line2}}; color: {{t.text}}; font-size: 14px; cursor: pointer">What would change under healthcare-ai@1.1?</button>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 999px; background: transparent; border: 1px solid {{t.line2}}; color: {{t.text}}; font-size: 14px; cursor: pointer">Agent drafts this quarter</button>
+</section>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  dark: { name: 'dark', bg: '#0B0E13', panel: '#12161E', raised: '#1A1F2A', line: '#262D3B', line2: '#6B7488', text: '#EDE9E0', muted: '#A3ABB9', brand: '#D4FF3A', link: '#D4FF3A', focus: '#5B9BFF',
+    sealEdge: 'transparent', sealRing: '#D4FF3A', check: '#D4FF3A', current: '#D4FF3A', system: '#8C95A6', agent: '#62D0FF', agentText: '#8EDDFF', agentTint: 'rgba(98,208,255,0.08)', glow: 'rgba(212,255,58,0.18)',
+    btnBg: '#D4FF3A', btnFg: '#0B0E13', ok: '#8FE3B5', warn: '#F6D37A', bad: '#FFA36E', high: '#FFA36E', major: '#FFA36E', minor: '#F6D37A', off: '#2A3140',
+    tier: { low: '#8FE3B5', medium: '#F6D37A', high: '#FFA36E', critical: '#FF7B7B' }, seg: ['#3E9E6E', '#D8A935', '#F07A36', '#E5484D'] },
+  light: { name: 'light', bg: '#EEECE6', panel: '#FFFFFF', raised: '#F4F2EC', line: '#DCD8CE', line2: '#858073', text: '#0F1216', muted: '#525964', brand: '#0F1216', link: '#3D5200', focus: '#1F5FD6',
+    sealEdge: 'rgba(15,18,22,0.45)', sealRing: '#4D6B00', check: '#4D6B00', current: '#4D6B00', system: '#6A7280', agent: '#0070A8', agentText: '#005A88', agentTint: 'rgba(0,112,168,0.07)', glow: 'rgba(77,107,0,0.18)',
+    btnBg: '#0F1216', btnFg: '#D4FF3A', ok: '#1B6B44', warn: '#7A5600', bad: '#A33A00', high: '#A33A00', major: '#A33A00', minor: '#7A5600', off: '#E4E0D6',
+    tier: { low: '#1B6B44', medium: '#7A5600', high: '#A33A00', critical: '#B3261E' }, seg: ['#2F8A5B', '#9A7000', '#C4501A', '#B3261E'] }
+};
+// 'auto' follows the viewer's system setting; every pair above is checked for WCAG AA (text 4.5:1, UI 3:1).
+function pickTheme(p) {
+  if (p === 'dark' || p === 'light') return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var EVENTS = [
+  { kind: 'human', ini: 'DO', at: 'SEP 22 10:05', action: 'submit', actor: 'Dana Ortiz', hash: '3b90' },
+  { kind: 'system', at: 'SEP 22 10:05', action: 'triage → high', actor: 'triage job', hash: 'a41c' },
+  { kind: 'system', at: 'SEP 22 10:05', action: 'start_review', actor: 'router job', hash: '5e2d' },
+  { kind: 'agent', at: 'SEP 23 09:14', action: 'draft privacy review', actor: 'privacy-agent', hash: '91fa' },
+  { kind: 'human', ini: 'PR', at: 'SEP 23 11:30', action: 'sign privacy-hipaa', actor: 'Priya Raman', hash: 'c07e' },
+  { kind: 'human', ini: 'JB', at: 'SEP 23 15:02', action: 'sign legal', actor: 'Jordan Blake', hash: '2d6b' },
+  { kind: 'human', ini: 'AD', at: 'SEP 24 10:18', action: 'sign clinical-safety', actor: 'Ana Duarte', hash: 'f3a8' },
+  { kind: 'human', ini: 'ML', at: 'SEP 24 16:41', action: 'conditionally_approve', actor: 'Marcus Lee', hash: '7c1e', last: true }
+];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  renderVals() {
+    var t = pickTheme(this.props.theme);
+    return {
+      t: t,
+      events: EVENTS.map(function (e, i) {
+        return Object.assign({ ini: '' }, e, {
+          isHuman: e.kind === 'human', isSystem: e.kind === 'system', isAgent: e.kind === 'agent',
+          link: i < EVENTS.length - 1,
+          bg: e.kind === 'agent' ? t.agentTint : t.panel,
+          border: e.last ? '2px solid ' + t.sealRing : (e.kind === 'agent' ? '1.5px dashed ' + t.agent : '1px solid ' + t.line)
+        });
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

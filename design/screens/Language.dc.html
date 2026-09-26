@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aegis design language</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+a{color:#D4FF3A}a:hover{color:#E6FF8A}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; --focus: {{t.focus}}; color-scheme: {{t.name}}; box-sizing: border-box; padding: 44px 56px; display: flex; flex-direction: column; gap: 28px; background: {{t.bg}}; color: {{t.text}}; font-family: 'Geist', system-ui, sans-serif">
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 32px">
+<div style="display: flex; flex-direction: column; gap: 10px">
+<div style="font-family: 'Geist Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: {{t.muted}}">AEGIS DESIGN LANGUAGE · V0.1</div>
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 64px; line-height: 1">Agents draft. <em style="color: {{t.link}}">People decide.</em></h1>
+</div>
+<p style="margin: 0; max-width: 460px; font-size: 15px; line-height: 1.55; color: {{t.muted}}">Every screen shows who acted, under which policy, and why. New policy packs, agents and deployment modes should fit without redesigning screens.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px">
+<section aria-labelledby="who-h" style="padding: 22px; border-radius: 18px; background: {{t.panel}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 16px">
+<h2 id="who-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.muted}}">WHO ACTED</h2>
+<div style="display: flex; align-items: center; gap: 14px">
+<span style="width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; background: #D4FF3A; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">PR</span>
+<div><div style="font-size: 15px; font-weight: 600">Circle: a person</div><div style="font-size: 13px; color: {{t.muted}}">Only people can approve or reject</div></div>
+</div>
+<div style="display: flex; align-items: center; gap: 14px">
+<span style="width: 24px; height: 24px; margin: 6px; flex-shrink: 0; border-radius: 5px; background: {{t.system}}"></span>
+<div><div style="font-size: 15px; font-weight: 600">Square: a system job</div><div style="font-size: 13px; color: {{t.muted}}">Runs fixed rules, not AI</div></div>
+</div>
+<div style="display: flex; align-items: center; gap: 14px">
+<span style="box-sizing: border-box; width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; border: 2.5px dashed {{t.agent}}"></span>
+<div><div style="font-size: 15px; font-weight: 600">Dashed ring: an AI agent</div><div style="font-size: 13px; color: {{t.muted}}">Can draft, cannot approve</div></div>
+</div>
+<p style="margin: 0; padding-top: 12px; border-top: 1px solid {{t.line}}; font-size: 13px; line-height: 1.5; color: {{t.muted}}">A new kind of actor, such as an MCP tool, gets its own mark. Screens stay the same.</p>
+</section>
+
+<section aria-labelledby="risk-h" style="padding: 22px; border-radius: 18px; background: {{t.panel}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 14px">
+<h2 id="risk-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.muted}}">RISK TIERS</h2>
+<div style="display: flex; justify-content: center">
+<svg width="220" height="124" viewBox="0 0 220 124" aria-hidden="true">
+<sc-for list="{{dial}}" as="s" hint-placeholder-count="4">
+<path d="{{s.d}}" fill="none" stroke="{{s.c}}" stroke-width="16"></path>
+</sc-for>
+</svg>
+</div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{tiers}}" as="x" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 4px">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 24px; color: {{x.c}}">{{x.label}}</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 10.5px; color: {{t.muted}}">{{x.hint}}</span>
+</div>
+</sc-for>
+</div>
+<p style="margin: 0; padding-top: 12px; border-top: 1px solid {{t.line}}; font-size: 13px; line-height: 1.5; color: {{t.muted}}">Tier colours differ in lightness, not just hue. Each tier is shown with its name and the rule that set it.</p>
+</section>
+
+<section aria-labelledby="type-h" style="padding: 22px; border-radius: 18px; background: {{t.panel}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 14px">
+<h2 id="type-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.muted}}">TYPE</h2>
+<div style="font-family: 'Instrument Serif', Georgia, serif; font-size: 34px; line-height: 1.1">Decisions and <em style="color: {{t.link}}">reasons</em></div>
+<div style="font-size: 12px; color: {{t.muted}}">Instrument Serif: headings and decisions</div>
+<div style="font-size: 18px; font-weight: 500">Interface, forms and tables</div>
+<div style="font-size: 12px; color: {{t.muted}}">Geist: controls, forms and tables</div>
+<div style="font-family: 'Geist Mono', monospace; font-size: 15px">healthcare-ai@1.0.0 · #7c1e</div>
+<div style="font-size: 12px; color: {{t.muted}}">Geist Mono: IDs, hashes, policy versions, rule IDs</div>
+</section>
+</div>
+
+<div style="flex-grow: 1; min-height: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px">
+<section aria-labelledby="tok-h" style="grid-column: span 2; padding: 22px; border-radius: 18px; background: {{t.panel}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 10px">
+<h2 id="tok-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.muted}}">COLOUR TOKENS</h2>
+<table style="width: 100%; border-collapse: collapse; font-size: 13px">
+<thead><tr style="text-align: left; font-size: 11px; color: {{t.muted}}"><th scope="col" style="padding: 6px 0; font-weight: 500">Token</th><th scope="col" style="padding: 6px 0; font-weight: 500">Dark</th><th scope="col" style="padding: 6px 0; font-weight: 500">Light</th></tr></thead>
+<tbody>
+<sc-for list="{{tokens}}" as="k" hint-placeholder-count="8">
+<tr style="border-top: 1px solid {{t.line}}">
+<td style="padding: 7px 0; font-family: 'Geist Mono', monospace; font-size: 12px">{{k.name}}</td>
+<td style="padding: 7px 0"><span style="display: inline-flex; align-items: center; gap: 8px"><span style="width: 18px; height: 18px; border-radius: 5px; background: {{k.dark}}; box-shadow: inset 0 0 0 1px rgba(128,128,128,0.4)"></span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: {{t.muted}}">{{k.dark}}</span></span></td>
+<td style="padding: 7px 0"><span style="display: inline-flex; align-items: center; gap: 8px"><span style="width: 18px; height: 18px; border-radius: 5px; background: {{k.light}}; box-shadow: inset 0 0 0 1px rgba(128,128,128,0.4)"></span><span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: {{t.muted}}">{{k.light}}</span></span></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</section>
+
+<section aria-labelledby="last-h" style="grid-column: span 3; padding: 22px 26px; border-radius: 18px; background: {{t.panel}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 12px">
+<h2 id="last-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.muted}}">DESIGN RULES</h2>
+<ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 26px">
+<sc-for list="{{rules}}" as="r" hint-placeholder-count="8">
+<li style="display: flex; gap: 12px">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 26px; line-height: 1; color: {{t.link}}">{{r.n}}</span>
+<div style="display: flex; flex-direction: column; gap: 3px">
+<span style="font-size: 14px; font-weight: 600">{{r.title}}</span>
+<span style="font-size: 13px; line-height: 1.45; color: {{t.muted}}">{{r.body}}</span>
+</div>
+</li>
+</sc-for>
+</ol>
+</section>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  dark: { name: 'dark', bg: '#0B0E13', panel: '#12161E', raised: '#1A1F2A', line: '#262D3B', line2: '#6B7488', text: '#EDE9E0', muted: '#A3ABB9', brand: '#D4FF3A', link: '#D4FF3A', focus: '#5B9BFF',
+    sealEdge: 'transparent', sealRing: '#D4FF3A', check: '#D4FF3A', current: '#D4FF3A', system: '#8C95A6', agent: '#62D0FF', agentText: '#8EDDFF', agentTint: 'rgba(98,208,255,0.08)', glow: 'rgba(212,255,58,0.18)',
+    btnBg: '#D4FF3A', btnFg: '#0B0E13', ok: '#8FE3B5', warn: '#F6D37A', bad: '#FFA36E', high: '#FFA36E', major: '#FFA36E', minor: '#F6D37A', off: '#2A3140',
+    tier: { low: '#8FE3B5', medium: '#F6D37A', high: '#FFA36E', critical: '#FF7B7B' }, seg: ['#3E9E6E', '#D8A935', '#F07A36', '#E5484D'] },
+  light: { name: 'light', bg: '#EEECE6', panel: '#FFFFFF', raised: '#F4F2EC', line: '#DCD8CE', line2: '#858073', text: '#0F1216', muted: '#525964', brand: '#0F1216', link: '#3D5200', focus: '#1F5FD6',
+    sealEdge: 'rgba(15,18,22,0.45)', sealRing: '#4D6B00', check: '#4D6B00', current: '#4D6B00', system: '#6A7280', agent: '#0070A8', agentText: '#005A88', agentTint: 'rgba(0,112,168,0.07)', glow: 'rgba(77,107,0,0.18)',
+    btnBg: '#0F1216', btnFg: '#D4FF3A', ok: '#1B6B44', warn: '#7A5600', bad: '#A33A00', high: '#A33A00', major: '#A33A00', minor: '#7A5600', off: '#E4E0D6',
+    tier: { low: '#1B6B44', medium: '#7A5600', high: '#A33A00', critical: '#B3261E' }, seg: ['#2F8A5B', '#9A7000', '#C4501A', '#B3261E'] }
+};
+// 'auto' follows the viewer's system setting; every pair above is checked for WCAG AA (text 4.5:1, UI 3:1).
+function pickTheme(p) {
+  if (p === 'dark' || p === 'light') return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var SEGS = [[180, 137], [133, 92], [88, 47], [43, 0]];
+function pt(a) { var r = a * Math.PI / 180; return (110 + 90 * Math.cos(r)).toFixed(1) + ' ' + (112 - 90 * Math.sin(r)).toFixed(1); }
+var TOKENS = [
+  ['surface.page', '#0B0E13', '#EEECE6'], ['surface.panel', '#12161E', '#FFFFFF'], ['ink.primary', '#EDE9E0', '#0F1216'], ['ink.muted', '#A3ABB9', '#525964'],
+  ['border.control', '#6B7488', '#858073'], ['actor.human', '#D4FF3A', '#4D6B00'], ['actor.agent', '#62D0FF', '#0070A8'], ['focus.ring', '#5B9BFF', '#1F5FD6']
+];
+var RULES = [
+  { title: 'Screens are built from policy packs', body: 'Questions, review teams and rubrics come from pack data. A new framework is a new pack, not a code release.' },
+  { title: 'Buttons come from the lifecycle', body: 'Screens only show actions that lifecycle.available() allows, so new states need no UI changes.' },
+  { title: 'Automated results explain themselves', body: 'Every tier, route and verdict shows the rule that produced it and a one-line reason.' },
+  { title: 'Search from anywhere with ⌘K', body: 'One search box for cases, systems, people and policies.' },
+  { title: 'Colours are tokens', body: 'Themes and tenant branding swap token sets. Components never use hex values directly.' },
+  { title: 'No vendor or hosting assumptions', body: 'Agents show a name and eval status, not a model vendor. Shared, dedicated and BYOC deployments look the same.' },
+  { title: 'Accessible by default', body: 'Text meets 4.5:1 and controls 3:1 in both themes. Auto theme follows the system. Visible focus, 44 px targets, RTL-ready.' },
+  { title: 'The audit log survives data deletion', body: 'The log stores IDs and hashes; names are looked up at read time.' }
+];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  renderVals() {
+    var t = pickTheme(this.props.theme);
+    return {
+      t: t,
+      dial: SEGS.map(function (s, i) { return { d: 'M ' + pt(s[0]) + ' A 90 90 0 0 1 ' + pt(s[1]), c: t.seg[i] }; }),
+      tiers: ['Low', 'Medium', 'High', 'Critical'].map(function (l, i) { return { label: l, c: t.tier[['low', 'medium', 'high', 'critical'][i]], hint: ['2 domains', '5 domains', '5 or more', 'all 8'][i] }; }),
+      tokens: TOKENS.map(function (k) { return { name: k[0], dark: k[1], light: k[2] }; }),
+      rules: RULES.map(function (r, i) { return { n: String(i + 1), title: r.title, body: r.body }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

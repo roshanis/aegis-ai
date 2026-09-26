@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aegis home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}a:hover{text-decoration-thickness:3px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; padding: 28px 72px 36px; display: flex; flex-direction: column; gap: 28px; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 24px">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; line-height: 1">Aegis</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.soft}}">Northwind Health Plan</span>
+<div style="flex-grow: 1"></div>
+<nav aria-label="Primary" style="display: flex; gap: 4px">
+<a href="SentenceHome.dc.html" aria-current="page" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; font-weight: 600; text-decoration: none; color: {{t.text}}; background: {{t.raised}}">Home</a>
+<a href="Sentence.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Register</a>
+<a href="SentenceReview.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Reviews · 3</a>
+<a href="SentenceAudit.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">PR</span>
+<span style="font-size: 14px">Priya Raman · Privacy reviewer</span>
+</header>
+
+<section aria-labelledby="today-h" style="display: flex; flex-direction: column; gap: 14px">
+<h1 id="today-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-weight: 400; font-size: 13px; letter-spacing: 0.1em; color: {{t.soft}}">FRIDAY 25 SEPTEMBER · WHAT NEEDS YOU</h1>
+<p style="margin: 0; max-width: 1240px; font-family: 'Instrument Serif', Georgia, serif; font-size: 50px; font-weight: 400; line-height: 1.3">
+You have
+<a href="SentenceReview.dc.html" style="color: {{t.chipText}}; background: {{t.chipBg}}; border-radius: 12px; padding: 0 14px; text-decoration: none">3 reviews waiting</a>,
+<a href="#overdue" style="color: {{t.chipText}}; background: {{t.chipBg}}; border-radius: 12px; padding: 0 14px; text-decoration: none">1 live system</a>
+is overdue for re-review, and agents wrote
+<a href="#drafts" style="color: {{t.chipText}}; background: {{t.chipBg}}; border-radius: 12px; padding: 0 14px; text-decoration: none">3 draft reviews</a>
+overnight for you to check.
+</p>
+</section>
+
+<section aria-labelledby="reg-h" style="flex-grow: 1; min-height: 0; padding-top: 22px; border-top: 2px solid {{t.rule}}; display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap">
+<h2 id="reg-h" style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; font-weight: 400">Show</h2>
+<button type="button" onClick="{{cycle}}" aria-label="Filter: {{filterText}}. Change" style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 10px; padding: 0 12px; cursor: pointer">{{filterText}}</button>
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px">registered systems</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.soft}}">{{count}}</span>
+</div>
+<ul style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column">
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<li style="display: flex; align-items: center; gap: 20px; min-height: 52px; border-bottom: 1px solid {{t.rule}}">
+<span style="width: 22px; flex-shrink: 0; display: flex; justify-content: center">
+<sc-if value="{{r.isAgent}}" hint-placeholder-val="{{false}}"><span aria-hidden="true" style="box-sizing: border-box; width: 18px; height: 18px; border-radius: 50%; border: 2px dashed {{t.agent}}"></span></sc-if>
+<sc-if value="{{r.isModel}}" hint-placeholder-val="{{true}}"><span aria-hidden="true" style="box-sizing: border-box; width: 14px; height: 14px; border-radius: 3px; border: 2px solid {{t.soft}}"></span></sc-if>
+</span>
+<span style="flex-grow: 1; font-size: 18px; line-height: 1.35"><strong style="font-weight: 600">{{r.name}}</strong> {{r.sentence}}</span>
+<span style="width: 90px; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; color: {{r.tierFg}}">{{r.tier}}</span>
+<span style="width: 150px; text-align: right; font-size: 14px; color: {{r.dueFg}}; font-weight: {{r.dueWeight}}">{{r.due}}</span>
+</li>
+</sc-for>
+</ul>
+</section>
+
+<div style="display: flex; align-items: center; gap: 16px">
+<a href="Sentence.dc.html" style="height: 56px; display: inline-flex; align-items: center; padding: 0 26px; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 17px; font-weight: 600; text-decoration: none">Register an AI system</a>
+<span style="font-size: 14px; color: {{t.soft}}">Every system here has one open review at most. Its history is in the audit log.</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  // Values from the Aegis design system (ds/aegis/tokens.json).
+  dark: { scheme: 'dark', bg: '#0B0E13', raised: '#1A1F2A', text: '#EDE9E0', soft: '#A3ABB9', chipBg: '#D4FF3A', chipText: '#0B0E13', rule: '#262D3B',
+    btnBg: '#D4FF3A', btnText: '#0B0E13', focus: '#5B9BFF', seal: '#D4FF3A', sealEdge: 'transparent', agent: '#62D0FF', warn: '#F6D37A', bad: '#FFA36E',
+    tier: { Low: '#8FE3B5', Medium: '#F6D37A', High: '#FFA36E', Critical: '#FF7B7B' } },
+  light: { scheme: 'light', bg: '#EEECE6', raised: '#F4F2EC', text: '#0F1216', soft: '#525964', chipBg: '#0F1216', chipText: '#D4FF3A', rule: '#DCD8CE',
+    btnBg: '#0F1216', btnText: '#D4FF3A', focus: '#1F5FD6', seal: '#D4FF3A', sealEdge: 'rgba(15,18,22,0.45)', agent: '#0070A8', warn: '#7A5600', bad: '#A33A00',
+    tier: { Low: '#1B6B44', Medium: '#7A5600', High: '#A33A00', Critical: '#B3261E' } }
+};
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var ROWS = [
+  { name: 'Member benefits chat', kind: 'AI system', state: 'live', sentence: 'is live and 24 days overdue for re-review; 5 of 7 teams have signed.', tier: 'High', due: 'Overdue', overdue: true },
+  { name: 'Prior-auth letter summarizer', kind: 'Vendor model', state: 'review', sentence: 'is approved with conditions and waiting on a BAA amendment before it goes live.', tier: 'High', due: 'Before deploy' },
+  { name: 'Claims anomaly scorer', kind: 'AI system', state: 'paused', sentence: 'is paused while 3 of 8 teams re-review it.', tier: 'Critical', due: 'In review', warn: true },
+  { name: 'Formulary Q&A tool', kind: 'Agent tool', state: 'review', sentence: 'is waiting for your Privacy review.', tier: 'Medium', due: 'Due in 2 days' },
+  { name: 'Care gap outreach drafts', kind: 'Agent', state: 'live', sentence: 'is live; its next re-review is in November.', tier: 'High', due: 'Nov 2026' },
+  { name: 'Call summary notes', kind: 'Vendor model', state: 'live', sentence: 'is live; its next re-review is in January.', tier: 'Medium', due: 'Jan 2027' },
+  { name: 'Provider directory cleaner', kind: 'Agent', state: 'live', sentence: 'is live through the fast lane.', tier: 'Low', due: 'Mar 2027' },
+  { name: 'Legacy fax classifier', kind: 'Vendor model', state: 'retired', sentence: 'was retired in August.', tier: 'Medium', due: '—' }
+];
+var FILTERS = [
+  { text: 'all', test: function () { return true; } },
+  { text: 'live', test: function (r) { return r.state === 'live'; } },
+  { text: 'in review', test: function (r) { return r.state === 'review'; } },
+  { text: 'paused', test: function (r) { return r.state === 'paused'; } },
+  { text: 'retired', test: function (r) { return r.state === 'retired'; } }
+];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var fi = (this.state && typeof this.state.f === 'number') ? this.state.f : 0;
+    var rows = ROWS.filter(FILTERS[fi].test);
+    return {
+      t: t,
+      filterText: FILTERS[fi].text,
+      cycle: function () { self.setState({ f: (fi + 1) % FILTERS.length }); },
+      count: rows.length + ' OF ' + ROWS.length,
+      rows: rows.map(function (r) {
+        var isAgent = r.kind.indexOf('Agent') === 0;
+        return {
+          name: r.name, sentence: r.sentence, tier: r.tier.toUpperCase(), tierFg: t.tier[r.tier],
+          isAgent: isAgent, isModel: !isAgent, due: r.due,
+          dueFg: r.overdue ? t.bad : (r.warn ? t.warn : t.soft), dueWeight: r.overdue ? '600' : '400'
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

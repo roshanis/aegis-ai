@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aegis home</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 40px; border-bottom: 1px solid {{t.line}}">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 26px">Aegis</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">Northwind Health Plan</span>
+<div style="flex-grow: 1"></div>
+<nav aria-label="Primary" style="display: flex; gap: 4px; font-size: 14px">
+<a href="L3Home.dc.html" aria-current="page" style="padding: 12px; border-radius: 8px; text-decoration: none; font-weight: 600; background: {{t.raised}}">Home</a>
+<a href="L1Register.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Register</a>
+<a href="L4Review.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Reviews · 3</a>
+<a href="L6Audit.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">PR</span>
+<span style="font-size: 13px">Priya Raman</span>
+</header>
+
+<main style="flex-grow: 1; min-height: 0; box-sizing: border-box; padding: 32px 40px; display: flex; flex-direction: column; gap: 24px">
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 34px">Needs you</h1>
+
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px">
+<a href="L4Review.dc.html" style="display: flex; flex-direction: column; gap: 6px; padding: 20px; border-radius: 14px; background: {{t.panel}}; border: 1px solid {{t.line}}; text-decoration: none">
+<span style="font-size: 40px; font-weight: 600; line-height: 1">3</span>
+<span style="font-size: 15px">Reviews waiting</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">OLDEST 2 DAYS</span>
+</a>
+<a href="#overdue" style="display: flex; flex-direction: column; gap: 6px; padding: 20px; border-radius: 14px; background: {{t.panel}}; border: 1px solid {{t.line}}; text-decoration: none">
+<span style="font-size: 40px; font-weight: 600; line-height: 1; color: {{t.high}}">1</span>
+<span style="font-size: 15px">Overdue re-review</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">MEMBER BENEFITS CHAT</span>
+</a>
+<a href="#drafts" style="display: flex; flex-direction: column; gap: 6px; padding: 20px; border-radius: 14px; background: {{t.agentTint}}; border: 2px dashed {{t.agent}}; text-decoration: none">
+<span style="font-size: 40px; font-weight: 600; line-height: 1">3</span>
+<span style="font-size: 15px">Agent drafts to check</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.agentText}}">DRAFT ONLY · CANNOT APPROVE</span>
+</a>
+</div>
+
+<section aria-labelledby="sys-h" style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: center; gap: 12px">
+<h2 id="sys-h" style="margin: 0; font-size: 17px; font-weight: 600">Systems</h2>
+<div role="group" aria-label="Filter" style="display: flex; gap: 6px">
+<sc-for list="{{filters}}" as="f" hint-placeholder-count="5">
+<button type="button" aria-pressed="{{f.on}}" onClick="{{f.pick}}" style="height: 36px; padding: 0 12px; border-radius: 999px; font-size: 13px; cursor: pointer; border: 1px solid {{f.border}}; background: {{f.bg}}; color: {{f.fg}}">{{f.label}}</button>
+</sc-for>
+</div>
+</div>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px">
+<thead>
+<tr style="text-align: left; font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: {{t.soft}}">
+<th scope="col" style="padding: 8px 0; font-weight: 500">SYSTEM</th>
+<th scope="col" style="padding: 8px 12px; font-weight: 500">STATUS</th>
+<th scope="col" style="padding: 8px 12px; font-weight: 500">RISK</th>
+<th scope="col" style="padding: 8px 12px; font-weight: 500">SIGN-OFFS</th>
+<th scope="col" style="padding: 8px 0; font-weight: 500; text-align: right">NEXT</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="8">
+<tr style="border-top: 1px solid {{t.line}}; height: 48px">
+<td style="padding: 0"><span style="display: inline-flex; align-items: center; gap: 10px">
+<sc-if value="{{r.isAgent}}" hint-placeholder-val="{{false}}"><span aria-hidden="true" style="box-sizing: border-box; width: 16px; height: 16px; border-radius: 50%; border: 2px dashed {{t.agent}}"></span></sc-if>
+<sc-if value="{{r.isModel}}" hint-placeholder-val="{{true}}"><span aria-hidden="true" style="box-sizing: border-box; width: 13px; height: 13px; margin: 0 1px; border-radius: 3px; border: 2px solid {{t.soft}}"></span></sc-if>
+<span style="font-weight: 500">{{r.name}}</span></span></td>
+<td style="padding: 0 12px"><span style="font-size: 12px; padding: 4px 10px; border-radius: 999px; background: {{t.raised}}; color: {{r.statusC}}">{{r.status}}</span></td>
+<td style="padding: 0 12px; font-family: 'Geist Mono', monospace; font-size: 12px; color: {{r.tierC}}">{{r.tier}}</td>
+<td style="padding: 0 12px; font-family: 'Geist Mono', monospace; font-size: 12px">{{r.signed}}</td>
+<td style="padding: 0; text-align: right; font-size: 13px; color: {{r.dueC}}; font-weight: {{r.dueW}}">{{r.due}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":900}}'>
+var THEMES = {
+  dark: { scheme: 'dark', bg: '#0B0E13', panel: '#12161E', raised: '#1A1F2A', line: '#262D3B', text: '#EDE9E0', soft: '#A3ABB9', btn2: '#6B7488', focus: '#5B9BFF',
+    seal: '#D4FF3A', sealEdge: 'transparent', agent: '#62D0FF', agentText: '#8EDDFF', agentTint: 'rgba(98,208,255,0.08)', ok: '#8FE3B5', warn: '#F6D37A', high: '#FFA36E',
+    tier: { Low: '#8FE3B5', Medium: '#F6D37A', High: '#FFA36E', Critical: '#FF7B7B' } },
+  light: { scheme: 'light', bg: '#EEECE6', panel: '#FFFFFF', raised: '#F4F2EC', line: '#DCD8CE', text: '#0F1216', soft: '#525964', btn2: '#858073', focus: '#1F5FD6',
+    seal: '#D4FF3A', sealEdge: 'rgba(15,18,22,0.45)', agent: '#0070A8', agentText: '#005A88', agentTint: 'rgba(0,112,168,0.07)', ok: '#1B6B44', warn: '#7A5600', high: '#A33A00',
+    tier: { Low: '#1B6B44', Medium: '#7A5600', High: '#A33A00', Critical: '#B3261E' } }
+};
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var ROWS = [
+  { name: 'Formulary Q&A tool', kind: 'Agent tool', state: 'review', status: 'Your review', tier: 'Medium', signed: '1/5', due: 'Due in 2 days' },
+  { name: 'Prior-auth letter summarizer', kind: 'Vendor model', state: 'review', status: 'In review', tier: 'High', signed: '4/8', due: 'Due Sep 29' },
+  { name: 'Member benefits chat', kind: 'AI system', state: 'live', status: 'Live', tier: 'High', signed: '5/7', due: 'Overdue 24 days', overdue: true },
+  { name: 'Claims anomaly scorer', kind: 'AI system', state: 'paused', status: 'Paused', tier: 'Critical', signed: '3/8', due: 'Re-review open' },
+  { name: 'Care gap outreach drafts', kind: 'Agent', state: 'live', status: 'Live', tier: 'High', signed: '8/8', due: 'Nov 2026' },
+  { name: 'Call summary notes', kind: 'Vendor model', state: 'live', status: 'Live', tier: 'Medium', signed: '5/5', due: 'Jan 2027' },
+  { name: 'Provider directory cleaner', kind: 'Agent', state: 'live', status: 'Live · fast lane', tier: 'Low', signed: '—', due: 'Mar 2027' },
+  { name: 'Legacy fax classifier', kind: 'Vendor model', state: 'retired', status: 'Retired', tier: 'Medium', signed: '—', due: '—' }
+];
+var FILTERS = [
+  { label: 'All', test: function () { return true; } },
+  { label: 'In review', test: function (r) { return r.state === 'review'; } },
+  { label: 'Live', test: function (r) { return r.state === 'live'; } },
+  { label: 'Paused', test: function (r) { return r.state === 'paused'; } },
+  { label: 'Retired', test: function (r) { return r.state === 'retired'; } }
+];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._on = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._on); } catch (e) {}
+  }
+  componentWillUnmount() { try { this._mq.removeEventListener('change', this._on); } catch (e) {} }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var fi = (this.state && typeof this.state.f === 'number') ? this.state.f : 0;
+    return {
+      t: t,
+      filters: FILTERS.map(function (f, i) {
+        var on = i === fi;
+        return { label: f.label, on: on, bg: on ? t.text : 'transparent', fg: on ? t.bg : t.text, border: on ? t.text : t.btn2, pick: function () { self.setState({ f: i }); } };
+      }),
+      rows: ROWS.filter(FILTERS[fi].test).map(function (r) {
+        var isAgent = r.kind.indexOf('Agent') === 0;
+        return {
+          name: r.name, status: r.status, tier: r.tier.toUpperCase(), tierC: t.tier[r.tier], signed: r.signed, due: r.due,
+          isAgent: isAgent, isModel: !isAgent,
+          statusC: r.state === 'paused' ? t.warn : (r.status === 'Your review' ? t.text : t.soft),
+          dueC: r.overdue ? t.high : t.soft, dueW: r.overdue ? '600' : '400'
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
