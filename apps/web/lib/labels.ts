@@ -167,6 +167,7 @@ export const FAILURE: Record<string, string> = {
   decision_language: "tried to state a decision",
   unknown_control: "cited a control this case doesn't have",
   interrupted: "was interrupted by a restart",
+  budget: "stopped: this month's token budget is used up",
   under_triage: "would have put the system in too low a risk tier",
   model_changed: "stopped because the model changed",
   incomplete: "stopped before finishing",

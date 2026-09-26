@@ -96,6 +96,18 @@ test("agents draft and suggest, people decide, and an admin keeps them behind th
   await expect(page.getByRole("heading", { name: "Scripted demo model" })).toBeVisible();
   await expect(agentCard(page, "Intake assistant").getByText("Passed · off")).toBeVisible();
 
+  // The admin sees this month's token use and caps it.
+  const tokenUse = page.getByRole("region", { name: "Token use" });
+  await expect(tokenUse.getByText(/no monthly cap/)).toBeVisible();
+  await tokenUse.getByRole("button", { name: "Change limits" }).click();
+  await tokenUse.getByLabel("Tokens per month").fill("2,000,000");
+  await tokenUse.getByLabel("Intake suggestions per person per day").fill("20");
+  await tokenUse.getByRole("button", { name: "Save limits" }).click();
+  await expect(tokenUse.getByRole("heading", { name: /of 2M/ })).toBeVisible();
+  await expect(tokenUse.getByRole("meter", { name: "Share of monthly token budget used" })).toBeVisible();
+  await expect(tokenUse.getByText(/20 intake suggestions per person per day/)).toBeVisible();
+  await tokenUse.screenshot({ path: "test-results/token-use.png" });
+
   // With the intake assistant off, nobody offers to suggest phrases.
   await actAs(page, "Riley Park");
   await rail(page, "Intake").click();

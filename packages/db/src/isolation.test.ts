@@ -50,6 +50,7 @@ beforeAll(async () => {
     "0006_agents.sql",
     "0007_case_numbers.sql",
     "0008_audit_chain_order.sql",
+    "0009_token_controls.sql",
   ]);
   expect(await migrate(db)).toEqual([]);
   await seedTenant(A, "tenant-a", userA, assetA);
@@ -333,7 +334,7 @@ describe("audit chain order", () => {
       await tx.exec(audit(A, "before.1"));
       await tx.exec(audit(A, "before.2"));
     });
-    expect(await migrate(old)).toEqual(["0008_audit_chain_order.sql"]);
+    expect(await migrate(old)).toEqual(["0008_audit_chain_order.sql", "0009_token_controls.sql"]);
     await withTenant(old, A, async (tx) => {
       await tx.exec(audit(A, "after.1"));
       await tx.exec(audit(A, "after.2"));

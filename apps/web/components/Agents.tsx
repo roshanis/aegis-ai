@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { connectModel, runEvaluation, switchAgent } from "@/app/(console)/agents/actions";
+import { connectModel, runEvaluation, setBudget, switchAgent } from "@/app/(console)/agents/actions";
 import { IDLE } from "@/lib/action-state";
 import { PROVIDERS } from "@/lib/labels";
 
@@ -152,5 +152,52 @@ export function AgentControls({
       </div>
       {error ? <p className="error">{error}</p> : null}
     </div>
+  );
+}
+
+export function BudgetForm({ monthlyTokens, dailyIntakePerPerson }: { monthlyTokens: number | null; dailyIntakePerPerson: number }) {
+  const [state, submit, pending] = useActionState(setBudget, IDLE);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    if (!state.error && state !== IDLE) setOpen(false);
+  }, [state]);
+
+  if (!open) {
+    return (
+      <div>
+        <button className="btn btn-sm" type="button" onClick={() => setOpen(true)}>
+          Change limits
+        </button>
+      </div>
+    );
+  }
+  return (
+    <form action={submit} className="stack raised" style={{ gap: 12 }}>
+      <div className="field">
+        <label htmlFor="monthlyTokens">Tokens per month</label>
+        <input
+          id="monthlyTokens"
+          name="monthlyTokens"
+          type="text"
+          inputMode="numeric"
+          defaultValue={monthlyTokens === null ? "" : String(monthlyTokens)}
+          placeholder="No cap"
+          autoComplete="off"
+        />
+      </div>
+      <div className="field">
+        <label htmlFor="dailyIntakePerPerson">Intake suggestions per person per day</label>
+        <input id="dailyIntakePerPerson" name="dailyIntakePerPerson" type="number" min={1} max={1000} required defaultValue={dailyIntakePerPerson} />
+      </div>
+      {state.error ? <p className="error">{state.error}</p> : null}
+      <div className="row" style={{ gap: 8 }}>
+        <button className="btn btn-primary btn-sm" type="submit" disabled={pending}>
+          {pending ? "Saving…" : "Save limits"}
+        </button>
+        <button className="btn btn-sm" type="button" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }

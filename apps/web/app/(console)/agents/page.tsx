@@ -1,6 +1,6 @@
 import type { AgentView, EvalView } from "@aegis/core";
 import type { Metadata } from "next";
-import { AgentControls, ModelForm } from "@/components/Agents";
+import { AgentControls, BudgetForm, ModelForm } from "@/components/Agents";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { ActorMark, Tag } from "@/components/ds";
 import { governance } from "@/lib/db";
@@ -14,6 +14,8 @@ const PURPOSE: Record<string, string> = {
   draft: "Drafted a domain review",
   eval: "Ran a golden case",
 };
+
+const tokens = (n: number) => new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 }).format(n);
 
 const pct = (n: number | null) => (n === null ? "–" : `${Math.round(n * 100)}%`);
 
@@ -107,7 +109,8 @@ export default async function AgentsPage() {
   const overview = await gov.agentsOverview(principal);
   const pack = await gov.policyPack(principal, { caseKind: "risk_review" });
   const fields = pack?.kind === "initiative" ? Object.fromEntries(pack.questions.map((q) => [q.field, q.label])) : {};
-  const { connection } = overview;
+  const { connection, usage } = overview;
+  const overBudget = usage.budget.monthlyTokens !== null && usage.monthTokens >= usage.budget.monthlyTokens;
   const evaluating = overview.agents.some((a) => a.status === "evaluating");
 
   return (
@@ -151,6 +154,42 @@ export default async function AgentsPage() {
         ) : null}
       </section>
 
+      <section className="panel panel-xl stack" style={{ gap: 12 }} aria-label="Token use">
+        <div className="spread">
+          <div className="stack" style={{ gap: 4 }}>
+            <span className="eyebrow">Token use this month</span>
+            <h2 className="display-m">
+              {tokens(usage.monthTokens)}
+              {usage.budget.monthlyTokens !== null ? <span className="muted"> of {tokens(usage.budget.monthlyTokens)}</span> : null}
+            </h2>
+          </div>
+          {overBudget ? <Tag tone="bad">Budget used up</Tag> : null}
+        </div>
+        {usage.budget.monthlyTokens !== null ? (
+          <div
+            className="progress"
+            role="meter"
+            aria-label="Share of monthly token budget used"
+            aria-valuemin={0}
+            aria-valuemax={usage.budget.monthlyTokens}
+            aria-valuenow={Math.min(usage.monthTokens, usage.budget.monthlyTokens)}
+          >
+            <span
+              data-state={overBudget ? "stopped" : undefined}
+              style={{ width: `${Math.min(100, (usage.monthTokens / usage.budget.monthlyTokens) * 100)}%` }}
+            />
+          </div>
+        ) : null}
+        <p className="caption muted">
+          {usage.monthCalls} model {usage.monthCalls === 1 ? "call" : "calls"} · {usage.monthReused} answered again at no cost ·{" "}
+          {usage.budget.monthlyTokens === null ? "no monthly cap" : "agents pause at the cap"} · {usage.budget.dailyIntakePerPerson} intake
+          suggestions per person per day
+        </p>
+        {overview.canManage ? (
+          <BudgetForm monthlyTokens={usage.budget.monthlyTokens} dailyIntakePerPerson={usage.budget.dailyIntakePerPerson} />
+        ) : null}
+      </section>
+
       <div className="agent-grid">
         {overview.agents.map((agent) => (
           <AgentCard key={agent.id} agent={agent} fields={fields} />
@@ -185,7 +224,9 @@ export default async function AgentsPage() {
                   <td data-label="Agent">{run.agentId === "intake" ? "Intake assistant" : "Review drafter"}</td>
                   <td data-label="What">{PURPOSE[run.purpose]}</td>
                   <td data-label="Result">
-                    {run.state === "succeeded" ? (
+                    {run.state === "succeeded" && run.reused ? (
+                      <Tag>Reused · no cost</Tag>
+                    ) : run.state === "succeeded" ? (
                       <Tag tone="ok">Done</Tag>
                     ) : run.state === "running" ? (
                       <Tag tone="agent">Running</Tag>

@@ -111,9 +111,15 @@
   from one case under row-level security; it has no tools and no database
   access. Jeeves' rule still lets a conditional approval rest on drafts
   nobody signed; the decision's audit event lists them.
-- **No spend or rate limits on model calls.** A tenant's own key pays, but
-  nothing caps how often drafts or evaluations run, and a sandbox visitor
-  can connect an OpenAI key.
+- **Token controls cover drafts and intake, not evaluations.** A tenant's own
+  key pays for every call, so Aegis skips calls whose answer cannot change
+  (a repeated intake description, a redraft whose inputs are unchanged),
+  waits 20 seconds before a redraft so a burst of evidence costs one call,
+  bounds what goes in and comes out of each call, and lets an admin cap
+  monthly tokens and each person's daily intake requests. The monthly cap
+  is checked before each call, so calls already running can overshoot it
+  slightly. Golden-set evaluations are counted but not capped, since an admin
+  starts each one. A sandbox visitor can still connect an OpenAI key.
 - **Endpoint checks resolve names before each call,** so a public name that
   points at a private address is refused; a resolver that changes its answer
   between the check and the connection is not.

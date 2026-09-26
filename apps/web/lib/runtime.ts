@@ -41,7 +41,11 @@ async function boot(): Promise<Runtime> {
   const url = process.env.DATABASE_URL;
   if (url) {
     const { launchDbosJobs } = await import("@aegis/workflows");
-    const jobs = await launchDbosJobs(() => gov.agentRuntime, { databaseUrl: url });
+    const settle = Number(process.env.AEGIS_DRAFT_SETTLE_MS);
+    const jobs = await launchDbosJobs(() => gov.agentRuntime, {
+      databaseUrl: url,
+      ...(Number.isFinite(settle) && process.env.AEGIS_DRAFT_SETTLE_MS ? { settleMs: settle } : {}),
+    });
     queue = jobs;
     await jobs.recover();
     return { db, gov, engine: "dbos" };

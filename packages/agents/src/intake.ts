@@ -3,7 +3,7 @@ import type { IntakeSuggestion } from "@aegis/domain";
 import type { IntakeQuestion } from "@aegis/frameworks";
 import { z } from "zod";
 import { AgentFailure } from "./errors";
-import { runStructured, type AgentUsage, type RunOptions } from "./run";
+import { OUTPUT_CAP, runStructured, type AgentUsage, type RunOptions } from "./run";
 
 const INSTRUCTIONS = `You help someone at a health plan fill in the intake form for an AI system.
 From their description, answer each question with "yes", "no" or "unsure", and give one short sentence of why that points to their words.
@@ -41,7 +41,7 @@ export async function suggestIntake(
     questions: questions.map((q) => ({ field: q.field, question: q.label, help: q.help })),
     description: text.slice(0, MAX_DESCRIPTION),
   });
-  const { output, usage } = await runStructured(provider, { name: "Intake assistant", instructions: INSTRUCTIONS, model, outputType: Output }, input, options);
+  const { output, usage } = await runStructured(provider, { name: "Intake assistant", instructions: INSTRUCTIONS, model, outputType: Output, maxOutputTokens: OUTPUT_CAP.intake }, input, options);
   const byField = new Map(output.answers.map((a) => [a.field, a]));
   const suggestions = questions.map((q): IntakeSuggestion => {
     const a = byField.get(q.field);

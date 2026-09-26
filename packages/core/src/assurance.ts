@@ -500,7 +500,7 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
       "SELECT id FROM domain_reviews WHERE case_id = $1 AND domain = $2 AND status IN ('pending', 'drafted')",
       [focus.id, control.domain],
     );
-    if (rows[0]) await drafts.queueDraft(tx, tenant, rows[0].id);
+    if (rows[0]) await drafts.queueDraft(tx, tenant, rows[0].id, { settle: true });
   }
 
   /** Mark approved exceptions past their expiry as expired, as the system. */
