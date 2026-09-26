@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Register an AI system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+a{color:#D4FF3A}a:hover{color:#E6FF8A}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; --focus: {{t.focus}}; color-scheme: {{t.name}}; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="height: 60px; flex-shrink: 0; display: flex; align-items: center; gap: 14px; padding: 0 24px; border-bottom: 1px solid {{t.line}}">
+<div style="display: flex; align-items: center; gap: 10px">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="{{t.brand}}" stroke-width="1.9" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true"><path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6l8-3z"></path><path d="M8.5 12l2.5 2.5 4.5-5"></path></svg>
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 27px; line-height: 1">Aegis</span>
+</div>
+<span style="color: {{t.muted}}" aria-hidden="true">/</span>
+<span style="font-size: 14px; font-weight: 500">Northwind Health Plan</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 6px; border: 1px solid {{t.line}}; color: {{t.muted}}">SANDBOX · SHARED CLOUD</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="width: 480px; height: 40px; display: flex; align-items: center; gap: 10px; padding: 0 12px; border-radius: 10px; background: {{t.raised}}; border: 1px solid {{t.line}}; color: {{t.muted}}; font-size: 14px; cursor: pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg><span style="flex-grow: 1; text-align: left">Search cases, systems, people and policies</span><kbd style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 2px 6px; border-radius: 5px; border: 1px solid {{t.line}}">⌘K</kbd></button>
+<div style="flex-grow: 1"></div>
+<div style="display: flex; align-items: center; gap: 10px">
+<span style="width: 32px; height: 32px; border-radius: 50%; background: #D4FF3A; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">DO</span>
+<div style="display: flex; flex-direction: column"><span style="font-size: 13px; font-weight: 500">Dana Ortiz</span><span style="font-size: 12px; color: {{t.muted}}">Requester</span></div>
+</div>
+</header>
+
+<div style="flex-grow: 1; min-height: 0; display: flex">
+<nav aria-label="Primary" style="width: 84px; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 0; border-right: 1px solid {{t.line}}">
+<a href="Registry.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>Registry</a>
+<a href="Main.dc.html" aria-current="page" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 600; color: {{t.text}}; background: {{t.raised}}; box-shadow: inset 0 0 0 1px {{t.line}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Intake</a>
+<a href="Review.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 13.5l2.5-8h12l2.5 8v5h-17z"></path><path d="M3.5 13.5h5l1 2h5l1-2h5"></path></svg>Reviews · 3</a>
+<a href="Audit.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="8" width="6" height="8" rx="1.5"></rect><rect x="15" y="8" width="6" height="8" rx="1.5"></rect><path d="M9 12h6"></path></svg>Audit</a>
+<a href="Language.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9 5-9 5-9-5z"></path><path d="M3 13l9 5 9-5"></path></svg>Packs</a>
+<a href="Language.dc.html" style="width: 68px; height: 60px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; border-radius: 12px; text-decoration: none; font-size: 11px; font-weight: 500; color: {{t.muted}}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-dasharray="3 2.4" aria-hidden="true"><circle cx="12" cy="12" r="8"></circle></svg>Agents</a>
+</nav>
+
+<main style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 28px 36px; display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-family: 'Geist Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: {{t.muted}}">INTAKE · PRIOR-AUTH LETTER SUMMARIZER · STEP 2 OF 3</div>
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 46px; line-height: 1.05">Answer six <em style="color: {{t.link}}">risk questions</em></h1>
+</div>
+<ol aria-label="Progress" style="margin: 0; padding: 0; list-style: none; display: flex; align-items: center; gap: 6px; font-size: 13px">
+<li style="padding: 7px 12px; border-radius: 999px; border: 1px solid {{t.line}}; color: {{t.muted}}">1 Describe ✓</li>
+<li aria-current="step" style="padding: 7px 12px; border-radius: 999px; background: {{t.text}}; color: {{t.bg}}; font-weight: 600">2 Risk</li>
+<li style="padding: 7px 12px; border-radius: 999px; border: 1px solid {{t.line}}; color: {{t.muted}}">3 Submit</li>
+</ol>
+</div>
+
+<div style="flex-grow: 1; min-height: 0; display: flex; gap: 22px">
+<section aria-label="Risk questions" style="flex-grow: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 14px">
+<sc-for list="{{questions}}" as="q" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 16px; background: {{t.panel}}; border: 1px solid {{t.line}}">
+<div style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.04em; color: {{t.muted}}">Q{{q.n}} · AFFECTS {{q.feeds}}</div>
+<div style="font-size: 17px; font-weight: 500; line-height: 1.3">{{q.label}}</div>
+<div style="font-size: 13px; line-height: 1.45; color: {{t.muted}}">{{q.help}}</div>
+<div role="group" aria-label="{{q.label}}" style="margin-top: auto; display: flex; gap: 6px; padding: 4px; border-radius: 12px; background: {{t.raised}}">
+<button type="button" aria-pressed="{{q.yes}}" onClick="{{q.setYes}}" style="flex-grow: 1; height: 44px; border: 0; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; background: {{q.yesBg}}; color: {{q.yesFg}}">Yes</button>
+<button type="button" aria-pressed="{{q.no}}" onClick="{{q.setNo}}" style="flex-grow: 1; height: 44px; border: 0; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; background: {{q.noBg}}; color: {{q.noFg}}">No</button>
+</div>
+</div>
+</sc-for>
+</section>
+
+<aside aria-labelledby="t-head" style="width: 440px; flex-shrink: 0; display: flex; flex-direction: column; border-radius: 20px; background: {{t.panel}}; border: 1px solid {{t.line}}; overflow: hidden">
+<div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 22px 0">
+<h2 id="t-head" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.muted}}">LIVE TRIAGE</h2>
+<span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: {{t.muted}}"><span style="width: 10px; height: 10px; border-radius: 2px; background: {{t.system}}"></span>Set by rules, not AI</span>
+</div>
+<div style="position: relative; display: flex; justify-content: center; padding: 8px 22px 0">
+<svg width="260" height="146" viewBox="0 0 220 124" aria-hidden="true">
+<sc-for list="{{dial}}" as="s" hint-placeholder-count="4">
+<path d="{{s.d}}" fill="none" stroke="{{s.c}}" stroke-width="16"></path>
+</sc-for>
+</svg>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 54px; line-height: 0.95; color: {{tierFg}}">{{tierLabel}}</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: {{t.muted}}">RISK TIER · RULE {{ruleId}}</span>
+</div>
+</div>
+<p style="margin: 0; padding: 14px 28px 18px; text-align: center; font-family: 'Instrument Serif', Georgia, serif; font-style: italic; font-size: 20px; line-height: 1.3; border-bottom: 1px solid {{t.line}}">because it {{because}}</p>
+
+<div style="padding: 14px 22px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid {{t.line}}">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<h3 style="margin: 0; font-size: 14px; font-weight: 600">Needs review from {{domainCount}} teams</h3>
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: {{t.muted}}">healthcare-ai@1.0.0</span>
+</div>
+<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+<sc-for list="{{domains}}" as="d" hint-placeholder-count="6">
+<li style="display: flex; flex-direction: column; gap: 1px; padding: 7px 10px; border-radius: 8px; background: {{t.raised}}">
+<span style="font-size: 13px; font-weight: 500">{{d.label}}</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 10.5px; color: {{t.muted}}">{{d.why}}</span>
+</li>
+</sc-for>
+</ul>
+</div>
+
+<div style="padding: 14px 22px; display: flex; flex-direction: column; gap: 6px">
+<sc-if value="{{fastEligible}}" hint-placeholder-val="{{false}}">
+<h3 style="margin: 0; font-size: 14px; font-weight: 600; color: {{t.link}}">Eligible for the fast lane</h3>
+<p style="margin: 0; font-size: 13px; color: {{t.muted}}">Approved under policy fast-lane/v1. Accountable approver: VP, AI Governance.</p>
+</sc-if>
+<sc-if value="{{fastBlocked}}" hint-placeholder-val="{{true}}">
+<h3 style="margin: 0; font-size: 14px; font-weight: 600">Not eligible for the fast lane</h3>
+<p style="margin: 0; font-size: 13px; line-height: 1.5; color: {{t.muted}}">{{fastReasons}}</p>
+</sc-if>
+</div>
+
+<div style="margin-top: auto; padding: 16px 22px; display: flex; gap: 10px; border-top: 1px solid {{t.line}}">
+<a href="#submit" style="flex-grow: 1; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnFg}}; font-size: 15px; font-weight: 600; text-decoration: none">Continue</a>
+<button type="button" style="height: 48px; padding: 0 18px; border-radius: 12px; background: transparent; border: 1px solid {{t.line2}}; color: {{t.text}}; font-size: 15px; font-weight: 500; cursor: pointer">Save draft</button>
+</div>
+</aside>
+</div>
+</main>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  dark: { name: 'dark', bg: '#0B0E13', panel: '#12161E', raised: '#1A1F2A', line: '#262D3B', line2: '#6B7488', text: '#EDE9E0', muted: '#A3ABB9', brand: '#D4FF3A', link: '#D4FF3A', focus: '#5B9BFF',
+    sealEdge: 'transparent', sealRing: '#D4FF3A', check: '#D4FF3A', current: '#D4FF3A', system: '#8C95A6', agent: '#62D0FF', agentText: '#8EDDFF', agentTint: 'rgba(98,208,255,0.08)', glow: 'rgba(212,255,58,0.18)',
+    btnBg: '#D4FF3A', btnFg: '#0B0E13', ok: '#8FE3B5', warn: '#F6D37A', bad: '#FFA36E', high: '#FFA36E', major: '#FFA36E', minor: '#F6D37A', off: '#2A3140',
+    tier: { low: '#8FE3B5', medium: '#F6D37A', high: '#FFA36E', critical: '#FF7B7B' }, seg: ['#3E9E6E', '#D8A935', '#F07A36', '#E5484D'] },
+  light: { name: 'light', bg: '#EEECE6', panel: '#FFFFFF', raised: '#F4F2EC', line: '#DCD8CE', line2: '#858073', text: '#0F1216', muted: '#525964', brand: '#0F1216', link: '#3D5200', focus: '#1F5FD6',
+    sealEdge: 'rgba(15,18,22,0.45)', sealRing: '#4D6B00', check: '#4D6B00', current: '#4D6B00', system: '#6A7280', agent: '#0070A8', agentText: '#005A88', agentTint: 'rgba(0,112,168,0.07)', glow: 'rgba(77,107,0,0.18)',
+    btnBg: '#0F1216', btnFg: '#D4FF3A', ok: '#1B6B44', warn: '#7A5600', bad: '#A33A00', high: '#A33A00', major: '#A33A00', minor: '#7A5600', off: '#E4E0D6',
+    tier: { low: '#1B6B44', medium: '#7A5600', high: '#A33A00', critical: '#B3261E' }, seg: ['#2F8A5B', '#9A7000', '#C4501A', '#B3261E'] }
+};
+// 'auto' follows the viewer's system setting; every pair above is checked for WCAG AA (text 4.5:1, UI 3:1).
+function pickTheme(p) {
+  if (p === 'dark' || p === 'light') return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var QUESTIONS = [
+  { field: 'phi', feeds: 'TIER · PRIVACY · FAST LANE', label: 'Does it use protected health information?', help: 'Any PHI, including de-identified data that could be re-identified.' },
+  { field: 'memberFacing', feeds: 'TIER · FAST LANE', label: 'Will members see or interact with it?', help: 'Chat, letters, portals, or anything a member receives.' },
+  { field: 'careCoverageInfluence', feeds: 'TIER · CLINICAL SAFETY', label: 'Could it influence care or coverage decisions?', help: 'Prior auth, claims, care management, eligibility.' },
+  { field: 'humanInLoop', feeds: 'TIER', label: 'Does a person review every output before it takes effect?', help: 'A qualified person, not spot checks.' },
+  { field: 'vendorHosted', feeds: 'PROCUREMENT · LEGAL', label: 'Is the model or service hosted by a vendor?', help: 'Any third-party API or SaaS.' },
+  { field: 'individualImpact', feeds: 'TIER', label: 'Could it materially affect an individual?', help: 'Money, access, health, or reputation.' }
+];
+var DEFAULTS = { phi: true, memberFacing: false, careCoverageInfluence: true, humanInLoop: true, vendorHosted: true, individualImpact: true };
+var LABELS = { legal: 'Legal', procurement: 'Procurement', 'tech-architecture': 'Tech Architecture', 'responsible-ai': 'Responsible AI', security: 'Security', 'privacy-hipaa': 'Privacy / HIPAA', 'clinical-safety': 'Clinical Safety', 'data-governance': 'Data Governance' };
+var BASE = {
+  low: ['data-governance', 'security'],
+  medium: ['data-governance', 'security', 'tech-architecture', 'responsible-ai', 'legal'],
+  high: ['data-governance', 'security', 'tech-architecture', 'responsible-ai', 'legal'],
+  critical: ['legal', 'procurement', 'tech-architecture', 'responsible-ai', 'security', 'privacy-hipaa', 'clinical-safety', 'data-governance']
+};
+var TIERS = ['low', 'medium', 'high', 'critical'];
+var SEGS = [[180, 137], [133, 92], [88, 47], [43, 0]];
+
+function pt(a) {
+  var r = a * Math.PI / 180;
+  return (110 + 90 * Math.cos(r)).toFixed(1) + ' ' + (112 - 90 * Math.sin(r)).toFixed(1);
+}
+function tierOf(a) {
+  if (a.careCoverageInfluence && !a.humanInLoop) return ['critical', 'care-without-human', 'influences care or coverage with no person reviewing each output'];
+  if (a.careCoverageInfluence && a.humanInLoop) return ['high', 'care-with-human', 'influences care or coverage, with a person reviewing each output'];
+  if (a.phi) return ['high', 'phi', 'uses protected health information'];
+  if (a.memberFacing && a.individualImpact) return ['high', 'member-impact', 'is member-facing and can materially affect individuals'];
+  if (a.individualImpact) return ['medium', 'individual-impact', 'can materially affect individuals'];
+  if (a.memberFacing) return ['medium', 'member-facing', 'is something members see or interact with'];
+  return ['low', 'default', 'matched no risk rule'];
+}
+
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  answers() { return (this.state && this.state.answers) || DEFAULTS; }
+  set(field, value) {
+    var next = Object.assign({}, this.answers());
+    next[field] = value;
+    this.setState({ answers: next });
+  }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var a = this.answers();
+    var r = tierOf(a);
+    var tier = r[0];
+    var idx = TIERS.indexOf(tier);
+
+    var why = {};
+    BASE[tier].forEach(function (d) { why[d] = tier + ' tier'; });
+    if (a.phi && !why['privacy-hipaa']) why['privacy-hipaa'] = '+ uses PHI';
+    if (a.vendorHosted) {
+      if (!why.procurement) why.procurement = '+ vendor-hosted';
+      if (!why.legal) why.legal = '+ vendor-hosted';
+    }
+    if (a.careCoverageInfluence && !why['clinical-safety']) why['clinical-safety'] = '+ care or coverage';
+    var domains = Object.keys(why).map(function (d) { return { label: LABELS[d], why: why[d] }; })
+      .sort(function (x, y) { return x.label < y.label ? -1 : 1; });
+
+    var reasons = [];
+    if (idx > 0) reasons.push('tier above low');
+    if (a.phi) reasons.push('touches PHI');
+    if (a.memberFacing) reasons.push('member-facing');
+    if (a.careCoverageInfluence) reasons.push('influences care or coverage');
+
+    return {
+      t: t,
+      questions: QUESTIONS.map(function (q, i) {
+        var v = a[q.field] === true;
+        return {
+          n: i + 1, feeds: q.feeds, label: q.label, help: q.help, yes: v, no: !v,
+          yesBg: v ? t.text : 'transparent', yesFg: v ? t.bg : t.muted,
+          noBg: !v ? t.text : 'transparent', noFg: !v ? t.bg : t.muted,
+          setYes: function () { self.set(q.field, true); },
+          setNo: function () { self.set(q.field, false); }
+        };
+      }),
+      dial: SEGS.map(function (s, i) { return { d: 'M ' + pt(s[0]) + ' A 90 90 0 0 1 ' + pt(s[1]), c: i <= idx ? t.seg[i] : t.off }; }),
+      tierLabel: tier.charAt(0).toUpperCase() + tier.slice(1),
+      tierFg: t.tier[tier],
+      ruleId: r[1],
+      because: r[2],
+      domains: domains,
+      domainCount: domains.length + ' of 8',
+      fastEligible: reasons.length === 0,
+      fastBlocked: reasons.length > 0,
+      fastReasons: 'Reasons: ' + reasons.join(' · ') + '.'
+    };
+  }
+}
+</script>
+</body>
+</html>

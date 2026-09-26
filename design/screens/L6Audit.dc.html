@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Audit log</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 40px; border-bottom: 1px solid {{t.line}}">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 26px">Aegis</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">Northwind Health Plan</span>
+<div style="flex-grow: 1"></div>
+<nav aria-label="Primary" style="display: flex; gap: 4px; font-size: 14px">
+<a href="L3Home.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Home</a>
+<a href="L1Register.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Register</a>
+<a href="L4Review.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Reviews</a>
+<a href="L6Audit.dc.html" aria-current="page" style="padding: 12px; border-radius: 8px; text-decoration: none; font-weight: 600; background: {{t.raised}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">SW</span>
+<span style="font-size: 13px">Sam Whitfield</span>
+</header>
+
+<main style="flex-grow: 1; min-height: 0; box-sizing: border-box; padding: 32px 40px; display: flex; flex-direction: column; gap: 22px">
+<div role="search" style="display: flex; gap: 10px">
+<label for="q" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Search the audit log</label>
+<input id="q" type="search" defaultValue="Who approved CASE-0142?" style="flex-grow: 1; height: 48px; box-sizing: border-box; padding: 0 14px; font-size: 16px; border-radius: 12px; border: 1px solid {{t.btn2}}; background: {{t.raised}}; color: {{t.text}}">
+<button type="button" style="height: 48px; padding: 0 22px; border-radius: 12px; border: 0; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 15px; font-weight: 600; cursor: pointer">Search</button>
+</div>
+
+<section aria-labelledby="ans" style="padding: 22px 24px; border-radius: 16px; background: {{t.panel}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 14px">
+<h1 id="ans" style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 32px">Approved for a pilot by Marcus Lee · Sep 24, 16:41 UTC</h1>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}">healthcare-ai@1.0.0</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}">rule care-with-human</span>
+<span style="font-size: 13px; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}; color: {{t.ok}}">8/8 signed</span>
+<span style="font-size: 13px; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}">4 conditions</span>
+<span style="font-size: 13px; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}; color: {{t.ok}}">Hash chain verified</span>
+</div>
+<div style="font-size: 15px"><span style="color: {{t.soft}}">Reason:</span> “Pilot only, with the privacy and clinical conditions.”</div>
+<div style="display: flex; gap: 10px">
+<button type="button" style="height: 44px; padding: 0 18px; border-radius: 10px; border: 0; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 14px; font-weight: 600; cursor: pointer">Export evidence pack</button>
+<button type="button" style="height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid {{t.btn2}}; background: transparent; color: {{t.text}}; font-size: 14px; cursor: pointer">Copy link</button>
+</div>
+</section>
+
+<section aria-labelledby="tl" style="flex-grow: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px">
+<h2 id="tl" style="margin: 0; font-size: 15px; font-weight: 600">History</h2>
+<table style="width: 100%; border-collapse: collapse; font-size: 14px">
+<thead>
+<tr style="text-align: left; font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: {{t.soft}}">
+<th scope="col" style="padding: 6px 0; font-weight: 500">TIME (UTC)</th>
+<th scope="col" style="padding: 6px 12px; font-weight: 500">WHO</th>
+<th scope="col" style="padding: 6px 12px; font-weight: 500">ACTION</th>
+<th scope="col" style="padding: 6px 0; font-weight: 500; text-align: right">HASH</th>
+</tr>
+</thead>
+<tbody>
+<sc-for list="{{events}}" as="e" hint-placeholder-count="8">
+<tr style="border-top: 1px solid {{t.line}}; height: 42px; background: {{e.bg}}">
+<td style="padding: 0; font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">{{e.at}}</td>
+<td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 8px">
+<sc-if value="{{e.isHuman}}" hint-placeholder-val="{{true}}"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 50%; background: {{t.seal}}; box-shadow: 0 0 0 1px {{t.sealEdge}}"></span></sc-if>
+<sc-if value="{{e.isSystem}}" hint-placeholder-val="{{false}}"><span aria-hidden="true" style="width: 12px; height: 12px; margin: 4px; border-radius: 3px; background: {{t.system}}"></span></sc-if>
+<sc-if value="{{e.isAgent}}" hint-placeholder-val="{{false}}"><span aria-hidden="true" style="box-sizing: border-box; width: 20px; height: 20px; border-radius: 50%; border: 2px dashed {{t.agent}}"></span></sc-if>
+{{e.who}}</span></td>
+<td style="padding: 0 12px">{{e.action}}</td>
+<td style="padding: 0; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">#{{e.hash}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</section>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":900}}'>
+var THEMES = {
+  dark: { scheme: 'dark', bg: '#0B0E13', panel: '#12161E', raised: '#1A1F2A', line: '#262D3B', text: '#EDE9E0', soft: '#A3ABB9', btnBg: '#D4FF3A', btnText: '#0B0E13', btn2: '#6B7488',
+    focus: '#5B9BFF', seal: '#D4FF3A', sealEdge: 'transparent', system: '#8C95A6', agent: '#62D0FF', agentTint: 'rgba(98,208,255,0.08)', ok: '#8FE3B5' },
+  light: { scheme: 'light', bg: '#EEECE6', panel: '#FFFFFF', raised: '#F4F2EC', line: '#DCD8CE', text: '#0F1216', soft: '#525964', btnBg: '#0F1216', btnText: '#D4FF3A', btn2: '#858073',
+    focus: '#1F5FD6', seal: '#D4FF3A', sealEdge: 'rgba(15,18,22,0.45)', system: '#6A7280', agent: '#0070A8', agentTint: 'rgba(0,112,168,0.07)', ok: '#1B6B44' }
+};
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var EVENTS = [
+  { kind: 'human', at: 'SEP 24 16:41', who: 'Marcus Lee', action: 'Approved for pilot · 4 conditions', hash: '7c1e' },
+  { kind: 'human', at: 'SEP 24 10:18', who: 'Ana Duarte', action: 'Signed Clinical Safety · 1 condition', hash: 'f3a8' },
+  { kind: 'human', at: 'SEP 23 15:02', who: 'Jordan Blake', action: 'Signed Legal', hash: '2d6b' },
+  { kind: 'human', at: 'SEP 23 11:30', who: 'Priya Raman', action: 'Signed Privacy · 2 conditions', hash: 'c07e' },
+  { kind: 'agent', at: 'SEP 23 09:14', who: 'privacy-agent', action: 'Drafted privacy review', hash: '91fa' },
+  { kind: 'system', at: 'SEP 22 10:05', who: 'Routing', action: 'Sent to 8 teams', hash: '5e2d' },
+  { kind: 'system', at: 'SEP 22 10:05', who: 'Triage', action: 'Rated high risk', hash: 'a41c' },
+  { kind: 'human', at: 'SEP 22 10:05', who: 'Dana Ortiz', action: 'Submitted', hash: '3b90' }
+];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._on = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._on); } catch (e) {}
+  }
+  componentWillUnmount() { try { this._mq.removeEventListener('change', this._on); } catch (e) {} }
+  renderVals() {
+    var t = pickTheme(this.props.theme);
+    return {
+      t: t,
+      events: EVENTS.map(function (e) {
+        return Object.assign({}, e, { isHuman: e.kind === 'human', isSystem: e.kind === 'system', isAgent: e.kind === 'agent', bg: e.kind === 'agent' ? t.agentTint : 'transparent' });
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

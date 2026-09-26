@@ -1,0 +1,34 @@
+<!-- @dsCard group="Status" height=260 subtitle="High tier, rule care-with-human" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RiskDial</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap">
+<style>
+  body { margin: 0; background: var(--surface-page); color: var(--ink); font-family: var(--font-sans); }
+  .card { width: 380px; margin: 16px; padding: 16px 20px 18px; background: var(--surface-panel); border: 1px solid var(--line); border-radius: var(--radius-xl); display: flex; flex-direction: column; align-items: center; }
+  .dial { position: relative; width: 260px; height: 146px; }
+  .dial svg { display: block; }
+  .s1 { stroke: var(--dial-low); } .s2 { stroke: var(--dial-medium); } .s3 { stroke: var(--dial-high); } .off { stroke: var(--dial-off); }
+  .label { position: absolute; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; }
+  .tier { font-family: var(--font-display); font-size: 54px; line-height: .95; color: var(--tier-high); }
+  .rule { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; color: var(--ink-muted); }
+  .why { margin: 12px 0 0; text-align: center; font-family: var(--font-display); font-style: italic; font-size: 20px; line-height: 1.3; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="dial">
+    <svg width="260" height="146" viewBox="0 0 220 124" aria-hidden="true" fill="none" stroke-width="16">
+      <path class="s1" d="M 20.0 112.0 A 90 90 0 0 1 44.2 50.6"></path>
+      <path class="s2" d="M 48.7 46.1 A 90 90 0 0 1 106.9 22.1"></path>
+      <path class="s3" d="M 113.1 22.1 A 90 90 0 0 1 171.3 46.1"></path>
+      <path class="off" d="M 175.8 50.6 A 90 90 0 0 1 200.0 112.0"></path>
+    </svg>
+    <div class="label"><span class="tier">High</span><span class="rule">RISK TIER · RULE CARE-WITH-HUMAN</span></div>
+  </div>
+  <p class="why">because it influences care or coverage, with a person reviewing each output</p>
+</div>
+</body>
+</html>

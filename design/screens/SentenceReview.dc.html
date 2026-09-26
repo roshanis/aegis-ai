@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Privacy review, CASE-0142</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; padding: 28px 72px 36px; display: flex; flex-direction: column; gap: 26px; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 24px">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; line-height: 1">Aegis</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.soft}}">Northwind Health Plan</span>
+<div style="flex-grow: 1"></div>
+<nav aria-label="Primary" style="display: flex; gap: 4px">
+<a href="SentenceHome.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Home</a>
+<a href="Sentence.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Register</a>
+<a href="SentenceReview.dc.html" aria-current="page" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; font-weight: 600; text-decoration: none; color: {{t.text}}; background: {{t.raised}}">Reviews · 3</a>
+<a href="SentenceAudit.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">PR</span>
+<span style="font-size: 14px">Priya Raman · Privacy reviewer</span>
+</header>
+
+<div style="font-family: 'Geist Mono', monospace; font-size: 13px; letter-spacing: 0.08em; color: {{t.soft}}">CASE-0142 · PRIOR-AUTH LETTER SUMMARIZER · PRIVACY / HIPAA REVIEW · <span style="color: {{t.high}}">HIGH RISK</span></div>
+
+<section aria-labelledby="draft-h" style="border: 2px dashed {{t.agent}}; border-radius: 16px; background: {{t.agentTint}}; padding: 16px 22px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 12px">
+<span aria-hidden="true" style="box-sizing: border-box; width: 20px; height: 20px; border-radius: 50%; border: 2px dashed {{t.agent}}"></span>
+<h2 id="draft-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.agentText}}">DRAFT BY PRIVACY-AGENT · CANNOT APPROVE</h2>
+<span style="margin-left: auto; font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">11 OF 11 CRITERIA CHECKED · EVAL GATE PASSED</span>
+</div>
+<sc-for list="{{findings}}" as="f" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 16px">
+<span style="width: 60px; flex-shrink: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; color: {{f.sev}}">{{f.severity}}</span>
+<span style="flex-grow: 1; font-size: 19px; line-height: 1.35; text-decoration: {{f.strike}}; color: {{f.fg}}">{{f.text}}</span>
+<div role="group" aria-label="{{f.text}}" style="display: flex; gap: 4px; padding: 3px; border-radius: 12px; background: {{t.bg}}">
+<button type="button" aria-pressed="{{f.kept}}" onClick="{{f.keep}}" style="height: 44px; padding: 0 16px; border: 0; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; background: {{f.keepBg}}; color: {{f.keepFg}}">Keep</button>
+<button type="button" aria-pressed="{{f.dismissed}}" onClick="{{f.dismiss}}" style="height: 44px; padding: 0 16px; border: 0; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; background: {{f.disBg}}; color: {{f.disFg}}">Dismiss</button>
+</div>
+</div>
+</sc-for>
+</section>
+
+<section aria-labelledby="say-h" style="display: flex; flex-direction: column; gap: 14px">
+<h1 id="say-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-weight: 400; font-size: 13px; letter-spacing: 0.1em; color: {{t.soft}}">YOUR DECISION · SELECT A HIGHLIGHTED PHRASE TO CHANGE IT</h1>
+<p style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 46px; font-weight: 400; line-height: 1.32">
+I
+<button type="button" onClick="{{cycle}}" aria-label="Decision: {{decisionText}}. Change" style="font: inherit; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 12px; padding: 0 14px; cursor: pointer">{{decisionText}}</button>
+<sc-if value="{{isCond}}" hint-placeholder-val="{{true}}">:
+<sc-for list="{{conds}}" as="c" hint-placeholder-count="3">
+<button type="button" aria-pressed="{{c.on}}" onClick="{{c.flip}}" aria-label="Condition: {{c.text}}. {{c.state}}" style="font: inherit; color: {{c.fg}}; background: {{c.bg}}; border: {{c.border}}; border-radius: 12px; padding: 0 14px; cursor: pointer; text-decoration: {{c.strike}}">{{c.text}}</button>{{c.sep}}
+</sc-for>
+</sc-if>
+<sc-if value="{{isSign}}" hint-placeholder-val="{{false}}">.</sc-if>
+<sc-if value="{{isChanges}}" hint-placeholder-val="{{false}}">and ask Dana Ortiz to fix the kept findings first.</sc-if>
+</p>
+</section>
+
+<section aria-live="polite" style="margin-top: auto; display: flex; align-items: flex-end; gap: 28px; padding-top: 22px; border-top: 2px solid {{t.rule}}">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px">
+<label for="why" style="font-size: 14px; font-weight: 600">Reason (required)</label>
+<input id="why" type="text" defaultValue="Both issues can be fixed before deployment." style="height: 48px; box-sizing: border-box; padding: 0 14px; font-size: 17px; border-radius: 12px; border: 1px solid {{t.btn2}}; background: {{t.raised}}; color: {{t.text}}">
+<span style="font-size: 14px; color: {{t.soft}}">This will be sign-off 5 of 8. Marcus Lee (Approver) decides once all 8 are in. Recorded under healthcare-ai@1.0.0.</span>
+</div>
+<a href="Decide.dc.html" style="height: 56px; display: inline-flex; align-items: center; padding: 0 28px; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 18px; font-weight: 600; text-decoration: none">{{primary}}</a>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  // Values from the Aegis design system (ds/aegis/tokens.json).
+  dark: { scheme: 'dark', bg: '#0B0E13', raised: '#1A1F2A', text: '#EDE9E0', soft: '#A3ABB9', chipBg: '#D4FF3A', chipText: '#0B0E13', rule: '#262D3B',
+    btnBg: '#D4FF3A', btnText: '#0B0E13', btn2: '#6B7488', focus: '#5B9BFF', seal: '#D4FF3A', sealEdge: 'transparent',
+    agent: '#62D0FF', agentText: '#8EDDFF', agentTint: 'rgba(98,208,255,0.08)', high: '#FFA36E', medium: '#F6D37A' },
+  light: { scheme: 'light', bg: '#EEECE6', raised: '#F4F2EC', text: '#0F1216', soft: '#525964', chipBg: '#0F1216', chipText: '#D4FF3A', rule: '#DCD8CE',
+    btnBg: '#0F1216', btnText: '#D4FF3A', btn2: '#858073', focus: '#1F5FD6', seal: '#D4FF3A', sealEdge: 'rgba(15,18,22,0.45)',
+    agent: '#0070A8', agentText: '#005A88', agentTint: 'rgba(0,112,168,0.07)', high: '#A33A00', medium: '#7A5600' }
+};
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var FINDINGS = [
+  { id: 'min', severity: 'MAJOR', text: 'The model gets the full claim history, more than it needs.' },
+  { id: 'baa', severity: 'MAJOR', text: 'The vendor’s BAA doesn’t cover the summarization API.' },
+  { id: 'ret', severity: 'MINOR', text: 'The vendor keeps prompt logs for 30 days; tenant policy allows none.' }
+];
+var DECISION_LABEL = ['sign this review with conditions', 'sign this review with no conditions', 'request changes'];
+var CONDS = [
+  { id: 'baa', text: 'the vendor amends its BAA', on: true },
+  { id: 'input', text: 'input is limited to the claim under review', on: true },
+  { id: 'rereview', text: 'it is re-reviewed in 6 months', on: false }
+];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  st() {
+    var s = this.state || {};
+    return {
+      d: typeof s.d === 'number' ? s.d : 0,
+      conds: s.conds || { baa: true, input: true, rereview: false },
+      kept: s.kept || { min: true, baa: true, ret: true }
+    };
+  }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var s = this.st();
+    var active = CONDS.filter(function (c) { return s.conds[c.id]; }).length;
+    var primary = s.d === 2 ? 'Request changes' : (s.d === 0 && active > 0 ? 'Sign with ' + active + (active === 1 ? ' condition' : ' conditions') : 'Sign');
+    return {
+      t: t,
+      findings: FINDINGS.map(function (f) {
+        var kept = s.kept[f.id];
+        return {
+          text: f.text, severity: f.severity, sev: f.severity === 'MAJOR' ? t.high : t.medium,
+          kept: kept, dismissed: !kept, strike: kept ? 'none' : 'line-through', fg: kept ? t.text : t.soft,
+          keepBg: kept ? t.text : 'transparent', keepFg: kept ? t.bg : t.soft,
+          disBg: !kept ? t.text : 'transparent', disFg: !kept ? t.bg : t.soft,
+          keep: function () { var k = Object.assign({}, s.kept); k[f.id] = true; self.setState({ kept: k }); },
+          dismiss: function () { var k = Object.assign({}, s.kept); k[f.id] = false; self.setState({ kept: k }); }
+        };
+      }),
+      decisionText: DECISION_LABEL[s.d],
+      cycle: function () { self.setState({ d: (s.d + 1) % 3 }); },
+      isCond: s.d === 0, isSign: s.d === 1, isChanges: s.d === 2,
+      conds: CONDS.map(function (c, i) {
+        var on = s.conds[c.id];
+        return {
+          text: c.text, on: on, state: on ? 'included' : 'not included',
+          sep: i === 0 ? ',' : (i === 1 ? ' and' : '.'),
+          bg: on ? t.chipBg : 'transparent', fg: on ? t.chipText : t.soft,
+          border: on ? '0' : '2px dashed ' + t.btn2, strike: on ? 'none' : 'line-through',
+          flip: function () { var n = Object.assign({}, s.conds); n[c.id] = !n[c.id]; self.setState({ conds: n }); }
+        };
+      }),
+      primary: primary
+    };
+  }
+}
+</script>
+</body>
+</html>

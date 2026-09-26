@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Register an AI system</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 900px; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="height: 56px; flex-shrink: 0; display: flex; align-items: center; gap: 20px; padding: 0 40px; border-bottom: 1px solid {{t.line}}">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 26px">Aegis</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}">Northwind Health Plan</span>
+<div style="flex-grow: 1"></div>
+<nav aria-label="Primary" style="display: flex; gap: 4px; font-size: 14px">
+<a href="L3Home.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Home</a>
+<a href="L1Register.dc.html" aria-current="page" style="padding: 12px; border-radius: 8px; text-decoration: none; font-weight: 600; background: {{t.raised}}">Register</a>
+<a href="L4Review.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Reviews</a>
+<a href="L6Audit.dc.html" style="padding: 12px; border-radius: 8px; text-decoration: none; color: {{t.soft}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600">DO</span>
+<span style="font-size: 13px">Dana Ortiz</span>
+</header>
+
+<main style="flex-grow: 1; min-height: 0; box-sizing: border-box; padding: 36px 40px; display: flex; gap: 40px">
+<section aria-labelledby="h" style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+<h1 id="h" style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 34px">Register an AI system</h1>
+<div style="display: flex; flex-direction: column; gap: 6px; max-width: 520px">
+<label for="nm" style="font-size: 13px; font-weight: 600">Name</label>
+<input id="nm" type="text" defaultValue="Prior-auth letter summarizer" style="height: 44px; box-sizing: border-box; padding: 0 12px; font-size: 15px; border-radius: 10px; border: 1px solid {{t.btn2}}; background: {{t.raised}}; color: {{t.text}}">
+</div>
+<div style="font-size: 13px; font-weight: 600">Describe it <span style="font-weight: 400; color: {{t.soft}}">· select a highlighted phrase to change it</span></div>
+<p style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 34px; line-height: 1.45">
+<span>A model</span>
+<button type="button" onClick="{{w.vendorHosted.flip}}" aria-label="Hosting: {{w.vendorHosted.text}}. Change" style="font: inherit; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 10px; padding: 0 12px; cursor: pointer">{{w.vendorHosted.text}}</button>
+<span>that</span>
+<button type="button" onClick="{{w.phi.flip}}" aria-label="Health data: {{w.phi.text}}. Change" style="font: inherit; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 10px; padding: 0 12px; cursor: pointer">{{w.phi.text}}</button>
+<span>health data. Members</span>
+<button type="button" onClick="{{w.memberFacing.flip}}" aria-label="Member-facing: {{w.memberFacing.text}}. Change" style="font: inherit; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 10px; padding: 0 12px; cursor: pointer">{{w.memberFacing.text}}</button>
+<span>it. It</span>
+<button type="button" onClick="{{w.careCoverageInfluence.flip}}" aria-label="Care or coverage: {{w.careCoverageInfluence.text}}. Change" style="font: inherit; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 10px; padding: 0 12px; cursor: pointer">{{w.careCoverageInfluence.text}}</button>
+<span>affect coverage,</span>
+<button type="button" onClick="{{w.humanInLoop.flip}}" aria-label="Oversight: {{w.humanInLoop.text}}. Change" style="font: inherit; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 10px; padding: 0 12px; cursor: pointer">{{w.humanInLoop.text}}</button>
+<span>and it</span>
+<button type="button" onClick="{{w.individualImpact.flip}}" aria-label="Individual impact: {{w.individualImpact.text}}. Change" style="font: inherit; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 10px; padding: 0 12px; cursor: pointer">{{w.individualImpact.text}}</button>
+<span>affect a person.</span>
+</p>
+<div style="margin-top: auto; display: flex; gap: 12px">
+<a href="L2Submitted.dc.html" style="height: 48px; display: inline-flex; align-items: center; padding: 0 24px; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 16px; font-weight: 600; text-decoration: none">Submit for review</a>
+<button type="button" style="height: 48px; padding: 0 20px; border-radius: 12px; border: 1px solid {{t.btn2}}; background: transparent; color: {{t.text}}; font-size: 15px; cursor: pointer">Save draft</button>
+</div>
+</section>
+
+<aside aria-live="polite" aria-labelledby="res" style="width: 400px; flex-shrink: 0; align-self: flex-start; box-sizing: border-box; padding: 22px; border-radius: 16px; background: {{t.panel}}; border: 1px solid {{t.line}}; display: flex; flex-direction: column; gap: 18px">
+<h2 id="res" style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; letter-spacing: 0.08em; color: {{t.soft}}">RESULT</h2>
+<div style="display: flex; align-items: center; gap: 12px">
+<span style="font-size: 22px; font-weight: 600; color: {{tierFg}}">{{tierLabel}} risk</span>
+<div style="flex-grow: 1; display: flex; gap: 4px" aria-hidden="true">
+<sc-for list="{{meter}}" as="m" hint-placeholder-count="4"><span style="flex-grow: 1; height: 8px; border-radius: 4px; background: {{m.bg}}"></span></sc-for>
+</div>
+</div>
+<div style="font-size: 14px; color: {{t.soft}}">Rule <span style="font-family: 'Geist Mono', monospace; color: {{t.text}}">{{ruleId}}</span></div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<div style="font-size: 13px; font-weight: 600">{{domainCount}} review teams</div>
+<div style="display: flex; flex-wrap: wrap; gap: 6px">
+<sc-for list="{{domains}}" as="d" hint-placeholder-count="6"><span style="font-size: 13px; padding: 5px 10px; border-radius: 999px; background: {{t.raised}}">{{d}}</span></sc-for>
+</div>
+</div>
+<div style="display: flex; align-items: center; gap: 8px; font-size: 14px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; padding: 3px 7px; border-radius: 5px; border: 1px solid {{fastColor}}; color: {{fastColor}}">{{fastTag}}</span>
+<span>Fast lane</span>
+</div>
+<div style="font-size: 12px; color: {{t.soft}}">Set by healthcare-ai@1.0.0 rules, not AI.</div>
+</aside>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":900}}'>
+var THEMES = {
+  dark: { scheme: 'dark', bg: '#0B0E13', panel: '#12161E', raised: '#1A1F2A', line: '#262D3B', text: '#EDE9E0', soft: '#A3ABB9', chipBg: '#D4FF3A', chipText: '#0B0E13',
+    btnBg: '#D4FF3A', btnText: '#0B0E13', btn2: '#6B7488', focus: '#5B9BFF', seal: '#D4FF3A', sealEdge: 'transparent', ok: '#8FE3B5', off: '#2A3140',
+    bars: ['#3E9E6E', '#D8A935', '#F07A36', '#E5484D'], tier: { low: '#8FE3B5', medium: '#F6D37A', high: '#FFA36E', critical: '#FF7B7B' } },
+  light: { scheme: 'light', bg: '#EEECE6', panel: '#FFFFFF', raised: '#F4F2EC', line: '#DCD8CE', text: '#0F1216', soft: '#525964', chipBg: '#0F1216', chipText: '#D4FF3A',
+    btnBg: '#0F1216', btnText: '#D4FF3A', btn2: '#858073', focus: '#1F5FD6', seal: '#D4FF3A', sealEdge: 'rgba(15,18,22,0.45)', ok: '#1B6B44', off: '#E4E0D6',
+    bars: ['#2F8A5B', '#9A7000', '#C4501A', '#B3261E'], tier: { low: '#1B6B44', medium: '#7A5600', high: '#A33A00', critical: '#B3261E' } }
+};
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+// Two short phrases per policy-pack question, written once by the pack author.
+var WORDS = {
+  vendorHosted: ['hosted by a vendor', 'we host'],
+  phi: ['reads', 'never touches'],
+  memberFacing: ['never see', 'see'],
+  careCoverageInfluence: ['can', 'cannot'],
+  humanInLoop: ['a person checks every output', 'no one checks outputs'],
+  individualImpact: ['could', 'could not']
+};
+var INVERTED = { memberFacing: true };
+var DEFAULTS = { vendorHosted: true, phi: true, memberFacing: false, careCoverageInfluence: true, humanInLoop: true, individualImpact: true };
+var LABELS = { legal: 'Legal', procurement: 'Procurement', 'tech-architecture': 'Tech Architecture', 'responsible-ai': 'Responsible AI', security: 'Security', 'privacy-hipaa': 'Privacy', 'clinical-safety': 'Clinical Safety', 'data-governance': 'Data Governance' };
+var BASE = {
+  low: ['data-governance', 'security'],
+  medium: ['data-governance', 'security', 'tech-architecture', 'responsible-ai', 'legal'],
+  high: ['data-governance', 'security', 'tech-architecture', 'responsible-ai', 'legal'],
+  critical: ['legal', 'procurement', 'tech-architecture', 'responsible-ai', 'security', 'privacy-hipaa', 'clinical-safety', 'data-governance']
+};
+var TIERS = ['low', 'medium', 'high', 'critical'];
+function tierOf(a) {
+  if (a.careCoverageInfluence && !a.humanInLoop) return ['critical', 'care-without-human'];
+  if (a.careCoverageInfluence && a.humanInLoop) return ['high', 'care-with-human'];
+  if (a.phi) return ['high', 'phi'];
+  if (a.memberFacing && a.individualImpact) return ['high', 'member-impact'];
+  if (a.individualImpact) return ['medium', 'individual-impact'];
+  if (a.memberFacing) return ['medium', 'member-facing'];
+  return ['low', 'default'];
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._on = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._on); } catch (e) {}
+  }
+  componentWillUnmount() { try { this._mq.removeEventListener('change', this._on); } catch (e) {} }
+  answers() { return (this.state && this.state.a) || DEFAULTS; }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var a = this.answers();
+    var w = {};
+    Object.keys(WORDS).forEach(function (k) {
+      var yes = INVERTED[k] ? !a[k] : a[k];
+      w[k] = { text: WORDS[k][yes ? 0 : 1], flip: function () { var n = Object.assign({}, self.answers()); n[k] = !n[k]; self.setState({ a: n }); } };
+    });
+    var r = tierOf(a), tier = r[0], idx = TIERS.indexOf(tier);
+    var set = {};
+    BASE[tier].forEach(function (d) { set[d] = true; });
+    if (a.phi) set['privacy-hipaa'] = true;
+    if (a.vendorHosted) { set.procurement = true; set.legal = true; }
+    if (a.careCoverageInfluence) set['clinical-safety'] = true;
+    var names = Object.keys(set).map(function (d) { return LABELS[d]; }).sort();
+    var fast = idx === 0 && !a.phi && !a.memberFacing && !a.careCoverageInfluence;
+    return {
+      t: t, w: w,
+      tierLabel: tier.charAt(0).toUpperCase() + tier.slice(1), tierFg: t.tier[tier], ruleId: r[1],
+      meter: TIERS.map(function (x, i) { return { bg: i <= idx ? t.bars[idx] : t.off }; }),
+      domains: names, domainCount: String(names.length),
+      fastTag: fast ? 'ELIGIBLE' : 'NOT ELIGIBLE', fastColor: fast ? t.ok : t.soft
+    };
+  }
+}
+</script>
+</body>
+</html>
