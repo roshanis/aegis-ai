@@ -49,6 +49,7 @@ beforeAll(async () => {
     "0005_governance_core.sql",
     "0006_agents.sql",
     "0007_case_numbers.sql",
+    "0008_audit_chain_order.sql",
   ]);
   expect(await migrate(db)).toEqual([]);
   await seedTenant(A, "tenant-a", userA, assetA);
@@ -290,7 +291,7 @@ describe("case numbers", () => {
       ["00000000-0000-4000-8000-0000000000f1", "2026-01-01T00:00:00Z"],
     ]);
     await seed(B, "tenant-b", userB, assetB, [["00000000-0000-4000-8000-0000000000f3", "2026-03-01T00:00:00Z"]]);
-    expect(await migrate(old)).toEqual(["0007_case_numbers.sql"]);
+    expect(await migrate(old, { through: "0007_case_numbers.sql" })).toEqual(["0007_case_numbers.sql"]);
     const { rows } = await old.query<{ id: string; number: number }>("SELECT id, number FROM cases ORDER BY id");
     expect(rows.map((r) => [r.id.slice(-2), r.number])).toEqual([
       ["f1", 1],
@@ -320,5 +321,29 @@ describe("case numbers", () => {
     await expect(withTenant(db, A, (tx) => tx.exec(`UPDATE cases SET number = 99 WHERE id = '${first}'`))).rejects.toThrow(
       /a case number cannot change/,
     );
+  });
+});
+
+describe("audit chain order", () => {
+  it("keeps chains written before the fix verified, and extends them in id order", async () => {
+    const old = new PGlite();
+    await migrate(old, { through: "0007_case_numbers.sql" });
+    await old.query("INSERT INTO tenants (id, slug, name) VALUES ($1, 'tenant-a', 'A')", [A]);
+    await withTenant(old, A, async (tx) => {
+      await tx.exec(audit(A, "before.1"));
+      await tx.exec(audit(A, "before.2"));
+    });
+    expect(await migrate(old)).toEqual(["0008_audit_chain_order.sql"]);
+    await withTenant(old, A, async (tx) => {
+      await tx.exec(audit(A, "after.1"));
+      await tx.exec(audit(A, "after.2"));
+    });
+    const { rows } = await withTenant(old, A, (tx) =>
+      tx.query<{ action: string; prev_hash: string | null; hash: string }>("SELECT action, prev_hash, hash FROM audit_events ORDER BY id"),
+    );
+    expect(rows.map((r) => r.action)).toEqual(["before.1", "before.2", "after.1", "after.2"]);
+    expect(rows.slice(1).map((r) => r.prev_hash)).toEqual(rows.slice(0, -1).map((r) => r.hash));
+    expect(await withTenant(old, A, verifyAuditChain)).toBeNull();
+    await old.close();
   });
 });
