@@ -178,6 +178,21 @@ tr.agent-row td { background: var(--agent-tint); }
 .tf-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-top: 1px solid var(--line); }
 .tf-row .t { flex: 1 1 260px; }
 .tf-row .seg button { min-height: 44px; min-width: 64px; }
+/* Start from a repo: the agent's findings are drafts until a person confirms them. */
+.tf-or { display: flex; flex-direction: column; gap: 10px; padding-top: 18px; border-top: 1px solid var(--line); max-width: 640px; }
+.tf-or .row { align-items: flex-end; }
+.tf-or .field { flex: 1 1 320px; }
+.tf-scan { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--agent-text); }
+.tf-a.drafted:not([aria-pressed="true"]) { border: 2px dashed var(--agent); background: var(--agent-tint); }
+.tf-draft { max-width: 640px; border: 2px dashed var(--agent); border-radius: 14px; background: var(--agent-tint); padding: 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+.tf-draft .h { display: flex; align-items: center; gap: 10px; font: 500 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--agent-text); }
+.tf-draft ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; font: 13px var(--mono); }
+.tf-none { margin: 0; font-size: 15px; color: var(--muted); display: flex; align-items: center; gap: 10px; }
+.tf-why { max-width: 640px; display: flex; flex-direction: column; gap: 10px; }
+.tf-row .by { flex-basis: 100%; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+.tf-row .by .mono { color: var(--agent-text); }
+.tf-row .field { flex-basis: 100%; }
+.btn:disabled { opacity: 1; background: var(--raised); color: var(--muted); border: 1px solid var(--control); cursor: not-allowed; }
 </style>
 
 <nav class="proto" aria-label="Prototype">
@@ -240,6 +255,15 @@ tr.agent-row td { background: var(--agent-tint); }
             <h1 class="tf-q" id="tf-wq" tabindex="-1">What’s the system called?</h1>
             <div class="field" style="max-width:520px"><label for="tf-name">Name</label><input id="tf-name" type="text" value="Prior-auth letter summarizer"></div>
             <div class="row"><button type="submit" class="btn">Start</button><span class="note">or press Enter</span></div>
+            <div class="tf-or">
+              <div class="eyebrow">Or start from its code</div>
+              <div class="row">
+                <div class="field"><label for="tf-repo">Repository</label><input id="tf-repo" type="text" value="github.com/northwind/prior-auth-letters" spellcheck="false"></div>
+                <button type="button" class="btn-2" id="tf-scanbtn">Read the repo</button>
+              </div>
+              <div class="tf-scan" id="tf-scan" role="status"></div>
+              <div class="note">An agent suggests answers from the code, with evidence. You confirm each one.</div>
+            </div>
           </div>
         </form>
 
@@ -256,6 +280,11 @@ tr.agent-row td { background: var(--agent-tint); }
               <button type="button" class="tf-a" id="tf-yes" aria-pressed="false" aria-keyshortcuts="Y"><kbd aria-hidden="true">Y</kbd>Yes</button>
               <button type="button" class="tf-a" id="tf-no" aria-pressed="false" aria-keyshortcuts="N"><kbd aria-hidden="true">N</kbd>No</button>
             </div>
+            <div id="tf-agent"></div>
+            <form class="tf-why" id="tf-why" hidden>
+              <div class="field"><label for="tf-whyin">The agent found evidence for Yes. Why is it No?</label><input id="tf-whyin" type="text" placeholder="One line. Reviewers will see it."></div>
+              <div class="row"><button type="submit" class="btn" id="tf-whygo" disabled>Continue</button></div>
+            </form>
             <div class="eyebrow" id="tf-affects"></div>
           </div>
         </div>
@@ -265,7 +294,8 @@ tr.agent-row td { background: var(--agent-tint); }
             <div class="eyebrow" id="tf-sumlabel"></div>
             <h1 class="title" id="tf-sumh" tabindex="-1">Check your answers</h1>
             <div class="tf-list" id="tf-list"></div>
-            <div class="row"><button type="button" class="btn" data-go="2">Submit for review</button><button type="button" class="btn-2" id="tf-restart">Start over</button></div>
+            <div class="note" id="tf-source" hidden></div>
+            <div class="row"><button type="button" class="btn" id="tf-submit" data-go="2">Submit for review</button><button type="button" class="btn-2" id="tf-restart">Start over</button></div>
           </div>
           <aside class="panel" aria-live="polite" aria-labelledby="tf-resh">
             <h2 class="eyebrow" id="tf-resh" style="margin:0">Result</h2>
@@ -506,16 +536,40 @@ tr.agent-row td { background: var(--agent-tint); }
     { field: 'individualImpact', label: 'Could it materially affect an individual?', help: 'Money, access, health, or reputation.', affects: 'Risk tier' }
   ];
   var DONE = QUESTIONS.length;
-  var tf = { at: -1, answers: {}, busy: false };
+  // Answers come only from the person. The repo agent adds drafts: a suggested Yes plus evidence.
+  var tf = { at: -1, answers: {}, reasons: {}, drafts: {}, source: null, busy: false };
+  // What the intake agent "found" in the example repo. It only ever suggests Yes (raising risk), never No,
+  // and never answers questions about how the system is run.
+  var REPO_FINDINGS = {
+    phi: { kind: 'Evidence', lines: ['db/schema.sql:14 · member_id, date_of_birth, dx_code', 'src/fhir/client.ts:31 · reads Patient, Condition'] },
+    memberFacing: { kind: 'Evidence', lines: ['templates/letters/determination.hbs · letter mailed to members'] },
+    careCoverageInfluence: { kind: 'Hint', lines: ['src/pa/submit.ts:52 · writes to the prior-auth queue'] },
+    vendorHosted: { kind: 'Evidence', lines: ['package.json · openai ^4.52.0', '.env.example · OPENAI_API_KEY'] }
+  };
+  var AGENT_SKIPS = { humanInLoop: 1, individualImpact: 1 };
   var reduceMotion = false;
   try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
   function isSet(f) { return typeof tf.answers[f] === 'boolean'; }
-  function answeredCount() { return QUESTIONS.filter(function (q) { return isSet(q.field); }).length; }
+  // Saying No against the agent's evidence needs a reason before it counts.
+  function needsWhy(f) { return tf.answers[f] === false && !!tf.drafts[f] && !(tf.reasons[f] || '').trim(); }
+  function isDone(f) { return isSet(f) && !needsWhy(f); }
+  function answeredCount() { return QUESTIONS.filter(function (q) { return isDone(q.field); }).length; }
+  function draftCount() { return Object.keys(tf.drafts).length; }
   // Next unanswered question after `from`, wrapping round; the summary once all are answered.
   function nextStop(from) {
-    for (var i = from + 1; i < DONE; i++) if (!isSet(QUESTIONS[i].field)) return i;
-    for (i = 0; i <= from && i < DONE; i++) if (!isSet(QUESTIONS[i].field)) return i;
+    for (var i = from + 1; i < DONE; i++) if (!isDone(QUESTIONS[i].field)) return i;
+    for (i = 0; i <= from && i < DONE; i++) if (!isDone(QUESTIONS[i].field)) return i;
     return DONE;
+  }
+  var RING = '<span class="ring" aria-hidden="true"></span>';
+  function agentBlock(f) {
+    if (!tf.source) return '';
+    var d = tf.drafts[f];
+    if (d) {
+      return '<div class="tf-draft"><div class="h">' + RING + 'Agent suggests Yes · ' + d.kind + (d.kind === 'Hint' ? ', check this one' : '') + '</div>' +
+        '<ul>' + d.lines.map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('') + '</ul></div>';
+    }
+    return '<p class="tf-none">' + RING + (AGENT_SKIPS[f] ? 'Agents don’t answer this. It depends on how the system is run.' : 'Nothing found in the code. That doesn’t mean No.') + '</p>';
   }
   function renderTf(focus) {
     $('tf-welcome').hidden = tf.at !== -1;
@@ -530,16 +584,28 @@ tr.agent-row td { background: var(--agent-tint); }
       $('tf-affects').textContent = 'Affects: ' + q.affects;
       $('tf-yes').setAttribute('aria-pressed', String(a === true));
       $('tf-no').setAttribute('aria-pressed', String(a === false));
+      $('tf-yes').classList.toggle('drafted', !!tf.drafts[q.field]);
+      $('tf-agent').innerHTML = agentBlock(q.field);
+      var why = a === false && !!tf.drafts[q.field];
+      $('tf-why').hidden = !why;
+      if (why) { $('tf-whyin').value = tf.reasons[q.field] || ''; $('tf-whygo').disabled = !$('tf-whyin').value.trim(); }
     }
     if (tf.at === DONE) {
-      $('tf-sumlabel').textContent = ($('tf-name').value.trim() || 'Untitled system') + ' · ' + answeredCount() + ' of ' + DONE + ' answered';
+      $('tf-sumlabel').textContent = ($('tf-name').value.trim() || 'Untitled system') + ' · ' + answeredCount() + ' of ' + DONE + ' confirmed by you';
       $('tf-list').innerHTML = QUESTIONS.map(function (q) {
-        var a = tf.answers[q.field];
+        var f = q.field, a = tf.answers[f], d = tf.drafts[f], by = '';
+        if (d) {
+          by = '<span class="by">' + RING + '<span>Agent: <span class="mono">' + esc(d.lines[0]) + '</span></span></span>';
+          if (a === false) by += '<div class="field"><label for="why-' + f + '">Why No, against the evidence?</label><input id="why-' + f + '" type="text" data-why="' + f + '" value="' + esc(tf.reasons[f] || '') + '" placeholder="One line. Reviewers will see it."></div>';
+        }
         return '<div class="tf-row"><span class="t">' + esc(q.label) + '</span><div class="seg" role="group" aria-label="' + esc(q.label) + '">' +
-          '<button type="button" data-sum="' + q.field + '" data-val="1" aria-pressed="' + (a === true) + '">Yes</button>' +
-          '<button type="button" data-sum="' + q.field + '" data-val="0" aria-pressed="' + (a === false) + '">No</button></div></div>';
+          '<button type="button" data-sum="' + f + '" data-val="1" aria-pressed="' + (a === true) + '">Yes</button>' +
+          '<button type="button" data-sum="' + f + '" data-val="0" aria-pressed="' + (a === false) + '">No</button></div>' + by + '</div>';
       }).join('');
+      $('tf-source').hidden = !tf.source;
+      if (tf.source) $('tf-source').textContent = 'Agent read ' + tf.source.repo + ' at ' + tf.source.sha + '. Its evidence goes to the reviewers with your answers.';
       paintResult('tf-', tf.answers);
+      syncSubmit();
     }
     if (focus) {
       var target = tf.at === -1 ? $('tf-wq') : tf.at === DONE ? $('tf-sumh') : $('tf-q');
@@ -547,25 +613,64 @@ tr.agent-row td { background: var(--agent-tint); }
       if (tf.at >= 0 && tf.at < DONE) { var card = $('tf-card'); card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter'); }
     }
   }
-  function tfAnswer(v) {
-    if (tf.busy || tf.at < 0 || tf.at >= DONE) return;
-    tf.answers[QUESTIONS[tf.at].field] = v;
-    renderTf(false);
+  function syncSubmit() {
+    var left = DONE - answeredCount();
+    $('tf-submit').disabled = left > 0;
+    $('tf-submit').textContent = left > 0 ? left + ' left to confirm' : 'Submit for review';
+  }
+  function advance() {
     tf.busy = true;
     setTimeout(function () { tf.busy = false; tf.at = nextStop(tf.at); renderTf(true); }, reduceMotion ? 0 : 240);
   }
+  function tfAnswer(v) {
+    if (tf.busy || tf.at < 0 || tf.at >= DONE) return;
+    var f = QUESTIONS[tf.at].field;
+    tf.answers[f] = v;
+    renderTf(false);
+    if (needsWhy(f)) { $('tf-whyin').focus(); return; }
+    advance();
+  }
   $('tf-welcome').addEventListener('submit', function (e) { e.preventDefault(); tf.at = nextStop(-1); renderTf(true); });
+  $('tf-scanbtn').addEventListener('click', function () {
+    var repo = $('tf-repo').value.trim() || 'github.com/northwind/prior-auth-letters';
+    var btn = $('tf-scanbtn');
+    btn.disabled = true;
+    $('tf-scan').innerHTML = RING + '<span>Reading main at 9f3c2e1 · 212 files…</span>';
+    setTimeout(function () {
+      btn.disabled = false;
+      tf.source = { repo: repo, sha: '9f3c2e1' };
+      tf.drafts = REPO_FINDINGS;
+      tf.answers = {}; tf.reasons = {};
+      if (!$('tf-name').value.trim()) $('tf-name').value = 'Prior-auth letter summarizer';
+      $('tf-scan').innerHTML = RING + '<span>Found evidence for 4 of 6 questions.</span>';
+      tf.at = nextStop(-1); renderTf(true);
+    }, reduceMotion ? 300 : 1100);
+  });
+  $('tf-repo').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('tf-scanbtn').click(); } });
   $('tf-yes').addEventListener('click', function () { tfAnswer(true); });
   $('tf-no').addEventListener('click', function () { tfAnswer(false); });
+  $('tf-whyin').addEventListener('input', function () {
+    tf.reasons[QUESTIONS[tf.at].field] = this.value;
+    $('tf-whygo').disabled = !this.value.trim();
+  });
+  $('tf-why').addEventListener('submit', function (e) { e.preventDefault(); if (!needsWhy(QUESTIONS[tf.at].field)) advance(); });
   $('tf-back').addEventListener('click', function () { if (!tf.busy) { tf.at -= 1; renderTf(true); } });
   $('tf-list').addEventListener('click', function (e) {
     var b = e.target.closest('[data-sum]');
     if (!b) return;
     var f = b.dataset.sum, v = b.dataset.val === '1';
     tf.answers[f] = v; renderTf(false);
-    var again = document.querySelector('[data-sum="' + f + '"][data-val="' + (v ? 1 : 0) + '"]'); if (again) again.focus();
+    var box = document.querySelector('[data-why="' + f + '"]');
+    var again = box && !box.value ? box : document.querySelector('[data-sum="' + f + '"][data-val="' + (v ? 1 : 0) + '"]'); if (again) again.focus();
   });
-  $('tf-restart').addEventListener('click', function () { tf.answers = {}; tf.at = -1; renderTf(true); });
+  $('tf-list').addEventListener('input', function (e) {
+    var f = e.target.dataset.why;
+    if (f) { tf.reasons[f] = e.target.value; $('tf-sumlabel').textContent = ($('tf-name').value.trim() || 'Untitled system') + ' · ' + answeredCount() + ' of ' + DONE + ' confirmed by you'; syncSubmit(); }
+  });
+  $('tf-restart').addEventListener('click', function () {
+    tf.answers = {}; tf.reasons = {}; tf.drafts = {}; tf.source = null; tf.at = -1;
+    $('tf-scan').innerHTML = ''; renderTf(true);
+  });
   // Y and N answer the current question, as in Typeform; ignored while typing in a field.
   document.addEventListener('keydown', function (e) {
     if (current !== 1 || variant !== 'steps' || tf.at < 0 || tf.at >= DONE) return;

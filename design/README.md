@@ -51,6 +51,12 @@ browser; a bar at the top jumps between the six steps and switches theme. A
 second switch, "Register as", swaps step 1 between the sentence and one question
 at a time (the pack's own questions, big Yes/No buttons, Y and N keys, then a
 summary where any answer can be changed and the result updates).
+The first card can also start from a repository: an intake agent suggests Yes,
+with file evidence, where the code shows it (PHI, member-facing, care or
+coverage, vendor-hosted). It never suggests No and never answers the questions
+about how the system is run. A person confirms every answer; saying No against
+the evidence needs a one-line reason; Submit stays locked until all six are
+confirmed.
 
 Every screen follows the rule in `docs/PLAN.md`: agents draft, people decide.
 Triage on the intake screens runs the `healthcare-ai` pack's rules from
