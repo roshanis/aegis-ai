@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Decide CASE-0142</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}a:hover{text-decoration-thickness:3px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+button,input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; padding: 28px 72px 36px; display: flex; flex-direction: column; gap: 24px; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 24px">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; line-height: 1">Aegis</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.soft}}">Northwind Health Plan</span>
+<div style="flex-grow: 1"></div>
+<nav aria-label="Primary" style="display: flex; gap: 4px">
+<a href="SentenceHome.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Home</a>
+<a href="Sentence.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Register</a>
+<a href="Decide.dc.html" aria-current="page" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; font-weight: 600; text-decoration: none; color: {{t.text}}; background: {{t.raised}}">Decisions · 1</a>
+<a href="SentenceAudit.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">ML</span>
+<span style="font-size: 14px">Marcus Lee · Approver</span>
+</header>
+
+<div style="font-family: 'Geist Mono', monospace; font-size: 13px; letter-spacing: 0.08em; color: {{t.soft}}">CASE-0142 · PRIOR-AUTH LETTER SUMMARIZER · <span style="color: {{t.high}}">HIGH RISK</span> · <span style="color: {{t.ok}}">8 OF 8 TEAMS SIGNED</span></div>
+
+<section aria-labelledby="said-h" style="display: flex; flex-direction: column; gap: 8px">
+<h2 id="said-h" style="margin: 0 0 4px; font-family: 'Geist Mono', monospace; font-weight: 400; font-size: 13px; letter-spacing: 0.1em; color: {{t.soft}}">WHAT THE TEAMS SAID</h2>
+<ul style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 48px">
+<sc-for list="{{signoffs}}" as="s" hint-placeholder-count="8">
+<li style="display: flex; align-items: flex-start; gap: 12px; min-height: 40px">
+<span aria-hidden="true" style="width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600">{{s.ini}}</span>
+<span style="font-size: 16px; line-height: 1.45"><strong style="font-weight: 600">{{s.who}}</strong> {{s.text}}<sc-if value="{{s.hasCond}}" hint-placeholder-val="{{false}}"> <span style="font-family: 'Geist Mono', monospace; font-size: 11px; color: {{t.warn}}">CONDITION</span></sc-if></span>
+</li>
+</sc-for>
+</ul>
+</section>
+
+<section aria-labelledby="say-h" style="padding-top: 20px; border-top: 2px solid {{t.rule}}; display: flex; flex-direction: column; gap: 12px">
+<h1 id="say-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-weight: 400; font-size: 13px; letter-spacing: 0.1em; color: {{t.soft}}">YOUR DECISION · SELECT A HIGHLIGHTED PHRASE TO CHANGE IT</h1>
+<p style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-size: 46px; font-weight: 400; line-height: 1.3">
+I
+<button type="button" onClick="{{cycle}}" aria-label="Decision: {{decisionText}}. Change" style="font: inherit; color: {{t.chipText}}; background: {{t.chipBg}}; border: 0; border-radius: 12px; padding: 0 14px; cursor: pointer">{{decisionText}}</button>
+<sc-if value="{{isApprove}}" hint-placeholder-val="{{true}}">
+with the 3 conditions the teams set, plus
+<button type="button" aria-pressed="{{extraOn}}" onClick="{{flipExtra}}" aria-label="Extra condition: a re-review in 6 months. {{extraState}}" style="font: inherit; color: {{extraFg}}; background: {{extraBg}}; border: {{extraBorder}}; border-radius: 12px; padding: 0 14px; cursor: pointer; text-decoration: {{extraStrike}}">a re-review in 6 months</button>.
+</sc-if>
+<sc-if value="{{isReject}}" hint-placeholder-val="{{false}}">and tell Dana Ortiz why.</sc-if>
+</p>
+</section>
+
+<section aria-live="polite" style="margin-top: auto; display: flex; align-items: flex-end; gap: 28px">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 8px">
+<label for="why" style="font-size: 14px; font-weight: 600">Reason (required)</label>
+<input id="why" type="text" defaultValue="Approve for the pilot with the privacy conditions and Clinical Safety’s monthly check." style="height: 48px; box-sizing: border-box; padding: 0 14px; font-size: 17px; border-radius: 12px; border: 1px solid {{t.btn2}}; background: {{t.raised}}; color: {{t.text}}">
+<span style="font-size: 14px; color: {{t.soft}}">You can decide because you hold the Approver role and didn’t submit this case. Recorded under healthcare-ai@1.0.0.</span>
+</div>
+<a href="SentenceAudit.dc.html" style="height: 56px; display: inline-flex; align-items: center; padding: 0 28px; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 18px; font-weight: 600; text-decoration: none">{{primary}}</a>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  // Values from the Aegis design system (ds/aegis/tokens.json).
+  dark: { scheme: 'dark', bg: '#0B0E13', raised: '#1A1F2A', text: '#EDE9E0', soft: '#A3ABB9', chipBg: '#D4FF3A', chipText: '#0B0E13', rule: '#262D3B',
+    btnBg: '#D4FF3A', btnText: '#0B0E13', btn2: '#6B7488', focus: '#5B9BFF', seal: '#D4FF3A', sealEdge: 'transparent', ok: '#8FE3B5', warn: '#F6D37A', high: '#FFA36E' },
+  light: { scheme: 'light', bg: '#EEECE6', raised: '#F4F2EC', text: '#0F1216', soft: '#525964', chipBg: '#0F1216', chipText: '#D4FF3A', rule: '#DCD8CE',
+    btnBg: '#0F1216', btnText: '#D4FF3A', btn2: '#858073', focus: '#1F5FD6', seal: '#D4FF3A', sealEdge: 'rgba(15,18,22,0.45)', ok: '#1B6B44', warn: '#7A5600', high: '#A33A00' }
+};
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var SIGNOFFS = [
+  { ini: 'PR', who: 'Priya Raman', text: 'signed Privacy if the vendor amends its BAA and the model only gets the claim under review.', cond: true },
+  { ini: 'AD', who: 'Ana Duarte', text: 'signed Clinical Safety if 50 summaries a month are checked against their source letters.', cond: true },
+  { ini: 'JB', who: 'Jordan Blake', text: 'signed Legal: the vendor terms are acceptable once the BAA is amended.' },
+  { ini: 'RC', who: 'Rui Chen', text: 'signed Security: no new attack surface, and the vendor’s SOC 2 is current.' },
+  { ini: 'KO', who: 'Kemi Okafor', text: 'signed Data Governance: claim data stays in-region.' },
+  { ini: 'TN', who: 'Tom Nguyen', text: 'signed Tech Architecture: it fits the approved integration pattern.' },
+  { ini: 'AS', who: 'Aisha Siddiqui', text: 'signed Responsible AI: nurses see the source letter beside every summary.' },
+  { ini: 'NB', who: 'Nia Brooks', text: 'signed Procurement: the vendor is on the approved list.' }
+];
+var DECISIONS = ['approve CASE-0142 for a pilot', 'approve CASE-0142 for full use', 'reject CASE-0142'];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var s = this.state || {};
+    var d = typeof s.d === 'number' ? s.d : 0;
+    var extra = s.extra !== false;
+    var n = 3 + (extra ? 1 : 0);
+    return {
+      t: t,
+      signoffs: SIGNOFFS.map(function (x) { return Object.assign({}, x, { hasCond: !!x.cond }); }),
+      decisionText: DECISIONS[d],
+      cycle: function () { self.setState({ d: (d + 1) % DECISIONS.length }); },
+      isApprove: d < 2, isReject: d === 2,
+      extraOn: extra, extraState: extra ? 'included' : 'not included',
+      extraBg: extra ? t.chipBg : 'transparent', extraFg: extra ? t.chipText : t.soft,
+      extraBorder: extra ? '0' : '2px dashed ' + t.btn2, extraStrike: extra ? 'none' : 'line-through',
+      flipExtra: function () { self.setState({ extra: !extra }); },
+      primary: d === 2 ? 'Reject' : 'Approve with ' + n + ' conditions'
+    };
+  }
+}
+</script>
+</body>
+</html>

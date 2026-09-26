@@ -16,13 +16,20 @@ a{color:var(--link)}a:hover{text-decoration-thickness:3px}
 button{font-family:inherit}
 </style>
 </helmet>
-<div style="width: 1440px; height: 1000px; box-sizing: border-box; padding: 32px 72px 40px; display: flex; flex-direction: column; gap: 36px; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; padding: 28px 72px 36px; display: flex; flex-direction: column; gap: 32px; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
 
-<header style="display: flex; align-items: center; gap: 20px">
+<header style="display: flex; align-items: center; gap: 24px">
 <span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; line-height: 1">Aegis</span>
-<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.soft}}">register an AI system</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.soft}}">Northwind Health Plan</span>
 <div style="flex-grow: 1"></div>
-<a href="Docket.dc.html" style="font-size: 15px">Back to the Docket</a>
+<nav aria-label="Primary" style="display: flex; gap: 4px">
+<a href="SentenceHome.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Home</a>
+<a href="Sentence.dc.html" aria-current="page" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; font-weight: 600; text-decoration: none; color: {{t.text}}; background: {{t.raised}}">Register</a>
+<a href="SentenceReview.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Reviews · 3</a>
+<a href="SentenceAudit.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 50%; background: #D4FF3A; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">DO</span>
+<span style="font-size: 14px">Dana Ortiz · Requester</span>
 </header>
 
 <section aria-labelledby="say-h" style="display: flex; flex-direction: column; gap: 18px">
@@ -62,7 +69,7 @@ change what happens to a person.
 </section>
 
 <div style="margin-top: auto; display: flex; align-items: center; gap: 16px">
-<button type="button" style="height: 56px; padding: 0 28px; border-radius: 12px; border: 0; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 18px; font-weight: 600; cursor: pointer">Submit for review</button>
+<a href="Submitted.dc.html" style="height: 56px; display: inline-flex; align-items: center; padding: 0 28px; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 18px; font-weight: 600; text-decoration: none">Submit for review</a>
 <button type="button" style="height: 56px; padding: 0 24px; border-radius: 12px; border: 1px solid {{t.btn2}}; background: transparent; color: {{t.text}}; font-size: 17px; font-weight: 500; cursor: pointer">Ask a person for help</button>
 <div style="flex-grow: 1"></div>
 <span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.soft}}; text-align: right">Each phrase answers one question in healthcare-ai@1.0.0.<br>Rules set the tier, not AI.</span>
@@ -89,10 +96,10 @@ var BASE = {
 var TIERS = ['low', 'medium', 'high', 'critical'];
 var THEMES = {
   // Values from the Aegis design system (ds/aegis/tokens.json).
-  dark: { scheme: 'dark', bg: '#0B0E13', text: '#EDE9E0', soft: '#A3ABB9', chipBg: '#D4FF3A', chipText: '#0B0E13', underline: '#6B7488', rule: '#262D3B', meterOff: '#2A3140',
+  dark: { scheme: 'dark', bg: '#0B0E13', text: '#EDE9E0', soft: '#A3ABB9', chipBg: '#D4FF3A', chipText: '#0B0E13', underline: '#6B7488', rule: '#262D3B', meterOff: '#2A3140', raised: '#1A1F2A', sealEdge: 'transparent',
     btnBg: '#D4FF3A', btnText: '#0B0E13', btn2: '#6B7488', focus: '#5B9BFF', bars: ['#3E9E6E', '#D8A935', '#F07A36', '#E5484D'],
     tier: { low: '#8FE3B5', medium: '#F6D37A', high: '#FFA36E', critical: '#FF7B7B' } },
-  light: { scheme: 'light', bg: '#EEECE6', text: '#0F1216', soft: '#525964', chipBg: '#0F1216', chipText: '#D4FF3A', underline: '#858073', rule: '#DCD8CE', meterOff: '#E4E0D6',
+  light: { scheme: 'light', bg: '#EEECE6', text: '#0F1216', soft: '#525964', chipBg: '#0F1216', chipText: '#D4FF3A', underline: '#858073', rule: '#DCD8CE', meterOff: '#E4E0D6', raised: '#F4F2EC', sealEdge: 'rgba(15,18,22,0.45)',
     btnBg: '#0F1216', btnText: '#D4FF3A', btn2: '#858073', focus: '#1F5FD6', bars: ['#2F8A5B', '#9A7000', '#C4501A', '#B3261E'],
     tier: { low: '#1B6B44', medium: '#7A5600', high: '#A33A00', critical: '#B3261E' } }
 };

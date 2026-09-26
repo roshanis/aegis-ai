@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CASE-0142 submitted</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}a:hover{text-decoration-thickness:3px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; box-sizing: border-box; padding: 28px 72px 36px; display: flex; flex-direction: column; gap: 30px; background: {{t.bg}}; color: {{t.text}}; --link: {{t.text}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="display: flex; align-items: center; gap: 24px">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 30px; line-height: 1">Aegis</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.soft}}">Northwind Health Plan</span>
+<div style="flex-grow: 1"></div>
+<nav aria-label="Primary" style="display: flex; gap: 4px">
+<a href="SentenceHome.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Home</a>
+<a href="Sentence.dc.html" aria-current="page" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; font-weight: 600; text-decoration: none; color: {{t.text}}; background: {{t.raised}}">Register</a>
+<a href="SentenceReview.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Reviews</a>
+<a href="SentenceAudit.dc.html" style="padding: 12px 14px; border-radius: 10px; font-size: 15px; text-decoration: none; color: {{t.soft}}">Audit log</a>
+</nav>
+<span aria-hidden="true" style="width: 34px; height: 34px; border-radius: 50%; background: {{t.seal}}; color: #0B0E13; box-shadow: 0 0 0 1px {{t.sealEdge}}; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600">DO</span>
+<span style="font-size: 14px">Dana Ortiz · Requester</span>
+</header>
+
+<section aria-labelledby="done-h" style="display: flex; flex-direction: column; gap: 14px">
+<h1 id="done-h" style="margin: 0; font-family: 'Geist Mono', monospace; font-weight: 400; font-size: 13px; letter-spacing: 0.1em; color: {{t.soft}}">SUBMITTED · CASE-0142 · SEP 22, 2026 AT 10:05</h1>
+<p style="margin: 0; max-width: 1240px; font-family: 'Instrument Serif', Georgia, serif; font-size: 50px; font-weight: 400; line-height: 1.3">
+Your prior-auth letter summarizer is <em style="color: {{t.high}}">high risk</em>, so <span style="color: {{t.chipText}}; background: {{t.chipBg}}; border-radius: 12px; padding: 0 14px">8 teams</span> will review it. Reviews are due by Sep 29. You don’t need to do anything now.
+</p>
+</section>
+
+<section aria-labelledby="next-h" style="padding-top: 22px; border-top: 2px solid {{t.rule}}; display: flex; flex-direction: column; gap: 6px">
+<h2 id="next-h" style="margin: 0 0 6px; font-family: 'Geist Mono', monospace; font-weight: 400; font-size: 13px; letter-spacing: 0.1em; color: {{t.soft}}">WHAT HAPPENS NEXT</h2>
+<ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column">
+<sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+<li style="display: flex; align-items: center; gap: 18px; min-height: 58px; border-bottom: 1px solid {{t.rule}}">
+<span style="width: 30px; flex-shrink: 0; display: flex; justify-content: center">
+<sc-if value="{{s.isSystem}}" hint-placeholder-val="{{true}}"><span aria-hidden="true" style="width: 16px; height: 16px; border-radius: 4px; background: {{t.system}}"></span></sc-if>
+<sc-if value="{{s.isAgent}}" hint-placeholder-val="{{false}}"><span aria-hidden="true" style="box-sizing: border-box; width: 24px; height: 24px; border-radius: 50%; border: 2px dashed {{t.agent}}"></span></sc-if>
+<sc-if value="{{s.isPending}}" hint-placeholder-val="{{false}}"><span aria-hidden="true" style="box-sizing: border-box; width: 26px; height: 26px; border-radius: 50%; border: 2px solid {{t.ring}}"></span></sc-if>
+<sc-if value="{{s.isFuture}}" hint-placeholder-val="{{false}}"><span aria-hidden="true" style="box-sizing: border-box; width: 26px; height: 26px; border-radius: 50%; border: 2px solid {{t.btn2}}"></span></sc-if>
+</span>
+<span style="flex-grow: 1; font-size: 19px; line-height: 1.4">{{s.text}}</span>
+<span style="width: 110px; text-align: right; font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; color: {{s.statusFg}}">{{s.status}}</span>
+</li>
+</sc-for>
+</ol>
+</section>
+
+<div style="margin-top: auto; display: flex; align-items: center; gap: 16px">
+<a href="SentenceHome.dc.html" style="height: 56px; display: inline-flex; align-items: center; padding: 0 28px; border-radius: 12px; background: {{t.btnBg}}; color: {{t.btnText}}; font-size: 18px; font-weight: 600; text-decoration: none">Done</a>
+<a href="SentenceAudit.dc.html" style="height: 56px; display: inline-flex; align-items: center; padding: 0 24px; border-radius: 12px; border: 1px solid {{t.btn2}}; color: {{t.text}}; font-size: 17px; font-weight: 500; text-decoration: none">Follow CASE-0142 in the audit log</a>
+<div style="flex-grow: 1"></div>
+<span style="font-size: 14px; color: {{t.soft}}">You’ll get an email when each team signs and when the decision is made.</span>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var THEMES = {
+  // Values from the Aegis design system (ds/aegis/tokens.json).
+  dark: { scheme: 'dark', bg: '#0B0E13', raised: '#1A1F2A', text: '#EDE9E0', soft: '#A3ABB9', chipBg: '#D4FF3A', chipText: '#0B0E13', rule: '#262D3B',
+    btnBg: '#D4FF3A', btnText: '#0B0E13', btn2: '#6B7488', focus: '#5B9BFF', seal: '#D4FF3A', sealEdge: 'transparent', ring: '#D4FF3A',
+    system: '#8C95A6', agent: '#62D0FF', ok: '#8FE3B5', high: '#FFA36E' },
+  light: { scheme: 'light', bg: '#EEECE6', raised: '#F4F2EC', text: '#0F1216', soft: '#525964', chipBg: '#0F1216', chipText: '#D4FF3A', rule: '#DCD8CE',
+    btnBg: '#0F1216', btnText: '#D4FF3A', btn2: '#858073', focus: '#1F5FD6', seal: '#D4FF3A', sealEdge: 'rgba(15,18,22,0.45)', ring: '#4D6B00',
+    system: '#6A7280', agent: '#0070A8', ok: '#1B6B44', high: '#A33A00' }
+};
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+var STEPS = [
+  { kind: 'system', text: 'Triage rated it high risk, because it can shape care or coverage with a person checking each output.', status: 'DONE' },
+  { kind: 'system', text: 'Routing sent it to Clinical Safety, Data Governance, Legal, Privacy, Procurement, Responsible AI, Security and Tech Architecture.', status: 'DONE' },
+  { kind: 'agent', text: 'Agents write draft reviews for each team. A draft can’t approve anything.', status: 'NEXT' },
+  { kind: 'pending', text: 'Each team signs, adding conditions if they need them.', status: 'BY SEP 29' },
+  { kind: 'future', text: 'An approver makes the final decision once all 8 teams have signed.', status: 'AFTER THAT' }
+];
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  renderVals() {
+    var t = pickTheme(this.props.theme);
+    return {
+      t: t,
+      steps: STEPS.map(function (s) {
+        return { text: s.text, status: s.status, statusFg: s.status === 'DONE' ? t.ok : t.soft,
+          isSystem: s.kind === 'system', isAgent: s.kind === 'agent', isPending: s.kind === 'pending', isFuture: s.kind === 'future' };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
