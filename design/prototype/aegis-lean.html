@@ -193,6 +193,24 @@ tr.agent-row td { background: var(--agent-tint); }
 .tf-row .by .mono { color: var(--agent-text); }
 .tf-row .field { flex-basis: 100%; }
 .btn:disabled { opacity: 1; background: var(--raised); color: var(--muted); border: 1px solid var(--control); cursor: not-allowed; }
+
+/* After approval: conditions, system page, scoped re-review */
+.conds { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.conds li { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.conds .t { flex: 1 1 260px; display: flex; flex-direction: column; gap: 2px; }
+.conds .t span { font-size: 13px; color: var(--muted); }
+.conds .st { font: 500 11px var(--mono); letter-spacing: .04em; }
+.gate { font-size: 28px; font-weight: 600; line-height: 1; }
+.signals { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.signals li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.signals li.hot { padding: 14px 16px; border: 2px dashed var(--agent); border-radius: 14px; background: var(--agent-tint); }
+.signals .t { flex: 1 1 280px; display: flex; flex-direction: column; gap: 2px; }
+.signals .t span { font-size: 13px; color: var(--muted); }
+.signals .src { width: 120px; font: 11px var(--mono); color: var(--muted); }
+.diff { width: 100%; }
+.diff td { vertical-align: top; }
+.diff .was { color: var(--muted); }
+.diff .new { font-weight: 600; }
 </style>
 
 <nav class="proto" aria-label="Prototype">
@@ -414,6 +432,93 @@ tr.agent-row td { background: var(--agent-tint); }
         <tbody id="history"></tbody>
       </table></div>
     </section>
+
+    <!-- 7 · Deploy gate: conditions become tasks -->
+    <section class="screen" data-screen="7" aria-labelledby="s7h" hidden>
+      <div class="cols">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="eyebrow" style="color:var(--ok)">Approved for a pilot · Sep 24</div>
+            <h1 class="title" id="s7h">Get ready to deploy</h1>
+            <div class="pills"><span class="pill mono">CASE-0142</span><span class="pill">Pilot · 500 members · 90 days</span><span class="pill">4 conditions</span></div>
+          </div>
+          <h2 class="h2">Before deploy</h2>
+          <ul class="conds" id="conds-before"></ul>
+          <h2 class="h2">After deploy</h2>
+          <ul class="conds" id="conds-after"></ul>
+        </div>
+        <aside class="panel" aria-labelledby="gateh" aria-live="polite">
+          <h2 class="eyebrow" id="gateh" style="margin:0">Deploy gate</h2>
+          <div class="row"><span class="gate" id="gate-n"></span><span class="note">confirmed by the teams that set them</span></div>
+          <div class="field"><label for="dp-ver">What’s being deployed</label><input id="dp-ver" type="text" value="9f3c2e1 · openai gpt-4.1 · us-east" spellcheck="false"></div>
+          <div class="note">Going past 500 members or 90 days needs a new case.</div>
+          <button type="button" class="btn" id="dp-go" data-go="8"></button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 8 · System page: live record and signals -->
+    <section class="screen" data-screen="8" aria-labelledby="s8h" hidden>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="eyebrow">System · since Oct 1</div>
+        <h1 class="title" id="s8h">Prior-auth letter summarizer</h1>
+        <div class="pills"><span class="pill" style="color:var(--ok);font-weight:600">Live · pilot</span><span class="pill">312 of 500 members</span><span class="pill">Day 41 of 90</span><span class="pill mono">approved 9f3c2e1</span><span class="pill mono">healthcare-ai@1.0.0</span><span class="pill">Re-review Mar 2027</span></div>
+      </div>
+      <div class="cols">
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <h2 class="h2">Signals</h2>
+          <ul class="signals">
+            <li class="hot"><span class="ring" aria-hidden="true"></span><span class="t"><strong>New vendor in the code: <span class="mono" style="font-size:14px;color:var(--ink)">anthropic ^0.39</span></strong><span>Added in 4e1a9c0 · not in the approval · the model gets claim text (PHI)</span></span><span class="pill mono" style="font-size:11px;color:var(--high)">RE-REVIEW</span></li>
+            <li><span class="sq" aria-hidden="true"></span><span class="t"><strong>People changed 6 of 100 letters</strong><span>Limit is 10 · last 7 days</span></span><span class="pill mono" style="font-size:11px;color:var(--ok)">OK</span></li>
+            <li><span class="sq" aria-hidden="true"></span><span class="t"><strong>No incidents</strong><span>Since deploy</span></span><span class="pill mono" style="font-size:11px;color:var(--ok)">OK</span></li>
+            <li><span class="sq" aria-hidden="true"></span><span class="t"><strong>Pilot ends Dec 30</strong><span>Full use needs a new approval</span></span><span class="pill mono" style="font-size:11px">IN 49 DAYS</span></li>
+          </ul>
+          <div class="note">Rule <span class="mono" style="color:var(--ink)">new-vendor</span> · new vendor adds Procurement and Legal; with PHI, Privacy too.</div>
+        </div>
+        <aside class="panel" aria-labelledby="acth">
+          <div class="row" style="justify-content:space-between"><h2 class="h2" id="acth">What now?</h2><span class="eyebrow" style="color:var(--agent-text)">Agent proposes · you decide</span></div>
+          <div class="choices" role="radiogroup" aria-label="Action" id="op-choices"></div>
+          <div class="field"><label for="op-why">Reason <span class="note" style="font-weight:400">· required</span></label><input id="op-why" type="text" value="Anthropic added as a fallback model; not yet in production."></div>
+          <div class="readback" id="op-read" aria-live="polite"></div>
+          <button type="button" class="btn" id="op-go"></button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 9 · Scoped re-review -->
+    <section class="screen" data-screen="9" aria-labelledby="s9h" hidden>
+      <div class="cols">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 class="title" id="s9h">Re-review: new vendor</h1>
+            <div class="pills"><span class="pill mono">CASE-0142-R1</span><span class="pill" style="font-weight:600">3 teams, not 8</span><span class="pill">Still High risk</span><span class="pill">System stays live</span></div>
+          </div>
+          <h2 class="h2">What changed since approval</h2>
+          <div class="table-wrap"><table class="diff">
+            <thead><tr><th scope="col"></th><th scope="col">Approved</th><th scope="col">Now</th></tr></thead>
+            <tbody>
+              <tr><td class="note">Vendors</td><td class="was">OpenAI</td><td class="new">OpenAI, Anthropic</td></tr>
+              <tr><td class="note">Code</td><td class="was mono">9f3c2e1</td><td class="new mono">4e1a9c0</td></tr>
+              <tr><td class="note">Data sent</td><td class="was">Claim text</td><td>Claim text</td></tr>
+              <tr><td class="note">Teams</td><td class="was">8</td><td class="new">Procurement, Legal, Privacy</td></tr>
+            </tbody>
+          </table></div>
+          <section class="draft" aria-labelledby="d9h">
+            <div class="draft-head"><span class="ring" style="width:18px;height:18px"></span><h2 class="h2" id="d9h" style="font-size:14px">Agent draft</h2><small>DRAFT ONLY · CANNOT APPROVE</small></div>
+            <div class="finding"><span class="sev" style="color:var(--high)">MAJOR</span><span class="t">No BAA with Anthropic on file</span><a href="#step9" class="note" style="padding:10px 4px">Evidence</a></div>
+            <div class="finding"><span class="sev" style="color:var(--medium)">MINOR</span><span class="t">Fallback path isn’t covered by the letter check</span><a href="#step9" class="note" style="padding:10px 4px">Evidence</a></div>
+          </section>
+          <div class="row"><span class="note">Sign-offs</span><div class="dots" aria-label="1 of 3 teams signed"><span class="s" title="Legal"></span><span class="y" title="Procurement: you"></span><span title="Privacy"></span></div><span class="mono" style="font-size:12px">1/3</span></div>
+        </div>
+        <aside class="panel" aria-labelledby="r9h">
+          <h2 class="h2" id="r9h">Your sign-off · Procurement</h2>
+          <div class="choices" role="radiogroup" aria-label="Decision" id="rr-choices"></div>
+          <div class="field"><label for="rr-why">Reason <span class="note" style="font-weight:400">· required</span></label><input id="rr-why" type="text" value="Fine once the BAA is signed."></div>
+          <div class="readback" id="rr-read" aria-live="polite"></div>
+          <button type="button" class="btn" id="rr-go" data-go="8"></button>
+        </aside>
+      </div>
+    </section>
   </main>
 </div>
 
@@ -425,9 +530,12 @@ tr.agent-row td { background: var(--agent-tint); }
     { n: 3, label: 'Priya · Home', ini: 'PR', who: 'Priya Raman · Privacy reviewer', nav: 'Home' },
     { n: 4, label: 'Priya · Review', ini: 'PR', who: 'Priya Raman · Privacy reviewer', nav: 'Reviews' },
     { n: 5, label: 'Marcus · Decide', ini: 'ML', who: 'Marcus Lee · Approver', nav: 'Decisions' },
-    { n: 6, label: 'Sam · Audit', ini: 'SW', who: 'Sam Whitfield · Auditor', nav: 'Audit log' }
+    { n: 6, label: 'Sam · Audit', ini: 'SW', who: 'Sam Whitfield · Auditor', nav: 'Audit log' },
+    { n: 7, label: 'Dana · Deploy', ini: 'DO', who: 'Dana Ortiz · Owner', nav: 'Systems' },
+    { n: 8, label: 'Dana · Live', ini: 'DO', who: 'Dana Ortiz · Owner', nav: 'Systems' },
+    { n: 9, label: 'Nia · Re-review', ini: 'NB', who: 'Nia Brooks · Procurement reviewer', nav: 'Reviews' }
   ];
-  var NAV = [['Home', 3], ['Register', 1], ['Reviews', 4], ['Decisions', 5], ['Audit log', 6]];
+  var NAV = [['Home', 3], ['Register', 1], ['Reviews', 4], ['Decisions', 5], ['Systems', 8], ['Audit log', 6]];
   var $ = function (id) { return document.getElementById(id); };
   var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
 
@@ -769,6 +877,7 @@ tr.agent-row td { background: var(--agent-tint); }
     var n = 3 + ($('dc-extra').checked ? 1 : 0);
     $('dc-read').textContent = dcChoice === 2 ? 'You reject CASE-0142. Dana Ortiz sees your reason.' : 'You approve CASE-0142 for ' + (dcChoice === 0 ? 'a pilot' : 'full use') + ' with ' + n + ' conditions.';
     $('dc-go').textContent = dcChoice === 2 ? 'Reject' : 'Approve with ' + n + ' conditions';
+    $('dc-go').dataset.go = dcChoice === 2 ? '6' : '7';
   }
   $('dc-choices').addEventListener('click', function (e) { var b = e.target.closest('[data-dc]'); if (b) { dcChoice = Number(b.dataset.dc); renderDecide(); } });
   $('dc-extra').addEventListener('change', renderDecide);
@@ -796,8 +905,61 @@ tr.agent-row td { background: var(--agent-tint); }
     catch (e) { b.textContent = 'Copy not allowed here'; }
   });
 
+
+  /* ---------- 7 · deploy gate ---------- */
+  // Each condition: text, team, who sets and confirms it, when it's due, confirmed?
+  var CONDS7 = [
+    { t: 'Vendor amends its BAA', team: 'Privacy', by: 'Priya Raman', ini: 'PR', due: 'before', ok: true, proof: 'BAA amendment, signed Sep 26' },
+    { t: 'Model only gets the claim under review', team: 'Privacy', by: 'Priya Raman', ini: 'PR', due: 'before', ok: true, proof: 'Input filter in 9f3c2e1' },
+    { t: 'A clinician checks every letter in the pilot', team: 'Clinical Safety', by: 'Ana Duarte', ini: 'AD', due: 'before', ok: false, proof: 'Rota and checklist sent Sep 27' },
+    { t: 'Re-review in 6 months', team: 'Approver', by: 'Marcus Lee', ini: 'ML', due: 'after', ok: false, proof: 'Due Mar 2027' }
+  ];
+  function condRow(c, i) {
+    var st = c.due === 'after' ? '<span class="st" style="color:var(--muted)">SCHEDULED</span>'
+      : c.ok ? '<span class="seal" style="width:24px;height:24px;font-size:9px" aria-hidden="true">' + c.ini + '</span><span class="st" style="color:var(--ok)">CONFIRMED</span>'
+      : '<span class="pend" aria-hidden="true"></span><span class="st">WAITING FOR ' + esc(c.by.split(' ')[0].toUpperCase()) + '</span>' +
+        '<button type="button" class="btn-2" style="min-height:40px;font-size:13px" data-confirm="' + i + '">Prototype: ' + esc(c.by.split(' ')[0]) + ' confirms</button>';
+    return '<li><span class="t"><strong>' + esc(c.t) + '</strong><span>' + esc(c.team) + ' · ' + esc(c.proof) + '</span></span><span class="row" style="gap:8px">' + st + '</span></li>';
+  }
+  function renderDeploy() {
+    var before = CONDS7.filter(function (c) { return c.due === 'before'; });
+    $('conds-before').innerHTML = CONDS7.map(function (c, i) { return c.due === 'before' ? condRow(c, i) : ''; }).join('');
+    $('conds-after').innerHTML = CONDS7.map(function (c, i) { return c.due === 'after' ? condRow(c, i) : ''; }).join('');
+    var n = before.filter(function (c) { return c.ok; }).length, left = before.length - n;
+    $('gate-n').textContent = n + ' of ' + before.length;
+    $('dp-go').disabled = left > 0;
+    $('dp-go').textContent = left > 0 ? left + ' left to confirm' : 'Deploy the pilot';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-confirm]');
+    if (b) { CONDS7[Number(b.dataset.confirm)].ok = true; renderDeploy(); $('dp-go').focus(); }
+  });
+
+  /* ---------- 8 · system page ---------- */
+  var opChoice = 0, opOpts = ['Open re-review · 3 teams', 'Pause and open re-review', 'Not a real change'];
+  function renderOps() {
+    $('op-choices').innerHTML = opOpts.map(function (o, i) { return '<button type="button" role="radio" data-op="' + i + '" aria-checked="' + (i === opChoice) + '">' + o + '</button>'; }).join('');
+    $('op-read').textContent = opChoice === 0 ? 'Procurement, Legal and Privacy review the change. The pilot keeps running.'
+      : opChoice === 1 ? 'The pilot stops now. Procurement, Legal and Privacy review the change.'
+      : 'The signal closes. Your reason goes in the audit log.';
+    $('op-go').textContent = opChoice === 0 ? 'Open re-review' : opChoice === 1 ? 'Pause and open re-review' : 'Dismiss signal';
+    $('op-go').dataset.go = opChoice === 2 ? '6' : '9';
+  }
+  $('op-choices').addEventListener('click', function (e) { var b = e.target.closest('[data-op]'); if (b) { opChoice = Number(b.dataset.op); renderOps(); } });
+
+  /* ---------- 9 · scoped re-review ---------- */
+  var rrChoice = 0, rrOpts = ['Sign with conditions', 'Sign', 'Request changes'];
+  function renderRereview() {
+    $('rr-choices').innerHTML = rrOpts.map(function (o, i) { return '<button type="button" role="radio" data-rr="' + i + '" aria-checked="' + (i === rrChoice) + '">' + o + '</button>'; }).join('');
+    $('rr-read').textContent = rrChoice === 0 ? 'You sign Procurement with 1 condition: BAA with Anthropic before it’s used.'
+      : rrChoice === 1 ? 'You sign Procurement with no conditions.' : 'Procurement goes back to Dana Ortiz with changes requested.';
+    $('rr-go').textContent = rrChoice === 0 ? 'Sign with 1 condition' : rrChoice === 1 ? 'Sign' : 'Request changes';
+  }
+  $('rr-choices').addEventListener('click', function (e) { var b = e.target.closest('[data-rr]'); if (b) { rrChoice = Number(b.dataset.rr); renderRereview(); } });
+
+  renderDeploy(); renderOps(); renderRereview();
   renderRegister(); renderTf(false); setVariant(variant, false); renderHome(); renderReview(); renderDecide();
-  var m = /^#step([1-6])$/.exec(location.hash);
+  var m = /^#step([1-9])$/.exec(location.hash);
   go(m ? Number(m[1]) : 1);
 })();
 </script>
