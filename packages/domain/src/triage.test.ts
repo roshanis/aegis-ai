@@ -20,6 +20,12 @@ describe("triage", () => {
     expect(result.explanation).toEqual(["critical tier: a without b", "adds privacy, security: c is set"]);
   });
 
+  it("names domains with the pack's labels in the explanation", () => {
+    const result = triage(policy, { c: true }, { privacy: "Privacy / HIPAA" });
+    expect(result.explanation).toEqual(["low tier: no risk rule matched", "adds Privacy / HIPAA: c is set"]);
+    expect(result.domains).toEqual(["privacy", "security"]);
+  });
+
   it("falls back to the default tier", () => {
     const result = triage(policy, {});
     expect(result).toMatchObject({ tier: "low", tierRuleId: null, domains: ["security"] });

@@ -2,20 +2,26 @@
   "name": "@aegis/db",
   "version": "0.0.0",
   "private": true,
+  "license": "BUSL-1.1",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./migrate": "./src/migrate.ts"
   },
   "scripts": {
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx src/cli.ts"
   },
   "dependencies": {
-    "@aegis/domain": "workspace:*"
+    "@aegis/domain": "workspace:*",
+    "@electric-sql/pglite": "^0.5.8",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "@types/node": "^22.0.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "@types/pg": "^8.23.1",
+    "tsx": "^4.23.15"
   }
 }

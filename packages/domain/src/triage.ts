@@ -59,7 +59,12 @@ export function evaluate(condition: Condition, answers: Answers): boolean {
   return answers[field] === value;
 }
 
-export function triage(policy: TriagePolicy, answers: Answers): TriageResult {
+/** `labels` names review domains in the explanation, e.g. "privacy-hipaa" as "Privacy / HIPAA". */
+export function triage(
+  policy: TriagePolicy,
+  answers: Answers,
+  labels: Readonly<Record<string, string>> = {},
+): TriageResult {
   const matched = policy.tierRules.find((rule) => evaluate(rule.when, answers));
   const tier = matched?.tier ?? policy.defaultTier;
   const explanation = [
@@ -71,7 +76,7 @@ export function triage(policy: TriagePolicy, answers: Answers): TriageResult {
     if (!evaluate(rule.when, answers)) continue;
     const added = rule.add.filter((d) => !domains.has(d));
     rule.add.forEach((d) => domains.add(d));
-    if (added.length > 0) explanation.push(`adds ${added.join(", ")}: ${rule.because}`);
+    if (added.length > 0) explanation.push(`adds ${added.map((d) => labels[d] ?? d).join(", ")}: ${rule.because}`);
   }
 
   return { tier, tierRuleId: matched?.id ?? null, domains: [...domains].sort(), explanation };

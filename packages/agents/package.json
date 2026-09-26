@@ -1,0 +1,26 @@
+{
+  "name": "@aegis/agents",
+  "version": "0.0.0",
+  "private": true,
+  "license": "BUSL-1.1",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aegis/domain": "workspace:*",
+    "@aegis/frameworks": "workspace:*",
+    "@openai/agents-core": "0.18.0",
+    "@openai/agents-openai": "0.18.0",
+    "openai": "^7.23.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "vitest": "^4.1.10"
+  }
+}
