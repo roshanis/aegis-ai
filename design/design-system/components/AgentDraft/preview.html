@@ -1,0 +1,36 @@
+<!-- @dsCard group="Content" height=250 subtitle="A privacy review drafted by an agent" -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AgentDraft</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+  body { margin: 0; background: var(--surface-page); color: var(--ink); font-family: var(--font-sans); }
+  .frame { margin: 16px; border: 2px dashed var(--actor-agent); border-radius: var(--radius-lg); background: var(--surface-panel); overflow: hidden; }
+  .head { display: flex; align-items: center; gap: 12px; padding: 12px 18px; background: var(--agent-tint); }
+  .ring { box-sizing: border-box; width: 20px; height: 20px; border-radius: 50%; border: 2px dashed var(--actor-agent); }
+  .title { font-size: 14px; font-weight: 600; }
+  .tag { font-family: var(--font-mono); font-size: 11px; letter-spacing: .06em; padding: 3px 8px; border-radius: var(--radius-sm); border: 1px solid var(--actor-agent); color: var(--agent-text); }
+  .meta { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-muted); }
+  .body { padding: 14px 18px; display: flex; flex-direction: column; gap: 8px; }
+  .finding { display: flex; gap: 14px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--surface-raised); }
+  .sev { font-family: var(--font-mono); font-size: 11px; padding: 3px 7px; border-radius: 5px; border: 1px solid var(--tier-high); color: var(--tier-high); }
+  .sev.minor { border-color: var(--tier-medium); color: var(--tier-medium); }
+  .text { flex-grow: 1; font-size: 14px; font-weight: 600; }
+  .text.dismissed { text-decoration: line-through; }
+  .seg { display: flex; gap: 4px; padding: 3px; border-radius: var(--radius-md); background: var(--surface-page); }
+  .seg button { height: var(--target); padding: 0 14px; border: 0; border-radius: 8px; font: 600 13px var(--font-sans); background: transparent; color: var(--ink-muted); }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface-page); }
+</style>
+</head>
+<body>
+<section class="frame" aria-label="Draft by privacy-agent">
+  <div class="head"><span class="ring"></span><span class="title">Draft by privacy-agent</span><span class="tag">DRAFT ONLY · CANNOT APPROVE</span><span class="meta">11/11 CRITERIA · EVAL GATE PASSED</span></div>
+  <div class="body">
+    <div class="finding"><span class="sev">MAJOR</span><span class="text">BAA does not cover this API</span><div class="seg"><button type="button" aria-pressed="true">Keep</button><button type="button" aria-pressed="false">Dismiss</button></div></div>
+    <div class="finding"><span class="sev minor">MINOR</span><span class="text dismissed">Vendor keeps prompt logs 30 days</span><div class="seg"><button type="button" aria-pressed="false">Keep</button><button type="button" aria-pressed="true">Dismiss</button></div></div>
+  </div>
+</section>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Aegis</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500&amp;display=swap">
+<style>
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--surface-page); color: var(--ink); font-family: var(--font-sans); overflow: hidden; }
+  .cover { position: relative; height: 288px; overflow: hidden; }
+  .art { position: absolute; top: 0; left: 480px; width: 480px; height: 288px; overflow: hidden; }
+  .art svg { display: block; width: 480px; height: 288px; }
+  .seal { fill: var(--seal); stroke: var(--seal-edge); stroke-width: 1; }
+  .agent { fill: var(--actor-agent); }
+  .system { fill: var(--actor-system); }
+  .high { fill: var(--dial-high); }
+  .open { fill: none; stroke: var(--seal-ring); stroke-width: 2; }
+  .blk { rx: var(--radius-lg); }
+  .sq { rx: var(--radius-sm); }
+  .words { position: absolute; left: var(--space-6); bottom: var(--space-6); max-width: 440px; }
+  .name { margin: 0; font-family: var(--font-display); font-size: 120px; line-height: .9; font-weight: 400; color: var(--ink); }
+  .tag { margin: var(--space-2) 0 0 4px; font-size: 14px; line-height: 20px; color: var(--ink-muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      seal 144×232 bled off the top (a person's authority, the identity colour) · actor-agent 128×152 · actor-system 80×80 square · dial-high 56×24 pill once (risk only ever signals) — about a third of 960×288
+  arrangement one tall seal slab with satellites stepping down to a shared baseline space-5 above the bottom edge, space-4 gutters
+  pattern     literal motif, from "agents draft, people decide": the review table, eight 10px discs on a 56px ring, four sealed (seal fill) and four still open (seal-ring outline)
+  scales      gutters space-4; corners radius-lg on slabs, radius-sm on the system square, pill rx half its 24px height; ring pitch 45°
+-->
+<rect class="seal blk" x="16" y="-16" width="144" height="232" rx="16"></rect>
+<rect class="agent blk" x="176" y="112" width="128" height="152" rx="16"></rect>
+<rect class="system sq" x="320" y="184" width="80" height="80" rx="6"></rect>
+<rect class="high" x="416" y="240" width="56" height="24" rx="12"></rect>
+<circle class="seal" cx="392" cy="40" r="10"></circle>
+<circle class="seal" cx="431.6" cy="56.4" r="10"></circle>
+<circle class="seal" cx="448" cy="96" r="10"></circle>
+<circle class="seal" cx="352.4" cy="56.4" r="10"></circle>
+<circle class="open" cx="431.6" cy="135.6" r="9"></circle>
+<circle class="open" cx="392" cy="152" r="9"></circle>
+<circle class="open" cx="352.4" cy="135.6" r="9"></circle>
+<circle class="open" cx="336" cy="96" r="9"></circle>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">Aegis</h1>
+<p class="tag">Agents draft, people decide. Screens for AI governance.</p>
+</div>
+</div>
+</body>
+</html>

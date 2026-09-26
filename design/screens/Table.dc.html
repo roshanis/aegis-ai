@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Review table, CASE-0142</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;family=Instrument+Serif:ital@0;1&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:'Geist',system-ui,sans-serif}
+a{color:var(--link)}a:hover{text-decoration-thickness:2px}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px;border-radius:6px}
+button,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1000px; display: flex; flex-direction: column; background: {{t.bg}}; color: {{t.text}}; --link: {{t.link}}; --focus: {{t.focus}}; color-scheme: {{t.scheme}}; font-family: 'Geist', system-ui, sans-serif">
+
+<header style="height: 64px; flex-shrink: 0; display: flex; align-items: center; gap: 18px; padding: 0 32px; border-bottom: 1.5px solid {{t.line}}">
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-size: 28px; line-height: 1">Aegis</span>
+<span style="font-size: 14px; font-weight: 500">Northwind Health Plan</span>
+<span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.muted}}">CASE-0142</span>
+<div style="flex-grow: 1"></div>
+<button type="button" style="height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid {{t.line}}; background: transparent; font-size: 14px; font-weight: 500; cursor: pointer">Search <span style="font-family: 'Geist Mono', monospace; font-size: 12px; margin-left: 8px">⌘K</span></button>
+<span style="font-size: 14px">You: <strong>Priya Raman</strong> · Privacy</span>
+</header>
+
+<div style="flex-grow: 1; min-height: 0; display: flex">
+<section aria-label="The review table" style="position: relative; width: 900px; flex-shrink: 0">
+<div style="position: absolute; left: 32px; top: 24px; display: flex; flex-direction: column; gap: 4px">
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: {{t.muted}}">THE TABLE</span>
+<span style="font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 40px; line-height: 1">{{sealedCount}} of 8 signed</span>
+<span style="font-size: 14px; color: {{t.muted}}">The approver can decide once all 8 reviews are signed.</span>
+</div>
+
+<svg width="900" height="920" viewBox="0 0 900 920" style="position: absolute; left: 0; top: 0" aria-hidden="true">
+<circle cx="450" cy="470" r="290" fill="none" stroke="{{t.text}}" stroke-opacity="0.2" stroke-width="1.5"></circle>
+<circle cx="450" cy="470" r="395" fill="none" stroke="{{t.text}}" stroke-opacity="0.12" stroke-width="1" stroke-dasharray="2 8"></circle>
+<sc-for list="{{seats}}" as="s" hint-placeholder-count="8">
+<line x1="450" y1="470" x2="{{s.x}}" y2="{{s.y}}" stroke="{{s.spoke}}" stroke-width="2.5"></line>
+</sc-for>
+<line x1="85" y1="621" x2="182" y2="581" stroke="{{t.agent}}" stroke-width="1.5" stroke-dasharray="3 5"></line>
+<line x1="450" y1="138" x2="450" y2="355" stroke="{{t.text}}" stroke-opacity="0.2" stroke-width="1.5" stroke-dasharray="6 6"></line>
+</svg>
+
+<div style="position: absolute; left: 375px; top: 30px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="width: 76px; height: 76px; box-sizing: border-box; border-radius: 14px; border: 2px solid {{t.line}}; background: {{t.inv}}; color: {{t.invText}}; display: flex; align-items: center; justify-content: center">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>
+</div>
+<span style="font-size: 13px; font-weight: 600">Decision · Approver</span>
+</div>
+
+<div style="position: absolute; left: 335px; top: 355px; width: 230px; height: 230px; box-sizing: border-box; border-radius: 50%; background: {{t.inv}}; color: {{t.invText}}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 28px; text-align: center">
+<span style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.08em; color: {{t.invMuted}}">AI SYSTEM</span>
+<h1 style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 22px; line-height: 1.1">Prior-auth letter summarizer</h1>
+<span style="font-family: 'Geist Mono', monospace; font-size: 12px; font-weight: 500; color: {{t.risk}}">HIGH RISK</span>
+</div>
+
+<sc-for list="{{seats}}" as="s" hint-placeholder-count="8">
+<div style="position: absolute; left: {{s.left}}px; top: {{s.top}}px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<button type="button" aria-pressed="{{s.selected}}" aria-label="{{s.aria}}" onClick="{{s.pick}}" style="width: 76px; height: 76px; box-sizing: border-box; border-radius: 50%; cursor: pointer; font-family: 'Geist', system-ui, sans-serif; font-weight: 600; font-size: 17px; background: {{s.bg}}; color: {{s.fg}}; border: {{s.border}}; box-shadow: {{s.glow}}">{{s.ini}}</button>
+<span style="font-size: 13px; font-weight: 600; text-align: center">{{s.label}}</span>
+</div>
+</sc-for>
+
+<div style="position: absolute; left: 10px; top: 583px; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px">
+<div style="width: 72px; height: 72px; box-sizing: border-box; border-radius: 50%; border: 2.5px dashed {{t.agent}}; background: {{t.agentTint}}"></div>
+<span style="font-size: 12px; font-weight: 600; text-align: center">privacy-agent</span>
+<span style="font-size: 11px; color: {{t.muted}}; text-align: center">draft only · no seat</span>
+</div>
+
+<nav aria-label="Jump to" style="position: absolute; left: 32px; bottom: 24px; display: flex; gap: 18px; font-family: 'Geist Mono', monospace; font-size: 12px">
+<a href="Docket.dc.html">Docket</a>
+<a href="Sentence.dc.html">Register a system</a>
+<a href="#audit">Audit log</a>
+</nav>
+</section>
+
+<aside aria-labelledby="seat-h" style="flex-grow: 1; min-width: 0; box-sizing: border-box; padding: 32px 36px; display: flex; flex-direction: column; gap: 18px; border-left: 1.5px solid {{t.line}}; background: {{t.panel}}">
+<div style="font-family: 'Geist Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: {{t.muted}}">SEAT · {{cur.kicker}}</div>
+<h2 id="seat-h" style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 46px; line-height: 1; letter-spacing: 0">{{cur.label}}</h2>
+<div style="font-size: 16px">{{cur.status}}</div>
+
+<sc-if value="{{cur.isYou}}" hint-placeholder-val="{{true}}">
+<div style="display: flex; flex-direction: column; gap: 14px">
+<div style="padding: 16px 18px; border: 2px dashed {{t.agent}}; border-radius: 16px; background: {{t.agentTint}}">
+<div style="font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: 0.06em; margin-bottom: 8px">DRAFT BY PRIVACY-AGENT · CANNOT APPROVE</div>
+<ul style="margin: 0; padding-left: 18px; font-size: 15px; line-height: 1.55">
+<li><strong>Major:</strong> inputs exceed the minimum necessary (full claim history)</li>
+<li><strong>Major:</strong> vendor BAA does not cover the summarization API</li>
+<li><strong>Minor:</strong> vendor keeps prompt logs 30 days</li>
+</ul>
+</div>
+<fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 2px">
+<legend style="padding: 0 0 6px; font-size: 14px; font-weight: 600">Your conditions</legend>
+<label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 15px"><input type="checkbox" checked style="width: 20px; height: 20px; accent-color: {{t.ring}}">BAA amendment before deploy</label>
+<label style="display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 15px"><input type="checkbox" checked style="width: 20px; height: 20px; accent-color: {{t.ring}}">Input limited to the claim under review</label>
+</fieldset>
+<label for="why" style="font-size: 14px; font-weight: 600">Reason (required)</label>
+<textarea id="why" rows="2" style="resize: none; box-sizing: border-box; width: 100%; padding: 12px 14px; font-size: 15px; border-radius: 12px; border: 1.5px solid {{t.line}}; background: {{t.surface}}; color: {{t.text}}">Both findings are fixable before deploy.</textarea>
+<div style="display: flex; gap: 10px">
+<button type="button" style="flex-grow: 1; height: 54px; border-radius: 999px; border: 0; background: {{t.action}}; color: {{t.onAction}}; font-family: 'Geist', system-ui, sans-serif; font-weight: 600; font-size: 16px; cursor: pointer">Sign with 2 conditions</button>
+<button type="button" style="height: 54px; padding: 0 20px; border-radius: 999px; border: 1.5px solid {{t.line}}; background: transparent; font-size: 15px; font-weight: 500; cursor: pointer">Request changes</button>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{cur.isSealed}}" hint-placeholder-val="{{false}}">
+<blockquote style="margin: 0; font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 26px; line-height: 1.25">“{{cur.quote}}”</blockquote>
+<div style="font-family: 'Geist Mono', monospace; font-size: 13px; color: {{t.muted}}">signed {{cur.when}} · audit log #{{cur.hash}}</div>
+</sc-if>
+
+<sc-if value="{{cur.isOpen}}" hint-placeholder-val="{{false}}">
+<p style="margin: 0; font-size: 16px; line-height: 1.5">This review is required because <strong>{{cur.why}}</strong>.</p>
+<div style="display: flex; gap: 10px">
+<button type="button" style="height: 48px; padding: 0 20px; border-radius: 999px; border: 1.5px solid {{t.line}}; background: transparent; font-size: 15px; font-weight: 500; cursor: pointer">Send a reminder to {{cur.who}}</button>
+</div>
+</sc-if>
+
+<div style="margin-top: auto; padding-top: 16px; border-top: 1.5px solid {{t.line}}; display: flex; justify-content: space-between; font-family: 'Geist Mono', monospace; font-size: 12px; color: {{t.muted}}">
+<span>healthcare-ai@1.0.0 · rule care-with-human</span>
+<span>Select a seat for details</span>
+</div>
+</aside>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["auto","dark","light"],"default":"auto"},"$preview":{"width":1440,"height":1000}}'>
+var SEATS = [
+  { label: 'Security', ini: 'RC', state: 'sealed', who: 'Rui Chen', quote: 'No new attack surface; the vendor’s SOC 2 is current.', when: 'Sep 23', hash: 'b812' },
+  { label: 'Data Governance', ini: 'KO', state: 'sealed', who: 'Kemi Okafor', quote: 'Lineage documented; claim data stays in-region.', when: 'Sep 23', hash: '4e07' },
+  { label: 'Tech Architecture', ini: 'TN', state: 'sealed', who: 'Tom Nguyen', quote: 'Fits the approved integration pattern.', when: 'Sep 23', hash: 'd19a' },
+  { label: 'Responsible AI', ini: 'AS', state: 'sealed', who: 'Aisha Siddiqui', quote: 'Nurses see the source letter beside every summary.', when: 'Sep 23', hash: '0c3f' },
+  { label: 'Clinical Safety', ini: 'AD', state: 'open', who: 'Ana Duarte', why: 'it influences care or coverage decisions' },
+  { label: 'Privacy / HIPAA', ini: 'PR', state: 'you', who: 'Priya Raman' },
+  { label: 'Legal', ini: 'JB', state: 'progress', who: 'Jordan Blake', why: 'the model is vendor-hosted' },
+  { label: 'Procurement', ini: '', state: 'open', who: 'Procurement', why: 'the model is vendor-hosted' }
+];
+var THEMES = {
+  // Values from the Aegis design system (ds/aegis/tokens.json).
+  light: { scheme: 'light', bg: '#EEECE6', panel: '#FFFFFF', surface: '#F4F2EC', text: '#0F1216', muted: '#525964', line: '#858073', link: '#3D5200', focus: '#1F5FD6',
+    seal: '#D4FF3A', onSeal: '#0B0E13', sealEdge: 'rgba(15,18,22,0.45)', ring: '#4D6B00', glow: 'rgba(77,107,0,0.18)', action: '#0F1216', onAction: '#D4FF3A',
+    agent: '#0070A8', agentTint: 'rgba(0,112,168,0.07)', inv: '#0F1216', invText: '#EEECE6', invMuted: '#A3ABB9', risk: '#FFA36E' },
+  dark: { scheme: 'dark', bg: '#0B0E13', panel: '#12161E', surface: '#1A1F2A', text: '#EDE9E0', muted: '#A3ABB9', line: '#6B7488', link: '#D4FF3A', focus: '#5B9BFF',
+    seal: '#D4FF3A', onSeal: '#0B0E13', sealEdge: 'transparent', ring: '#D4FF3A', glow: 'rgba(212,255,58,0.18)', action: '#D4FF3A', onAction: '#0B0E13',
+    agent: '#62D0FF', agentTint: 'rgba(98,208,255,0.08)', inv: '#EDE9E0', invText: '#0B0E13', invMuted: '#525964', risk: '#A33A00' }
+};
+// 'auto' follows the viewer's system setting; every text pair meets WCAG AA 4.5:1, controls 3:1.
+function pickTheme(p) {
+  if (THEMES[p]) return THEMES[p];
+  try { return window.matchMedia('(prefers-color-scheme: light)').matches ? THEMES.light : THEMES.dark; } catch (e) { return THEMES.dark; }
+}
+class Component extends DCLogic {
+  componentDidMount() {
+    var self = this;
+    try { this._mq = window.matchMedia('(prefers-color-scheme: light)'); this._onScheme = function () { self.forceUpdate(); }; this._mq.addEventListener('change', this._onScheme); } catch (e) {}
+  }
+  componentWillUnmount() {
+    try { this._mq.removeEventListener('change', this._onScheme); } catch (e) {}
+  }
+  renderVals() {
+    var self = this;
+    var t = pickTheme(this.props.theme);
+    var BLUE = t.seal;
+    var sel = (this.state && typeof this.state.sel === 'number') ? this.state.sel : 5;
+    var sealed = SEATS.filter(function (s) { return s.state === 'sealed'; }).length;
+    var seats = SEATS.map(function (s, i) {
+      var a = (i * 45 - 67.5) * Math.PI / 180;
+      var x = Math.round(450 + 290 * Math.cos(a));
+      var y = Math.round(470 + 290 * Math.sin(a));
+      var isSealed = s.state === 'sealed';
+      var bg = isSealed ? BLUE : t.surface;
+      return {
+        x: x, y: y, left: x - 75, top: y - 38, label: s.label, ini: s.ini,
+        aria: s.label + ': ' + (isSealed ? 'signed by ' + s.who : s.state === 'you' ? 'your review, not signed yet' : s.state === 'progress' ? 'being reviewed by ' + s.who : 'not started'),
+        selected: i === sel,
+        bg: bg,
+        fg: isSealed ? t.onSeal : t.text,
+        border: s.state === 'you' ? '3px solid ' + t.ring : s.state === 'progress' ? '2px solid ' + t.ring : (isSealed ? '1px solid ' + t.sealEdge : '1.5px solid ' + t.line),
+        glow: [i === sel ? '0 0 0 4px ' + t.bg + ', 0 0 0 6px ' + t.text : '', s.state === 'you' ? '0 0 0 14px ' + t.glow : ''].filter(Boolean).join(', ') || 'none',
+        spoke: isSealed ? t.ring : 'transparent',
+        pick: function () { self.setState({ sel: i }); }
+      };
+    });
+    var c = SEATS[sel];
+    var status = c.state === 'sealed' ? 'Signed by ' + c.who
+      : c.state === 'you' ? 'Your review. The agent wrote a draft; you decide.'
+      : c.state === 'progress' ? c.who + ' is reviewing now'
+      : 'Not started. Waiting for ' + c.who;
+    return {
+      t: t,
+      sealedCount: String(sealed),
+      seats: seats,
+      cur: Object.assign({ quote: '', when: '', hash: '', why: '', who: '' }, c, {
+        kicker: (sel + 1) + ' OF 8',
+        status: status,
+        isYou: c.state === 'you', isSealed: c.state === 'sealed', isOpen: c.state === 'open' || c.state === 'progress'
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

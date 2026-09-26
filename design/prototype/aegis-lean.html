@@ -1,0 +1,698 @@
+<title>Aegis prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap">
+<style>
+/* Tokens from the Aegis design system. Light is the base; dark overrides below. */
+:root {
+  color-scheme: light;
+  --page: #EEECE6; --panel: #FFFFFF; --raised: #F4F2EC; --line: #DCD8CE; --control: #858073;
+  --ink: #0F1216; --muted: #525964;
+  --seal: #D4FF3A; --on-seal: #0B0E13; --seal-edge: rgba(15,18,22,.45); --ring: #4D6B00; --glow: rgba(77,107,0,.18);
+  --system: #6A7280; --agent: #0070A8; --agent-text: #005A88; --agent-tint: rgba(0,112,168,.07);
+  --action: #0F1216; --on-action: #D4FF3A; --chip: #0F1216; --on-chip: #D4FF3A; --focus: #1F5FD6;
+  --low: #1B6B44; --medium: #7A5600; --high: #A33A00; --critical: #B3261E; --ok: #1B6B44; --warn: #7A5600;
+  --d1: #2F8A5B; --d2: #9A7000; --d3: #C4501A; --d4: #B3261E; --doff: #E4E0D6;
+  --serif: "Instrument Serif", Georgia, serif; --sans: "Geist", system-ui, sans-serif; --mono: "Geist Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0B0E13; --panel: #12161E; --raised: #1A1F2A; --line: #262D3B; --control: #6B7488;
+    --ink: #EDE9E0; --muted: #A3ABB9;
+    --seal-edge: rgba(0,0,0,0); --ring: #D4FF3A; --glow: rgba(212,255,58,.18);
+    --system: #8C95A6; --agent: #62D0FF; --agent-text: #8EDDFF; --agent-tint: rgba(98,208,255,.08);
+    --action: #D4FF3A; --on-action: #0B0E13; --chip: #D4FF3A; --on-chip: #0B0E13; --focus: #5B9BFF;
+    --low: #8FE3B5; --medium: #F6D37A; --high: #FFA36E; --critical: #FF7B7B; --ok: #8FE3B5; --warn: #F6D37A;
+    --d1: #3E9E6E; --d2: #D8A935; --d3: #F07A36; --d4: #E5484D; --doff: #2A3140;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0B0E13; --panel: #12161E; --raised: #1A1F2A; --line: #262D3B; --control: #6B7488;
+  --ink: #EDE9E0; --muted: #A3ABB9;
+  --seal-edge: rgba(0,0,0,0); --ring: #D4FF3A; --glow: rgba(212,255,58,.18);
+  --system: #8C95A6; --agent: #62D0FF; --agent-text: #8EDDFF; --agent-tint: rgba(98,208,255,.08);
+  --action: #D4FF3A; --on-action: #0B0E13; --chip: #D4FF3A; --on-chip: #0B0E13; --focus: #5B9BFF;
+  --low: #8FE3B5; --medium: #F6D37A; --high: #FFA36E; --critical: #FF7B7B; --ok: #8FE3B5; --warn: #F6D37A;
+  --d1: #3E9E6E; --d2: #D8A935; --d3: #F07A36; --d4: #E5484D; --doff: #2A3140;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.45 var(--sans); padding-inline: 16px; padding-block: 16px 48px; }
+button, input { font: inherit; color: inherit; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+@media (prefers-reduced-motion: no-preference) { .screen, .tf-card.enter { animation: in .18s ease-out; } }
+[tabindex="-1"]:focus { outline: none; }
+@keyframes in { from { opacity: .6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.mono { font-family: var(--mono); }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+h1, h2 { text-wrap: balance; }
+.title { margin: 0; font: 400 clamp(26px, 3vw, 34px)/1.15 var(--serif); }
+.h2 { margin: 0; font-size: 16px; font-weight: 600; }
+
+/* Prototype bar (outside the app) */
+.proto { max-width: 1280px; margin: 0 auto 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.proto-label { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); margin-right: 4px; }
+.steps { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 auto; }
+.step { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--control); background: transparent; cursor: pointer; font-size: 13px; }
+.step[aria-current="step"] { background: var(--ink); color: var(--page); border-color: var(--ink); font-weight: 600; }
+.seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 10px; background: var(--raised); }
+.seg button { min-height: 36px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: 13px; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+
+/* App frame */
+.app { max-width: 1280px; margin: 0 auto; background: var(--page); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.app-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 10px 24px; border-bottom: 1px solid var(--line); }
+.brand { font: 400 26px/1 var(--serif); }
+.tenant { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.app-nav { display: flex; gap: 2px; margin-left: auto; flex-wrap: wrap; }
+.app-nav button { min-height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--muted); cursor: pointer; font-size: 14px; }
+.app-nav button[aria-current="page"] { background: var(--raised); color: var(--ink); font-weight: 600; }
+.who { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.seal { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--seal); color: var(--on-seal); box-shadow: 0 0 0 1px var(--seal-edge); font-size: 11px; font-weight: 600; }
+.sq { display: inline-block; flex-shrink: 0; width: 12px; height: 12px; margin: 4px; border-radius: 3px; background: var(--system); }
+.ring { display: inline-block; flex-shrink: 0; width: 20px; height: 20px; border-radius: 50%; border: 2px dashed var(--agent); }
+main { padding: 28px 24px 32px; }
+.screen { display: flex; flex-direction: column; gap: 22px; }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 28px; align-items: start; }
+@media (max-width: 960px) { .cols { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill { font-size: 13px; padding: 5px 11px; border-radius: 999px; background: var(--raised); }
+.pill.mono { font-size: 12px; }
+.btn { min-height: 48px; padding: 0 22px; border-radius: 12px; border: 0; background: var(--action); color: var(--on-action); font-weight: 600; font-size: 15px; cursor: pointer; }
+.btn-2 { min-height: 48px; padding: 0 18px; border-radius: 12px; border: 1px solid var(--control); background: transparent; cursor: pointer; font-size: 15px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field label, .legend { font-size: 13px; font-weight: 600; }
+.field input[type=text], .field input[type=search] { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--control); background: var(--raised); }
+.note { font-size: 13px; color: var(--muted); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 500 11px/1.2 var(--mono); letter-spacing: .06em; color: var(--muted); padding: 8px 10px 8px 0; white-space: nowrap; }
+td { border-top: 1px solid var(--line); padding: 12px 10px 12px 0; }
+.readback { padding: 12px 14px; border-radius: 10px; background: var(--raised); font-size: 14px; }
+
+/* Register */
+.sentence { margin: 0; font: 400 clamp(24px, 3vw, 34px)/1.5 var(--serif); }
+.chip { font: inherit; border: 0; border-radius: 10px; padding: 0 12px; background: var(--chip); color: var(--on-chip); cursor: pointer; }
+.dial { display: flex; gap: 4px; flex: 1; }
+.dial span { flex: 1; height: 8px; border-radius: 4px; background: var(--doff); }
+.teams { display: flex; flex-wrap: wrap; gap: 6px; }
+.teams span { font-size: 13px; padding: 5px 10px; border-radius: 999px; background: var(--raised); }
+.tag { font: 500 11px/1 var(--mono); padding: 4px 7px; border-radius: 5px; border: 1px solid currentColor; }
+
+/* Tracker */
+.tracker { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px; }
+.tracker li { display: flex; flex-direction: column; gap: 8px; }
+.tracker .mark { display: flex; align-items: center; gap: 10px; }
+.tracker .bar { flex: 1; height: 2px; background: var(--line); }
+.tracker .bar.done { background: var(--ok); }
+.tracker b { font-size: 15px; }
+.tracker .st { font: 12px var(--mono); color: var(--muted); }
+.tracker .st.done { color: var(--ok); }
+.pend { display: inline-block; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--ring); box-shadow: 0 0 0 4px var(--glow); flex-shrink: 0; }
+.future { display: inline-block; width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--control); flex-shrink: 0; }
+@media (max-width: 720px) { .tracker { grid-template-columns: minmax(0, 1fr); } .tracker .bar { display: none; } }
+
+/* Home */
+.cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 720px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+.card { display: flex; flex-direction: column; gap: 4px; padding: 18px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); text-align: left; cursor: pointer; }
+.card.agent { background: var(--agent-tint); border: 2px dashed var(--agent); }
+.card .n { font-size: 38px; font-weight: 600; line-height: 1; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.filters button { min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--control); background: transparent; cursor: pointer; font-size: 13px; }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+
+/* Review */
+.draft { border: 2px dashed var(--agent); border-radius: 14px; background: var(--agent-tint); overflow: hidden; }
+.draft-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; }
+.draft-head small { font: 11px var(--mono); color: var(--agent-text); }
+.finding { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--line); background: var(--panel); }
+.finding .sev { width: 52px; font: 500 11px var(--mono); }
+.finding .t { flex: 1 1 220px; }
+.finding.off .t { text-decoration: line-through; color: var(--muted); }
+.dots { display: flex; gap: 5px; }
+.dots span { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--control); }
+.dots .s { background: var(--seal); border: 1px solid var(--seal-edge); }
+.dots .y { border-color: var(--ring); }
+.choices { display: flex; flex-direction: column; gap: 6px; }
+.choices button { min-height: 44px; padding: 0 14px; text-align: left; border-radius: 10px; border: 1px solid var(--control); background: transparent; cursor: pointer; }
+.choices button[aria-checked="true"] { border: 2px solid var(--ring); background: var(--raised); font-weight: 600; }
+.checks label { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px; }
+.checks input { width: 18px; height: 18px; accent-color: var(--ring); }
+fieldset { margin: 0; padding: 0; border: 0; }
+
+/* Decide */
+.signoffs { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 720px) { .signoffs { grid-template-columns: minmax(0, 1fr); } }
+.signoffs li { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; background: var(--panel); border: 1px solid var(--line); }
+.signoffs .who2 { flex: 1; display: flex; flex-direction: column; }
+.signoffs .who2 span { font-size: 13px; color: var(--muted); }
+
+/* Audit */
+.answer { font: 400 clamp(22px, 2.6vw, 30px)/1.25 var(--serif); margin: 0; }
+tr.agent-row td { background: var(--agent-tint); }
+.actor { display: inline-flex; align-items: center; gap: 8px; }
+.actor .seal { width: 22px; height: 22px; font-size: 9px; }
+
+/* Register, one question at a time */
+.tf { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; min-height: 420px; }
+.tf-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tf-back { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--control); background: transparent; cursor: pointer; }
+.tf-bar { height: 6px; border-radius: 3px; background: var(--doff); overflow: hidden; }
+.tf-bar span { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--ring); }
+@media (prefers-reduced-motion: no-preference) { .tf-bar span { transition: width .25s ease; } }
+.tf-card { display: flex; flex-direction: column; gap: 18px; padding-block: 28px 8px; }
+.tf-q { margin: 0; font: 400 clamp(28px, 4vw, 42px)/1.15 var(--serif); }
+.tf-help { margin: 0; max-width: 60ch; font-size: 17px; color: var(--muted); }
+.tf-answers { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 6px; }
+.tf-a { flex: 1 1 180px; max-width: 280px; min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--control); background: var(--panel); cursor: pointer; font-size: 19px; font-weight: 600; text-align: left; }
+.tf-a:hover { border-color: var(--ink); }
+.tf-a[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.tf-a kbd { min-width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--control); font: 500 12px var(--mono); color: var(--muted); }
+.tf-a[aria-pressed="true"] kbd { border-color: var(--page); color: var(--page); }
+.tf-list { display: flex; flex-direction: column; }
+.tf-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-top: 1px solid var(--line); }
+.tf-row .t { flex: 1 1 260px; }
+.tf-row .seg button { min-height: 44px; min-width: 64px; }
+</style>
+
+<nav class="proto" aria-label="Prototype">
+  <span class="proto-label">AEGIS PROTOTYPE · CASE-0142</span>
+  <div class="steps" id="steps"></div>
+  <div class="row" style="gap:8px">
+    <span class="proto-label">REGISTER AS</span>
+    <div class="seg" role="group" aria-label="Register screen style" id="variant">
+      <button type="button" data-variant="sentence" aria-pressed="false">Sentence</button>
+      <button type="button" data-variant="steps" aria-pressed="true">One at a time</button>
+    </div>
+  </div>
+  <div class="seg" role="group" aria-label="Theme" id="theme">
+    <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+    <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
+    <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+  </div>
+</nav>
+
+<div class="app">
+  <header class="app-head">
+    <span class="brand">Aegis</span>
+    <span class="tenant">Northwind Health Plan</span>
+    <nav class="app-nav" aria-label="Primary" id="appnav"></nav>
+    <span class="who"><span class="seal" id="who-ini">DO</span><span id="who-name">Dana Ortiz · Requester</span></span>
+  </header>
+
+  <main>
+    <!-- 1 · Register -->
+    <section class="screen" data-screen="1" aria-label="Register an AI system">
+      <div class="cols" id="reg-sentence">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <h1 class="title" id="s1h">Register an AI system</h1>
+          <div class="field" style="max-width:520px">
+            <label for="sysname">Name</label>
+            <input id="sysname" type="text" value="Prior-auth letter summarizer">
+          </div>
+          <div class="legend">Describe it <span class="note" style="font-weight:400">· select a highlighted phrase to change it</span></div>
+          <p class="sentence" id="sentence"></p>
+          <div class="row">
+            <button type="button" class="btn" data-go="2">Submit for review</button>
+            <button type="button" class="btn-2">Save draft</button>
+          </div>
+        </div>
+        <aside class="panel" aria-live="polite" aria-labelledby="resh">
+          <h2 class="eyebrow" id="resh" style="margin:0">Result</h2>
+          <div class="row"><strong id="tier" style="font-size:22px"></strong><div class="dial" id="dial" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
+          <div class="note">Rule <span class="mono" id="rule" style="color:var(--ink)"></span></div>
+          <div style="display:flex;flex-direction:column;gap:8px"><strong id="teamcount" style="font-size:13px"></strong><div class="teams" id="teams"></div></div>
+          <div class="row" style="gap:8px"><span class="tag" id="fast"></span><span>Fast lane</span></div>
+          <div class="note">Set by healthcare-ai@1.0.0 rules, not AI.</div>
+        </aside>
+      </div>
+
+      <!-- Register, one question at a time. Questions and help text are the policy pack's own. -->
+      <div id="reg-steps" hidden>
+        <form class="tf" id="tf-welcome">
+          <div class="tf-card">
+            <div class="eyebrow">Register an AI system · 6 yes-or-no questions</div>
+            <h1 class="tf-q" id="tf-wq" tabindex="-1">What’s the system called?</h1>
+            <div class="field" style="max-width:520px"><label for="tf-name">Name</label><input id="tf-name" type="text" value="Prior-auth letter summarizer"></div>
+            <div class="row"><button type="submit" class="btn">Start</button><span class="note">or press Enter</span></div>
+          </div>
+        </form>
+
+        <div class="tf" id="tf-question" hidden>
+          <div class="tf-top">
+            <button type="button" class="tf-back" id="tf-back">Back</button>
+            <span class="eyebrow" id="tf-count"></span>
+          </div>
+          <div class="tf-bar" aria-hidden="true"><span id="tf-fill"></span></div>
+          <div class="tf-card" id="tf-card">
+            <h1 class="tf-q" id="tf-q" tabindex="-1"></h1>
+            <p class="tf-help" id="tf-help"></p>
+            <div class="tf-answers" role="group" aria-labelledby="tf-q">
+              <button type="button" class="tf-a" id="tf-yes" aria-pressed="false" aria-keyshortcuts="Y"><kbd aria-hidden="true">Y</kbd>Yes</button>
+              <button type="button" class="tf-a" id="tf-no" aria-pressed="false" aria-keyshortcuts="N"><kbd aria-hidden="true">N</kbd>No</button>
+            </div>
+            <div class="eyebrow" id="tf-affects"></div>
+          </div>
+        </div>
+
+        <div class="cols" id="tf-summary" hidden>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="eyebrow" id="tf-sumlabel"></div>
+            <h1 class="title" id="tf-sumh" tabindex="-1">Check your answers</h1>
+            <div class="tf-list" id="tf-list"></div>
+            <div class="row"><button type="button" class="btn" data-go="2">Submit for review</button><button type="button" class="btn-2" id="tf-restart">Start over</button></div>
+          </div>
+          <aside class="panel" aria-live="polite" aria-labelledby="tf-resh">
+            <h2 class="eyebrow" id="tf-resh" style="margin:0">Result</h2>
+            <div class="row"><strong id="tf-tier" style="font-size:22px"></strong><div class="dial" id="tf-dial" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
+            <div class="note">Rule <span class="mono" id="tf-rule" style="color:var(--ink)"></span></div>
+            <div style="display:flex;flex-direction:column;gap:8px"><strong id="tf-teamcount" style="font-size:13px"></strong><div class="teams" id="tf-teams"></div></div>
+            <div class="row" style="gap:8px"><span class="tag" id="tf-fast"></span><span>Fast lane</span></div>
+            <div class="note">Set by healthcare-ai@1.0.0 rules, not AI.</div>
+          </aside>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 · Submitted -->
+    <section class="screen" data-screen="2" aria-labelledby="s2h" hidden>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="eyebrow" style="color:var(--ok)">Submitted · Sep 22, 10:05</div>
+        <h1 class="title" id="s2h">Prior-auth letter summarizer is in review</h1>
+        <div class="pills"><span class="pill" style="color:var(--high);font-weight:600">High risk</span><span class="pill">8 review teams</span><span class="pill">Due Sep 29</span><span class="pill mono">CASE-0142</span></div>
+      </div>
+      <ol class="tracker" aria-label="Progress">
+        <li><div class="mark"><span class="sq" style="width:20px;height:20px;margin:0"></span><span class="bar done"></span></div><b>Triage</b><span class="st done">DONE</span></li>
+        <li><div class="mark"><span class="sq" style="width:20px;height:20px;margin:0"></span><span class="bar done"></span></div><b>Routing</b><span class="st done">DONE</span></li>
+        <li><div class="mark"><span class="ring" style="width:24px;height:24px"></span><span class="bar"></span></div><b>Agent drafts</b><span class="st">IN PROGRESS</span></li>
+        <li><div class="mark"><span class="pend"></span><span class="bar"></span></div><b>Team sign-offs</b><span class="st">0 OF 8</span></li>
+        <li><div class="mark"><span class="future"></span></div><b>Decision</b><span class="st">AFTER SIGN-OFFS</span></li>
+      </ol>
+      <div class="row">
+        <button type="button" class="btn" data-go="3">Done</button>
+        <button type="button" class="btn-2" data-go="6">Track in audit log</button>
+        <span class="note">We’ll email you at each step.</span>
+      </div>
+    </section>
+
+    <!-- 3 · Home -->
+    <section class="screen" data-screen="3" aria-labelledby="s3h" hidden>
+      <h1 class="title" id="s3h">Needs you</h1>
+      <div class="cards">
+        <button type="button" class="card" data-go="4"><span class="n">3</span><span>Reviews waiting</span><span class="eyebrow">Oldest 2 days</span></button>
+        <button type="button" class="card"><span class="n" style="color:var(--high)">1</span><span>Overdue re-review</span><span class="eyebrow">Member benefits chat</span></button>
+        <button type="button" class="card agent"><span class="n">3</span><span>Agent drafts to check</span><span class="eyebrow" style="color:var(--agent-text)">Draft only · cannot approve</span></button>
+      </div>
+      <div class="row"><h2 class="h2">Systems</h2><div class="filters" role="group" aria-label="Filter systems" id="filters"></div></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">System</th><th scope="col">Status</th><th scope="col">Risk</th><th scope="col">Sign-offs</th><th scope="col" style="text-align:right">Next</th></tr></thead>
+        <tbody id="systems"></tbody>
+      </table></div>
+    </section>
+
+    <!-- 4 · Review -->
+    <section class="screen" data-screen="4" aria-labelledby="s4h" hidden>
+      <div class="cols">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 class="title" id="s4h">Prior-auth letter summarizer</h1>
+            <div class="pills"><span class="pill mono">CASE-0142</span><span class="pill" style="color:var(--high);font-weight:600">High risk</span><span class="pill">Privacy review</span><span class="pill">Vendor-hosted · reads PHI</span></div>
+          </div>
+          <section class="draft" aria-labelledby="drafth">
+            <div class="draft-head"><span class="ring" style="width:18px;height:18px"></span><h2 class="h2" id="drafth" style="font-size:14px">Agent draft</h2><small>DRAFT ONLY · CANNOT APPROVE</small><small style="margin-left:auto;color:var(--muted)">11/11 CHECKED</small></div>
+            <div id="findings"></div>
+          </section>
+          <div class="row"><span class="note">Sign-offs</span><div class="dots" aria-label="4 of 8 teams signed"><span class="s" title="Security"></span><span class="s" title="Data Governance"></span><span class="s" title="Tech Architecture"></span><span class="s" title="Responsible AI"></span><span class="y" title="Privacy: you"></span><span title="Legal"></span><span title="Procurement"></span><span title="Clinical Safety"></span></div><span class="mono" style="font-size:12px">4/8</span></div>
+        </div>
+        <aside class="panel" aria-labelledby="youh">
+          <h2 class="h2" id="youh">Your sign-off</h2>
+          <div class="choices" role="radiogroup" aria-label="Decision" id="rv-choices"></div>
+          <fieldset class="checks" id="rv-conds"><legend class="legend" style="padding-bottom:6px">Conditions</legend></fieldset>
+          <div class="field"><label for="rv-why">Reason <span class="note" style="font-weight:400">· required</span></label><input id="rv-why" type="text" value="Both issues can be fixed before deployment."></div>
+          <div class="readback" id="rv-read" aria-live="polite"></div>
+          <button type="button" class="btn" id="rv-go" data-go="5"></button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 5 · Decide -->
+    <section class="screen" data-screen="5" aria-labelledby="s5h" hidden>
+      <div class="cols">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <h1 class="title" id="s5h">Prior-auth letter summarizer</h1>
+            <div class="pills"><span class="pill mono">CASE-0142</span><span class="pill" style="color:var(--high);font-weight:600">High risk</span><span class="pill" style="color:var(--ok);font-weight:600">8/8 signed</span><span class="pill">3 conditions</span></div>
+          </div>
+          <h2 class="h2">Sign-offs</h2>
+          <ul class="signoffs" id="signoffs"></ul>
+        </div>
+        <aside class="panel" aria-labelledby="dech">
+          <div class="row" style="justify-content:space-between"><h2 class="h2" id="dech">Your decision</h2><span class="eyebrow" style="color:var(--ok)">You didn’t submit this ✓</span></div>
+          <div class="choices" role="radiogroup" aria-label="Decision" id="dc-choices"></div>
+          <fieldset class="checks" id="dc-conds"><legend class="legend" style="padding-bottom:6px">Conditions</legend>
+            <label style="color:var(--muted)"><input type="checkbox" checked disabled>3 set by the teams</label>
+            <label><input type="checkbox" id="dc-extra" checked>Re-review in 6 months</label>
+          </fieldset>
+          <div class="field"><label for="dc-why">Reason <span class="note" style="font-weight:400">· required</span></label><input id="dc-why" type="text" value="Pilot only, with the privacy and clinical conditions."></div>
+          <div class="readback" id="dc-read" aria-live="polite"></div>
+          <button type="button" class="btn" id="dc-go" data-go="6"></button>
+        </aside>
+      </div>
+    </section>
+
+    <!-- 6 · Audit -->
+    <section class="screen" data-screen="6" aria-labelledby="s6h" hidden>
+      <form class="row" role="search" id="search">
+        <label for="q" class="eyebrow" style="white-space:nowrap">Ask the audit log</label>
+        <input id="q" type="search" value="Who approved CASE-0142?" style="flex:1 1 220px;min-width:0;min-height:48px;padding:0 14px;border-radius:12px;border:1px solid var(--control);background:var(--raised)">
+        <button type="submit" class="btn">Search</button>
+      </form>
+      <section class="panel" aria-labelledby="s6h">
+        <h1 class="answer" id="s6h">Approved for a pilot by Marcus Lee · Sep 24, 16:41 UTC</h1>
+        <div class="pills"><span class="pill mono">healthcare-ai@1.0.0</span><span class="pill mono">rule care-with-human</span><span class="pill" style="color:var(--ok)">8/8 signed</span><span class="pill">4 conditions</span><span class="pill" style="color:var(--ok)">Hash chain verified</span></div>
+        <div><span class="note">Reason:</span> “Pilot only, with the privacy and clinical conditions.”</div>
+        <div class="row"><button type="button" class="btn" style="min-height:44px">Export evidence pack</button><button type="button" class="btn-2" style="min-height:44px" id="copy">Copy link</button></div>
+      </section>
+      <h2 class="h2">History</h2>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">Time (UTC)</th><th scope="col">Who</th><th scope="col">Action</th><th scope="col" style="text-align:right">Hash</th></tr></thead>
+        <tbody id="history"></tbody>
+      </table></div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function () {
+  var STEPS = [
+    { n: 1, label: 'Dana · Register', ini: 'DO', who: 'Dana Ortiz · Requester', nav: 'Register' },
+    { n: 2, label: 'Dana · Submitted', ini: 'DO', who: 'Dana Ortiz · Requester', nav: 'Register' },
+    { n: 3, label: 'Priya · Home', ini: 'PR', who: 'Priya Raman · Privacy reviewer', nav: 'Home' },
+    { n: 4, label: 'Priya · Review', ini: 'PR', who: 'Priya Raman · Privacy reviewer', nav: 'Reviews' },
+    { n: 5, label: 'Marcus · Decide', ini: 'ML', who: 'Marcus Lee · Approver', nav: 'Decisions' },
+    { n: 6, label: 'Sam · Audit', ini: 'SW', who: 'Sam Whitfield · Auditor', nav: 'Audit log' }
+  ];
+  var NAV = [['Home', 3], ['Register', 1], ['Reviews', 4], ['Decisions', 5], ['Audit log', 6]];
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+
+  /* ---------- navigation ---------- */
+  var current = 1;
+  function go(n) {
+    current = n;
+    document.querySelectorAll('.screen').forEach(function (s) { s.hidden = Number(s.dataset.screen) !== n; });
+    var step = STEPS[n - 1];
+    $('who-ini').textContent = step.ini;
+    $('who-name').textContent = step.who;
+    $('steps').innerHTML = STEPS.map(function (s) {
+      return '<button type="button" class="step" data-go="' + s.n + '"' + (s.n === n ? ' aria-current="step"' : '') + '>' + s.n + ' · ' + esc(s.label) + '</button>';
+    }).join('');
+    $('appnav').innerHTML = NAV.map(function (x) {
+      return '<button type="button" data-go="' + x[1] + '"' + (x[0] === step.nav ? ' aria-current="page"' : '') + '>' + x[0] + '</button>';
+    }).join('');
+    try { history.replaceState(null, '', '#step' + n); } catch (e) {}
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-go]');
+    if (t) { go(Number(t.dataset.go)); window.scrollTo({ top: 0 }); }
+  });
+
+  /* ---------- theme ---------- */
+  function setTheme(v) {
+    if (v === 'auto') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', v);
+    document.querySelectorAll('[data-theme-set]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.themeSet === v)); });
+    try { localStorage.setItem('aegis-theme', v); } catch (e) {}
+  }
+  $('theme').addEventListener('click', function (e) { var b = e.target.closest('[data-theme-set]'); if (b) setTheme(b.dataset.themeSet); });
+  try { var saved = localStorage.getItem('aegis-theme'); if (saved) setTheme(saved); } catch (e) {}
+
+  /* ---------- 1 · register: healthcare-ai@1.0.0 triage, as in packages/frameworks ---------- */
+  var ans = { vendorHosted: true, phi: true, memberFacing: false, careCoverageInfluence: true, humanInLoop: true, individualImpact: true };
+  // Two phrases per question, written once by the policy-pack author.
+  var WORDS = {
+    vendorHosted: ['hosted by a vendor', 'we host'], phi: ['reads', 'never touches'], memberFacing: ['see', 'never see'],
+    careCoverageInfluence: ['can', 'cannot'], humanInLoop: ['a person checks every output', 'no one checks outputs'], individualImpact: ['could', 'could not']
+  };
+  var LABELS = { legal: 'Legal', procurement: 'Procurement', 'tech-architecture': 'Tech Architecture', 'responsible-ai': 'Responsible AI', security: 'Security', 'privacy-hipaa': 'Privacy', 'clinical-safety': 'Clinical Safety', 'data-governance': 'Data Governance' };
+  var BASE = {
+    low: ['data-governance', 'security'],
+    medium: ['data-governance', 'security', 'tech-architecture', 'responsible-ai', 'legal'],
+    high: ['data-governance', 'security', 'tech-architecture', 'responsible-ai', 'legal'],
+    critical: ['legal', 'procurement', 'tech-architecture', 'responsible-ai', 'security', 'privacy-hipaa', 'clinical-safety', 'data-governance']
+  };
+  var TIERS = ['low', 'medium', 'high', 'critical'];
+  function tierOf(a) {
+    if (a.careCoverageInfluence && !a.humanInLoop) return ['critical', 'care-without-human'];
+    if (a.careCoverageInfluence) return ['high', 'care-with-human'];
+    if (a.phi) return ['high', 'phi'];
+    if (a.memberFacing && a.individualImpact) return ['high', 'member-impact'];
+    if (a.individualImpact) return ['medium', 'individual-impact'];
+    if (a.memberFacing) return ['medium', 'member-facing'];
+    return ['low', 'default'];
+  }
+  function triageOf(a) {
+    var r = tierOf(a), tier = r[0], idx = TIERS.indexOf(tier), set = {};
+    BASE[tier].forEach(function (d) { set[d] = 1; });
+    if (a.phi) set['privacy-hipaa'] = 1;
+    if (a.vendorHosted) { set.procurement = 1; set.legal = 1; }
+    if (a.careCoverageInfluence) set['clinical-safety'] = 1;
+    return {
+      tier: tier, idx: idx, rule: r[1],
+      teams: Object.keys(set).map(function (d) { return LABELS[d]; }).sort(),
+      fast: idx === 0 && !a.phi && !a.memberFacing && !a.careCoverageInfluence
+    };
+  }
+  // Fills a result panel; p is the id prefix ('' for the sentence version, 'tf-' for one at a time).
+  function paintResult(p, a) {
+    var t = triageOf(a);
+    $(p + 'tier').textContent = t.tier.charAt(0).toUpperCase() + t.tier.slice(1) + ' risk';
+    $(p + 'tier').style.color = 'var(--' + t.tier + ')';
+    $(p + 'rule').textContent = t.rule;
+    Array.prototype.forEach.call($(p + 'dial').children, function (s, i) { s.style.background = i <= t.idx ? 'var(--d' + (t.idx + 1) + ')' : ''; });
+    $(p + 'teamcount').textContent = t.teams.length + ' review teams';
+    $(p + 'teams').innerHTML = t.teams.map(function (n) { return '<span>' + n + '</span>'; }).join('');
+    $(p + 'fast').textContent = t.fast ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+    $(p + 'fast').style.color = t.fast ? 'var(--ok)' : 'var(--muted)';
+  }
+  function chip(k, label) { return '<button type="button" class="chip" data-flip="' + k + '" aria-label="' + label + ': ' + esc(WORDS[k][ans[k] ? 0 : 1]) + '. Change">' + esc(WORDS[k][ans[k] ? 0 : 1]) + '</button>'; }
+  function renderRegister() {
+    $('sentence').innerHTML = 'A model ' + chip('vendorHosted', 'Hosting') + ' that ' + chip('phi', 'Health data') + ' health data. Members ' +
+      chip('memberFacing', 'Member-facing') + ' it. It ' + chip('careCoverageInfluence', 'Coverage') + ' affect coverage, ' +
+      chip('humanInLoop', 'Oversight') + ', and it ' + chip('individualImpact', 'Individual impact') + ' affect a person.';
+    paintResult('', ans);
+  }
+  $('sentence').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-flip]');
+    if (!b) return;
+    var k = b.dataset.flip; ans[k] = !ans[k]; renderRegister();
+    var again = document.querySelector('[data-flip="' + k + '"]'); if (again) again.focus();
+  });
+
+  /* ---------- 1 · register, one question at a time ---------- */
+  // Question and help text are the healthcare-ai pack's own, so nothing extra is written.
+  // "Affects" lists the rules that read each answer; the product would derive it from the pack.
+  var QUESTIONS = [
+    { field: 'phi', label: 'Does it use protected health information?', help: 'Any PHI, including de-identified data that could be re-identified.', affects: 'Risk tier · Privacy review · Fast lane' },
+    { field: 'memberFacing', label: 'Will members see or interact with it?', help: 'Chat, letters, portals, or anything a member receives.', affects: 'Risk tier · Fast lane' },
+    { field: 'careCoverageInfluence', label: 'Could it influence care or coverage decisions?', help: 'Prior auth, claims, care management, eligibility.', affects: 'Risk tier · Clinical Safety review · Fast lane' },
+    { field: 'humanInLoop', label: 'Does a person review every output before it takes effect?', help: 'A qualified person, not spot checks.', affects: 'Risk tier' },
+    { field: 'vendorHosted', label: 'Is the model or service hosted by a vendor?', help: 'Any third-party API or SaaS.', affects: 'Legal and Procurement reviews' },
+    { field: 'individualImpact', label: 'Could it materially affect an individual?', help: 'Money, access, health, or reputation.', affects: 'Risk tier' }
+  ];
+  var DONE = QUESTIONS.length;
+  var tf = { at: -1, answers: {}, busy: false };
+  var reduceMotion = false;
+  try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  function isSet(f) { return typeof tf.answers[f] === 'boolean'; }
+  function answeredCount() { return QUESTIONS.filter(function (q) { return isSet(q.field); }).length; }
+  // Next unanswered question after `from`, wrapping round; the summary once all are answered.
+  function nextStop(from) {
+    for (var i = from + 1; i < DONE; i++) if (!isSet(QUESTIONS[i].field)) return i;
+    for (i = 0; i <= from && i < DONE; i++) if (!isSet(QUESTIONS[i].field)) return i;
+    return DONE;
+  }
+  function renderTf(focus) {
+    $('tf-welcome').hidden = tf.at !== -1;
+    $('tf-question').hidden = tf.at < 0 || tf.at >= DONE;
+    $('tf-summary').hidden = tf.at !== DONE;
+    if (tf.at >= 0 && tf.at < DONE) {
+      var q = QUESTIONS[tf.at], a = tf.answers[q.field];
+      $('tf-count').textContent = 'Question ' + (tf.at + 1) + ' of ' + DONE;
+      $('tf-fill').style.width = (answeredCount() / DONE * 100) + '%';
+      $('tf-q').textContent = q.label;
+      $('tf-help').textContent = q.help;
+      $('tf-affects').textContent = 'Affects: ' + q.affects;
+      $('tf-yes').setAttribute('aria-pressed', String(a === true));
+      $('tf-no').setAttribute('aria-pressed', String(a === false));
+    }
+    if (tf.at === DONE) {
+      $('tf-sumlabel').textContent = ($('tf-name').value.trim() || 'Untitled system') + ' · ' + answeredCount() + ' of ' + DONE + ' answered';
+      $('tf-list').innerHTML = QUESTIONS.map(function (q) {
+        var a = tf.answers[q.field];
+        return '<div class="tf-row"><span class="t">' + esc(q.label) + '</span><div class="seg" role="group" aria-label="' + esc(q.label) + '">' +
+          '<button type="button" data-sum="' + q.field + '" data-val="1" aria-pressed="' + (a === true) + '">Yes</button>' +
+          '<button type="button" data-sum="' + q.field + '" data-val="0" aria-pressed="' + (a === false) + '">No</button></div></div>';
+      }).join('');
+      paintResult('tf-', tf.answers);
+    }
+    if (focus) {
+      var target = tf.at === -1 ? $('tf-wq') : tf.at === DONE ? $('tf-sumh') : $('tf-q');
+      target.focus();
+      if (tf.at >= 0 && tf.at < DONE) { var card = $('tf-card'); card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter'); }
+    }
+  }
+  function tfAnswer(v) {
+    if (tf.busy || tf.at < 0 || tf.at >= DONE) return;
+    tf.answers[QUESTIONS[tf.at].field] = v;
+    renderTf(false);
+    tf.busy = true;
+    setTimeout(function () { tf.busy = false; tf.at = nextStop(tf.at); renderTf(true); }, reduceMotion ? 0 : 240);
+  }
+  $('tf-welcome').addEventListener('submit', function (e) { e.preventDefault(); tf.at = nextStop(-1); renderTf(true); });
+  $('tf-yes').addEventListener('click', function () { tfAnswer(true); });
+  $('tf-no').addEventListener('click', function () { tfAnswer(false); });
+  $('tf-back').addEventListener('click', function () { if (!tf.busy) { tf.at -= 1; renderTf(true); } });
+  $('tf-list').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-sum]');
+    if (!b) return;
+    var f = b.dataset.sum, v = b.dataset.val === '1';
+    tf.answers[f] = v; renderTf(false);
+    var again = document.querySelector('[data-sum="' + f + '"][data-val="' + (v ? 1 : 0) + '"]'); if (again) again.focus();
+  });
+  $('tf-restart').addEventListener('click', function () { tf.answers = {}; tf.at = -1; renderTf(true); });
+  // Y and N answer the current question, as in Typeform; ignored while typing in a field.
+  document.addEventListener('keydown', function (e) {
+    if (current !== 1 || variant !== 'steps' || tf.at < 0 || tf.at >= DONE) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    var el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+    var k = (e.key || '').toLowerCase();
+    if (k === 'y' || k === 'n') { e.preventDefault(); tfAnswer(k === 'y'); }
+  });
+
+  /* ---------- register style switch (prototype only) ---------- */
+  var variant = 'steps';
+  try { var savedVariant = localStorage.getItem('aegis-register'); if (savedVariant === 'sentence' || savedVariant === 'steps') variant = savedVariant; } catch (e) {}
+  function setVariant(v, jump) {
+    variant = v;
+    $('reg-sentence').hidden = v !== 'sentence';
+    $('reg-steps').hidden = v !== 'steps';
+    document.querySelectorAll('[data-variant]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.variant === v)); });
+    try { localStorage.setItem('aegis-register', v); } catch (e) {}
+    if (jump) { go(1); window.scrollTo({ top: 0 }); }
+  }
+  $('variant').addEventListener('click', function (e) { var b = e.target.closest('[data-variant]'); if (b) setVariant(b.dataset.variant, true); });
+
+  /* ---------- 3 · home ---------- */
+  var ROWS = [
+    ['Formulary Q&A tool', 'agent', 'review', 'Your review', 'Medium', '1/5', 'Due in 2 days'],
+    ['Prior-auth letter summarizer', 'model', 'review', 'In review', 'High', '4/8', 'Due Sep 29'],
+    ['Member benefits chat', 'model', 'live', 'Live', 'High', '5/7', 'Overdue 24 days', true],
+    ['Claims anomaly scorer', 'model', 'paused', 'Paused', 'Critical', '3/8', 'Re-review open'],
+    ['Care gap outreach drafts', 'agent', 'live', 'Live', 'High', '8/8', 'Nov 2026'],
+    ['Call summary notes', 'model', 'live', 'Live', 'Medium', '5/5', 'Jan 2027'],
+    ['Provider directory cleaner', 'agent', 'live', 'Live · fast lane', 'Low', '—', 'Mar 2027'],
+    ['Legacy fax classifier', 'model', 'retired', 'Retired', 'Medium', '—', '—']
+  ];
+  var FILTERS = [['All', null], ['In review', 'review'], ['Live', 'live'], ['Paused', 'paused'], ['Retired', 'retired']];
+  var filter = 0;
+  function renderHome() {
+    $('filters').innerHTML = FILTERS.map(function (f, i) { return '<button type="button" data-filter="' + i + '" aria-pressed="' + (i === filter) + '">' + f[0] + '</button>'; }).join('');
+    var want = FILTERS[filter][1];
+    $('systems').innerHTML = ROWS.filter(function (r) { return !want || r[2] === want; }).map(function (r) {
+      var mark = r[1] === 'agent' ? '<span class="ring" style="width:16px;height:16px"></span>' : '<span class="sq" style="background:transparent;border:2px solid var(--muted);margin:0 2px"></span>';
+      var statusColor = r[2] === 'paused' ? 'var(--warn)' : (r[3] === 'Your review' ? 'var(--ink)' : 'var(--muted)');
+      return '<tr><td><span class="actor">' + mark + '<span style="font-weight:500">' + esc(r[0]) + '</span></span></td>' +
+        '<td><span class="pill" style="font-size:12px;color:' + statusColor + '">' + r[3] + '</span></td>' +
+        '<td class="mono" style="font-size:12px;color:var(--' + r[4].toLowerCase() + ')">' + r[4].toUpperCase() + '</td>' +
+        '<td class="mono" style="font-size:12px">' + r[5] + '</td>' +
+        '<td style="text-align:right;font-size:13px;color:' + (r[7] ? 'var(--high);font-weight:600' : 'var(--muted)') + '">' + r[6] + '</td></tr>';
+    }).join('');
+  }
+  $('filters').addEventListener('click', function (e) { var b = e.target.closest('[data-filter]'); if (b) { filter = Number(b.dataset.filter); renderHome(); } });
+
+  /* ---------- 4 · review ---------- */
+  var FINDINGS = [['min', 'MAJOR', 'Model gets more data than it needs'], ['baa', 'MAJOR', 'BAA doesn’t cover this API'], ['ret', 'MINOR', 'Vendor keeps prompt logs 30 days']];
+  var kept = { min: true, baa: true, ret: true };
+  var rvChoice = 0, rvOpts = ['Sign with conditions', 'Sign', 'Request changes'];
+  var CONDS = [['baa', 'Vendor amends its BAA', true], ['input', 'Model only gets the claim under review', true], ['rereview', 'Re-review in 6 months', false]];
+  var conds = { baa: true, input: true, rereview: false };
+  function renderReview() {
+    $('findings').innerHTML = FINDINGS.map(function (f) {
+      var k = kept[f[0]];
+      return '<div class="finding' + (k ? '' : ' off') + '"><span class="sev" style="color:var(--' + (f[1] === 'MAJOR' ? 'high' : 'medium') + ')">' + f[1] + '</span>' +
+        '<span class="t">' + esc(f[2]) + '</span><a href="#step4" class="note" style="padding:10px 4px">Evidence</a>' +
+        '<div class="seg" role="group" aria-label="' + esc(f[2]) + '"><button type="button" data-keep="' + f[0] + '" aria-pressed="' + k + '">Keep</button><button type="button" data-dismiss="' + f[0] + '" aria-pressed="' + !k + '">Dismiss</button></div></div>';
+    }).join('');
+    $('rv-choices').innerHTML = rvOpts.map(function (o, i) { return '<button type="button" role="radio" data-rv="' + i + '" aria-checked="' + (i === rvChoice) + '">' + o + '</button>'; }).join('');
+    var fs = $('rv-conds');
+    fs.hidden = rvChoice !== 0;
+    fs.innerHTML = '<legend class="legend" style="padding-bottom:6px">Conditions</legend>' + CONDS.map(function (c) {
+      return '<label><input type="checkbox" id="rv-c-' + c[0] + '" data-cond="' + c[0] + '"' + (conds[c[0]] ? ' checked' : '') + '>' + esc(c[1]) + '</label>';
+    }).join('');
+    var n = CONDS.filter(function (c) { return conds[c[0]]; }).length;
+    var withC = rvChoice === 0 && n > 0;
+    // One fixed template per decision; code fills in the team and the count.
+    $('rv-read').textContent = rvChoice === 2 ? 'Privacy goes back to Dana Ortiz with changes requested.' : (withC ? 'You sign Privacy with ' + n + (n === 1 ? ' condition.' : ' conditions.') : 'You sign Privacy with no conditions.');
+    $('rv-go').textContent = rvChoice === 2 ? 'Request changes' : (withC ? 'Sign with ' + n + (n === 1 ? ' condition' : ' conditions') : 'Sign');
+  }
+  $('findings').addEventListener('click', function (e) {
+    var k = e.target.closest('[data-keep]'), d = e.target.closest('[data-dismiss]');
+    if (k) kept[k.dataset.keep] = true; else if (d) kept[d.dataset.dismiss] = false; else return;
+    renderReview();
+  });
+  $('rv-choices').addEventListener('click', function (e) { var b = e.target.closest('[data-rv]'); if (b) { rvChoice = Number(b.dataset.rv); renderReview(); } });
+  $('rv-conds').addEventListener('change', function (e) { var c = e.target.dataset.cond; if (c) { conds[c] = e.target.checked; renderReview(); } });
+
+  /* ---------- 5 · decide ---------- */
+  var SIGN = [['PR', 'Privacy', 'Priya Raman', 2], ['AD', 'Clinical Safety', 'Ana Duarte', 1], ['JB', 'Legal', 'Jordan Blake', 0], ['RC', 'Security', 'Rui Chen', 0],
+    ['KO', 'Data Governance', 'Kemi Okafor', 0], ['TN', 'Tech Architecture', 'Tom Nguyen', 0], ['AS', 'Responsible AI', 'Aisha Siddiqui', 0], ['NB', 'Procurement', 'Nia Brooks', 0]];
+  $('signoffs').innerHTML = SIGN.map(function (s) {
+    var tag = s[3] ? s[3] + (s[3] === 1 ? ' CONDITION' : ' CONDITIONS') : 'SIGNED';
+    return '<li><span class="seal">' + s[0] + '</span><span class="who2"><strong>' + s[1] + '</strong><span>' + s[2] + '</span></span><span class="pill mono" style="font-size:11px;color:var(--' + (s[3] ? 'warn' : 'ok') + ')">' + tag + '</span></li>';
+  }).join('');
+  var dcChoice = 0, dcOpts = ['Approve for a pilot', 'Approve for full use', 'Reject'];
+  function renderDecide() {
+    $('dc-choices').innerHTML = dcOpts.map(function (o, i) { return '<button type="button" role="radio" data-dc="' + i + '" aria-checked="' + (i === dcChoice) + '">' + o + '</button>'; }).join('');
+    $('dc-conds').hidden = dcChoice === 2;
+    var n = 3 + ($('dc-extra').checked ? 1 : 0);
+    $('dc-read').textContent = dcChoice === 2 ? 'You reject CASE-0142. Dana Ortiz sees your reason.' : 'You approve CASE-0142 for ' + (dcChoice === 0 ? 'a pilot' : 'full use') + ' with ' + n + ' conditions.';
+    $('dc-go').textContent = dcChoice === 2 ? 'Reject' : 'Approve with ' + n + ' conditions';
+  }
+  $('dc-choices').addEventListener('click', function (e) { var b = e.target.closest('[data-dc]'); if (b) { dcChoice = Number(b.dataset.dc); renderDecide(); } });
+  $('dc-extra').addEventListener('change', renderDecide);
+
+  /* ---------- 6 · audit ---------- */
+  var EVENTS = [
+    ['SEP 24 16:41', 'human', 'ML', 'Marcus Lee', 'Approved for pilot · 4 conditions', '7c1e'],
+    ['SEP 24 10:18', 'human', 'AD', 'Ana Duarte', 'Signed Clinical Safety · 1 condition', 'f3a8'],
+    ['SEP 23 15:02', 'human', 'JB', 'Jordan Blake', 'Signed Legal', '2d6b'],
+    ['SEP 23 11:30', 'human', 'PR', 'Priya Raman', 'Signed Privacy · 2 conditions', 'c07e'],
+    ['SEP 23 09:14', 'agent', '', 'privacy-agent', 'Drafted privacy review', '91fa'],
+    ['SEP 22 10:05', 'system', '', 'Routing', 'Sent to 8 teams', '5e2d'],
+    ['SEP 22 10:05', 'system', '', 'Triage', 'Rated high risk', 'a41c'],
+    ['SEP 22 10:05', 'human', 'DO', 'Dana Ortiz', 'Submitted', '3b90']
+  ];
+  $('history').innerHTML = EVENTS.map(function (e) {
+    var mark = e[1] === 'human' ? '<span class="seal">' + e[2] + '</span>' : e[1] === 'agent' ? '<span class="ring"></span>' : '<span class="sq"></span>';
+    return '<tr' + (e[1] === 'agent' ? ' class="agent-row"' : '') + '><td class="mono" style="font-size:12px;color:var(--muted);white-space:nowrap">' + e[0] + '</td>' +
+      '<td><span class="actor">' + mark + esc(e[3]) + '</span></td><td>' + esc(e[4]) + '</td><td class="mono" style="text-align:right;font-size:12px;color:var(--muted)">#' + e[5] + '</td></tr>';
+  }).join('');
+  $('search').addEventListener('submit', function (e) { e.preventDefault(); });
+  $('copy').addEventListener('click', function () {
+    var b = this;
+    try { navigator.clipboard.writeText('CASE-0142 approved for a pilot by Marcus Lee, Sep 24 16:41 UTC, healthcare-ai@1.0.0').then(function () { b.textContent = 'Copied'; }, function () { b.textContent = 'Copy not allowed here'; }); }
+    catch (e) { b.textContent = 'Copy not allowed here'; }
+  });
+
+  renderRegister(); renderTf(false); setVariant(variant, false); renderHome(); renderReview(); renderDecide();
+  var m = /^#step([1-6])$/.exec(location.hash);
+  go(m ? Number(m[1]) : 1);
+})();
+</script>
