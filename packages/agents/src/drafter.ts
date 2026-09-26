@@ -3,7 +3,7 @@ import { checkDraft, requiredControls, triage, type Answers, type ReviewDraft, t
 import type { InitiativePack } from "@aegis/frameworks";
 import { z } from "zod";
 import { AgentFailure } from "./errors";
-import { runStructured, type AgentUsage, type RunOptions } from "./run";
+import { OUTPUT_CAP, runStructured, type AgentUsage, type RunOptions } from "./run";
 
 /**
  * Everything the drafter sees for one domain review, and nothing else. The
@@ -40,6 +40,15 @@ export interface DraftInput {
   readonly thread?: string | null;
 }
 
+/**
+ * Input limits, so one long attestation or a pile of links cannot inflate
+ * every draft of the review. The drafter sees the newest evidence per
+ * control; everything stays on file for the reviewer.
+ */
+export const CONTEXT_LIMITS = { evidencePerControl: 5, detailChars: 600, threadChars: 1_500 } as const;
+
+const clip = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
 export function buildDraftContext(pack: InitiativePack, input: DraftInput): DraftContext {
   const result = triage(pack.triage, input.answers, pack.domains);
   const controls = requiredControls(pack.controls, result, input.answers).filter((c) => c.domain === input.domain);
@@ -57,10 +66,14 @@ export function buildDraftContext(pack: InitiativePack, input: DraftInput): Draf
       enforcement: c.enforcement,
       requiredEvidence: c.requiredEvidence,
       cadence: c.cadence,
-      evidence: (input.evidence[c.id] ?? []).map((e) => ({ kind: e.kind ?? "attestation", title: e.title, detail: e.detail ?? null })),
+      evidence: (input.evidence[c.id] ?? []).slice(-CONTEXT_LIMITS.evidencePerControl).map((e) => ({
+        kind: e.kind ?? "attestation",
+        title: clip(e.title, 200),
+        detail: e.detail ? clip(e.detail, CONTEXT_LIMITS.detailChars) : null,
+      })),
       exception: input.exceptions?.[c.id] ?? null,
     })),
-    thread: input.thread ?? null,
+    thread: input.thread ? clip(input.thread, CONTEXT_LIMITS.threadChars) : null,
   };
 }
 
@@ -99,7 +112,7 @@ export async function draftReview(
   options: RunOptions = {},
 ): Promise<{ draft: ReviewDraft; usage: AgentUsage }> {
   const input = JSON.stringify({ task: "draft-review", context });
-  const { output, usage } = await runStructured(provider, { name: "Review drafter", instructions: INSTRUCTIONS, model, outputType: Output }, input, options);
+  const { output, usage } = await runStructured(provider, { name: "Review drafter", instructions: INSTRUCTIONS, model, outputType: Output, maxOutputTokens: OUTPUT_CAP.draft }, input, options);
   const checked = checkDraft(output, context.controls.map((c) => c.id));
   if (!checked.ok) throw new AgentFailure(checked.code, checked.detail);
   return { draft: checked.draft, usage };

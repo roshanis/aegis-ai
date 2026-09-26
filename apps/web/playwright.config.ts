@@ -23,6 +23,8 @@ export default defineConfig({
       // 32 bytes, base64. For tests only.
       AEGIS_MASTER_KEY: "ZTJlLW9ubHktbWFzdGVyLWtleS0zMi1ieXRlcyEhISE=",
       NEXT_TELEMETRY_DISABLED: "1",
+      // Redraft at once, so the e2e flow does not wait out the settle time.
+      AEGIS_DRAFT_SETTLE_MS: "0",
     },
   },
 });

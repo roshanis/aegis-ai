@@ -581,6 +581,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
 
     reviewDomain: assurance.reviewDomain,
     requestDraft: agents.requestDraft,
+    setBudget: agents.setBudget,
     agentsOverview: agents.agentsOverview,
     agentOn: agents.agentOn,
     connectModel: agents.connectModel,

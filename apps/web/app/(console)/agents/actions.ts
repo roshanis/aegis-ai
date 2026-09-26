@@ -46,3 +46,16 @@ export async function switchAgent(_: ActionState, form: FormData): Promise<Actio
   const gov = await governance();
   return attempt(() => gov.setAgentEnabled(principal, text(form, "agent"), text(form, "enabled") === "true"));
 }
+
+/** Blank monthly tokens means no cap. */
+export async function setBudget(_: ActionState, form: FormData): Promise<ActionState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  const monthly = text(form, "monthlyTokens").replace(/[,\s_]/g, "");
+  return attempt(() =>
+    gov.setBudget(principal, {
+      monthlyTokens: monthly === "" ? null : Number(monthly),
+      dailyIntakePerPerson: Number(text(form, "dailyIntakePerPerson")),
+    }),
+  );
+}

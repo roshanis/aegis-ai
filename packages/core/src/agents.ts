@@ -19,6 +19,7 @@ import {
   summarize,
   type AgentId,
   type AgentUsage,
+  type DraftContext,
   type EndpointPolicy,
   type EvalCaseResult,
   type ModelConnection,
@@ -42,6 +43,16 @@ import {
 } from "@aegis/domain";
 import type { InitiativePack, PolicyPack } from "@aegis/frameworks";
 import type { ModelProvider } from "@openai/agents-core";
+import {
+  AnswerCache,
+  inputHash,
+  intakeCallsToday,
+  loadBudget,
+  monthlyBlock,
+  tokenUsage,
+  type Budget,
+  type TokenUsage,
+} from "./budget";
 import { GovernanceError } from "./errors";
 import type { AgentJob, AgentRuntime, DraftJob, DraftOutcome, EvalJob, JobQueue } from "./jobs";
 import { UUID, actorId, toCase, type Case, type CaseRow, type Kernel } from "./model";
@@ -127,6 +138,8 @@ export interface AgentRunView {
   readonly errorCode: string | null;
   readonly inputTokens: number | null;
   readonly outputTokens: number | null;
+  /** Answered from cache: no model call, no tokens. */
+  readonly reused: boolean;
   readonly startedAt: Date;
   readonly finishedAt: Date | null;
 }
@@ -139,6 +152,7 @@ export interface AgentsOverview {
   /** Providers this tenant may connect. Sandboxes cannot point Aegis at custom endpoints. */
   readonly providers: readonly ModelProviderId[];
   readonly recentRuns: readonly AgentRunView[];
+  readonly usage: TokenUsage;
 }
 
 export interface IntakeSuggestions {
@@ -205,6 +219,7 @@ const FAILURE_WORDS: Record<string, string> = {
   decision_language: "tried to state a decision, so its answer was discarded",
   unknown_control: "cited a control this case doesn't have, so its answer was discarded",
   interrupted: "was interrupted by a restart",
+  budget: "is paused: this month's token budget is used up",
 };
 export const failureWords = (code: string) => FAILURE_WORDS[code] ?? "failed";
 
@@ -212,6 +227,7 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
   const system = (tenant: TenantId, job: string): SystemPrincipal => ({ kind: "system", tenantId: tenant, job });
   const drafter = (tenant: TenantId): AgentPrincipal => ({ kind: "agent", tenantId: tenant, agent: "review-drafter" });
   const enqueue = (tx: Connection, job: AgentJob) => k.afterCommit(tx, () => options.jobs?.enqueue(job));
+  const intakeCache = new AnswerCache<readonly IntakeSuggestion[]>();
 
   /* -------------------------------------------------------------- reads */
 
@@ -374,14 +390,14 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
   /* ------------------------------------------------ drafting (transaction steps) */
 
   /** Queue a draft for a pending review, if the drafter is on. Call inside the transaction that made it pending. */
-  async function queueDraft(tx: Connection, tenant: TenantId, reviewId: string): Promise<boolean> {
+  async function queueDraft(tx: Connection, tenant: TenantId, reviewId: string, how: { settle?: boolean } = {}): Promise<boolean> {
     if (!(await gateFor(tx, "review-drafter")).on) return false;
     const requestId = randomUUID();
     await tx.query(
       "UPDATE domain_reviews SET draft_status = 'queued', draft_request_id = $2, draft_error = NULL WHERE id = $1",
       [reviewId, requestId],
     );
-    enqueue(tx, { kind: "draft", tenantId: tenant, reviewId, requestId });
+    enqueue(tx, { kind: "draft", tenantId: tenant, reviewId, requestId, ...(how.settle ? { settle: true } : {}) });
     return true;
   }
 
@@ -399,11 +415,13 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
     draft_status: string;
     draft_request_id: string | null;
     note_body: string | null;
+    draft_context_hash: string | null;
   }
 
   async function lockReview(tx: Connection, reviewId: string): Promise<ReviewForDraft | null> {
     const { rows } = await tx.query<ReviewForDraft>(
-      `SELECT r.id, r.case_id, r.domain, r.status, r.revision, r.draft_status, r.draft_request_id, n.body AS note_body
+      `SELECT r.id, r.case_id, r.domain, r.status, r.revision, r.draft_status, r.draft_request_id, r.draft_context_hash,
+              n.body AS note_body
        FROM domain_reviews r LEFT JOIN notes n ON n.id = r.note_id
        WHERE r.id = $1 FOR UPDATE OF r`,
       [reviewId],
@@ -483,6 +501,24 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
           "UPDATE agent_runs SET state = 'failed', error_code = 'interrupted', finished_at = $2 WHERE review_id = $1 AND state = 'running'",
           [review.id, at.toISOString()],
         );
+        let context: DraftContext | null = null;
+        try {
+          context = await draftContext(tx, c, review);
+        } catch {
+          // Recorded as a failed run below, as before.
+        }
+        const contextHash = context
+          ? inputHash(AGENTS["review-drafter"].version, gate.connection.fingerprint, context)
+          : null;
+        if (contextHash && review.status === "drafted" && review.draft_context_hash === contextHash) {
+          // Nothing the drafter sees has changed: the draft on file stands, at no cost.
+          await tx.query("UPDATE domain_reviews SET draft_status = 'ready' WHERE id = $1", [review.id]);
+          return null;
+        }
+        if (await monthlyBlock(tx, at)) {
+          await tx.query("UPDATE domain_reviews SET draft_status = 'failed', draft_error = 'budget' WHERE id = $1", [review.id]);
+          return null;
+        }
         const runId = await startRun(tx, {
           agent: "review-drafter",
           fingerprint: gate.connection.fingerprint,
@@ -494,9 +530,15 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
           reviewId: review.id,
         });
         try {
-          const context = await draftContext(tx, c, review);
           const connection = await openConnection(tx, tenant, gate.connection);
-          return { runId, revision: review.revision, context, connection, fingerprint: gate.connection.fingerprint };
+          return {
+            runId,
+            revision: review.revision,
+            context: context ?? (await draftContext(tx, c, review)),
+            contextHash,
+            connection,
+            fingerprint: gate.connection.fingerprint,
+          };
         } catch (error) {
           await finishRun(tx, runId, "failed", at, { code: classifyFailure(error).code });
           return { runId, failure: classifyFailure(error) };
@@ -532,9 +574,9 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
         await tx.query(
           `UPDATE domain_reviews
            SET status = $2, revision = $3, draft_status = 'ready', draft_note_id = $4, draft_run_id = $5,
-               draft_error = NULL, updated_at = $6
+               draft_error = NULL, draft_context_hash = $7, updated_at = $6
            WHERE id = $1`,
-          [review.id, event.after, revision, note.id, claim.runId, at.toISOString()],
+          [review.id, event.after, revision, note.id, claim.runId, at.toISOString(), claim.contextHash],
         );
         const counts = {
           findings: drafted.draft.findings.length,
@@ -714,9 +756,10 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
       return k.inTenant(actor, async (tx) => {
         if (actor.kind !== "human") throw new GovernanceError("forbidden", "people only");
         const canManage = can(actor, "tenant.manage");
-        const [connection, sandbox, runs] = await Promise.all([
+        const [connection, sandbox, usage, runs] = await Promise.all([
           connectionRow(tx),
           isSandbox(tx),
+          tokenUsage(tx, k.now()),
           tx.query<{
             id: string;
             agent_id: string;
@@ -725,6 +768,7 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
             error_code: string | null;
             input_tokens: number | null;
             output_tokens: number | null;
+            result: { reused?: boolean } | null;
             started_at: Date;
             finished_at: Date | null;
           }>("SELECT * FROM agent_runs ORDER BY started_at DESC, id LIMIT 8"),
@@ -783,6 +827,7 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
           canManage,
           sandbox,
           providers: sandbox ? SANDBOX_PROVIDERS : MODEL_PROVIDERS,
+          usage,
           recentRuns: runs.rows.map((r) => ({
             id: r.id,
             agentId: r.agent_id,
@@ -791,6 +836,7 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
             errorCode: r.error_code,
             inputTokens: r.input_tokens,
             outputTokens: r.output_tokens,
+            reused: r.result?.reused === true,
             startedAt: new Date(r.started_at),
             finishedAt: r.finished_at ? new Date(r.finished_at) : null,
           })),
@@ -932,6 +978,48 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
     },
 
     /** Turn an agent on (only after it passed on this model) or off. */
+    /** Cap this tenant's monthly tokens and each person's daily intake requests. */
+    setBudget(actor: Principal, budget: Budget): Promise<void> {
+      return k.inTenant(actor, async (tx) => {
+        requireManager(actor);
+        const { monthlyTokens, dailyIntakePerPerson } = budget;
+        if (monthlyTokens !== null && (!Number.isInteger(monthlyTokens) || monthlyTokens < 1_000 || monthlyTokens > 2_000_000_000)) {
+          throw new GovernanceError("invalid", "set the monthly budget between 1,000 and 2,000,000,000 tokens, or no cap");
+        }
+        if (!Number.isInteger(dailyIntakePerPerson) || dailyIntakePerPerson < 1 || dailyIntakePerPerson > 1_000) {
+          throw new GovernanceError("invalid", "set between 1 and 1,000 intake requests per person per day");
+        }
+        const before = await loadBudget(tx);
+        if (before.monthlyTokens === monthlyTokens && before.dailyIntakePerPerson === dailyIntakePerPerson) return;
+        const at = k.now();
+        await tx.query(
+          `INSERT INTO agent_budgets (tenant_id, monthly_tokens, daily_intake_per_person, updated_by, updated_at)
+           VALUES (current_tenant_id(), $1, $2, $3, $4)
+           ON CONFLICT (tenant_id) DO UPDATE SET monthly_tokens = $1, daily_intake_per_person = $2, updated_by = $3, updated_at = $4`,
+          [monthlyTokens, dailyIntakePerPerson, actorId(actor), at.toISOString()],
+        );
+        // Drafts that stopped on the cap can go again once the new one leaves room.
+        if (!(await monthlyBlock(tx, at))) {
+          const { rows } = await tx.query<{ id: string }>(
+            "SELECT id FROM domain_reviews WHERE draft_status = 'failed' AND draft_error = 'budget' AND status IN ('pending', 'drafted')",
+          );
+          for (const r of rows) await queueDraft(tx, actor.tenantId, r.id);
+        }
+        await appendAudit(tx, {
+          actorKind: actor.kind,
+          actorId: actorId(actor),
+          action: "agent.budget",
+          payload: {
+            monthlyTokensBefore: before.monthlyTokens,
+            monthlyTokens,
+            dailyIntakeBefore: before.dailyIntakePerPerson,
+            dailyIntake: dailyIntakePerPerson,
+          },
+          at,
+        });
+      });
+    },
+
     setAgentEnabled(actor: Principal, agent: string, enabled: boolean): Promise<void> {
       return k.inTenant(actor, async (tx) => {
         requireManager(actor);
@@ -968,6 +1056,34 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
         const gate = await gateFor(tx, "intake");
         if (!gate.on || !gate.connection || !gate.pack) throw new GovernanceError("conflict", `The intake assistant is off. ${gate.reason}`);
         const at = k.now();
+        const cacheKey = inputHash(
+          actor.tenantId,
+          AGENTS.intake.version,
+          gate.connection.fingerprint,
+          gate.pack.id,
+          gate.pack.version,
+          text.replace(/\s+/g, " "),
+        );
+        const cached = intakeCache.get(cacheKey, at.getTime());
+        if (cached) {
+          // The same description on the same model and pack: answer again at no cost.
+          const runId = await startRun(tx, { agent: "intake", fingerprint: gate.connection.fingerprint, purpose: "intake", requestedBy: actorId(actor), at });
+          await finishRun(tx, runId, "succeeded", at, {
+            usage: { inputTokens: 0, outputTokens: 0 },
+            result: { answers: Object.fromEntries(cached.map((s) => [s.field, s.answer])), reused: true },
+          });
+          return { kind: "cached", result: { runId, suggestions: cached } } as const;
+        }
+        const budget = await loadBudget(tx);
+        if ((await intakeCallsToday(tx, actorId(actor), at)) >= budget.dailyIntakePerPerson) {
+          throw new GovernanceError(
+            "conflict",
+            `You've used today's ${budget.dailyIntakePerPerson} intake suggestions. Answer the questions yourself, or try again tomorrow.`,
+          );
+        }
+        if (await monthlyBlock(tx, at)) {
+          throw new GovernanceError("conflict", "This month's token budget is used up. Answer the questions yourself; an admin can raise the budget.");
+        }
         const runId = await startRun(tx, {
           agent: "intake",
           fingerprint: gate.connection.fingerprint,
@@ -976,12 +1092,19 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
           at,
         });
         try {
-          return { runId, pack: gate.pack, connection: await openConnection(tx, actor.tenantId, gate.connection) };
+          return {
+            kind: "call",
+            runId,
+            cacheKey,
+            pack: gate.pack,
+            connection: await openConnection(tx, actor.tenantId, gate.connection),
+          } as const;
         } catch (error) {
           await finishRun(tx, runId, "failed", at, { code: classifyFailure(error).code });
           throw new GovernanceError("unavailable", `The intake assistant ${failureWords(classifyFailure(error).code)}.`);
         }
       });
+      if (claim.kind === "cached") return claim.result;
       try {
         const { suggestions, usage } = await suggestIntake(
           await providerFor(claim.connection),
@@ -996,6 +1119,7 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
             result: { answers: Object.fromEntries(suggestions.map((s) => [s.field, s.answer])) },
           }),
         );
+        intakeCache.set(claim.cacheKey, suggestions, k.now().getTime());
         return { runId: claim.runId, suggestions };
       } catch (error) {
         const failure = classifyFailure(error);
