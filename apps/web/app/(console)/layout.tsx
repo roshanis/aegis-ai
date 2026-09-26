@@ -1,51 +1,71 @@
 import { sandboxPersonas } from "@aegis/core";
-import { can } from "@aegis/domain";
+import { can, caseLabel } from "@aegis/domain";
+import Link from "next/link";
 import type { ReactNode } from "react";
-import { Brand } from "@/components/Brand";
-import { Nav } from "@/components/Nav";
-import { PersonaSwitcher } from "@/components/PersonaSwitcher";
+import { Logo } from "@/components/ds";
+import { CommandPalette, PersonMenu, Rail, type PaletteItem } from "@/components/Shell";
 import { database, governance } from "@/lib/db";
-import { ROLE, daysLeft, nextStep } from "@/lib/labels";
+import { ASSET_STATE, DEPLOYMENT, currentReview, daysLeft, nextStep } from "@/lib/labels";
+import { readTheme } from "@/lib/theme";
 import { requireViewer } from "@/lib/viewer";
-import { signOut } from "../actions";
+
+const PAGES: PaletteItem[] = [
+  { href: "/today", label: "Today: the docket", group: "Pages" },
+  { href: "/registry", label: "Registry", group: "Pages" },
+  { href: "/reviews", label: "Reviews", group: "Pages" },
+  { href: "/audit", label: "Audit log", group: "Pages" },
+  { href: "/packs", label: "Policy packs", group: "Pages" },
+  { href: "/agents", label: "Agents", group: "Pages" },
+];
 
 export default async function ConsoleLayout({ children }: { children: ReactNode }) {
   const { principal, tenant } = await requireViewer();
-  const views = await (await governance()).listAssetViews(principal);
-  const personas = tenant.sandboxExpiresAt ? await sandboxPersonas(await database(), principal.tenantId) : [];
+  const [views, personas, theme] = await Promise.all([
+    (await governance()).listAssetViews(principal),
+    tenant.sandboxExpiresAt ? sandboxPersonas(await database(), principal.tenantId) : Promise.resolve([]),
+    readTheme(),
+  ]);
   const me = { userId: principal.userId, displayName: principal.displayName, title: null, roles: principal.roles };
-  const role = ROLE[principal.roles[0] ?? ""];
+  const canRegister = can(principal, "asset.register");
+  const palette: PaletteItem[] = [
+    ...(canRegister ? [{ href: "/registry/new", label: "Register a system", group: "Pages" } as PaletteItem] : []),
+    ...PAGES,
+    ...views.map((v) => {
+      const review = currentReview(v);
+      return {
+        href: `/registry/${v.asset.id}`,
+        label: v.asset.name,
+        meta: `${review ? `${caseLabel(review.number)} · ` : ""}${ASSET_STATE[v.asset.state].label}`,
+        group: "Systems" as const,
+      };
+    }),
+  ];
+  const badge = `${tenant.sandboxExpiresAt ? `Sandbox · ${daysLeft(tenant.sandboxExpiresAt)}d left` : tenant.region.toUpperCase()} · ${DEPLOYMENT[tenant.deploymentMode]}`;
 
   return (
-    <div className="shell">
-      <aside className="sidebar">
-        <Brand />
-        <Nav
-          assets={views.length}
-          needsYou={views.filter((v) => nextStep(v) !== null).length}
-          canRegister={can(principal, "asset.register")}
-        />
-        <div className="tenant-card">
-          <strong>{tenant.name}</strong>
-          {tenant.sandboxExpiresAt ? (
-            <span className="muted">Sandbox · {daysLeft(tenant.sandboxExpiresAt)} days left</span>
-          ) : null}
-          <form action={signOut}>
-            <button className="btn btn-block" type="submit" style={{ marginTop: 6 }}>
-              Sign out
-            </button>
-          </form>
-        </div>
-      </aside>
-      <div className="main">
-        <header className="topbar">
-          <p className="muted hide-narrow">
-            <strong style={{ color: "var(--text)" }}>{role?.label}.</strong> {role?.blurb}
-          </p>
-          <PersonaSwitcher current={me} personas={personas} />
-        </header>
-        <main className="content">{children}</main>
-      </div>
+    <div className="app">
+      <a className="skip-link" href="#main">
+        Skip to content
+      </a>
+      <header className="topbar">
+        <Link className="brand" href="/today" aria-label="Aegis, today">
+          <Logo />
+          <span className="brand-name">Aegis</span>
+        </Link>
+        <span className="sep" aria-hidden="true">
+          /
+        </span>
+        <span className="tenant">{tenant.name}</span>
+        <span className="badge">{badge}</span>
+        <span className="grow" />
+        <CommandPalette items={palette} />
+        <span className="grow" />
+        <PersonMenu current={me} personas={personas} theme={theme} />
+      </header>
+      <Rail reviews={views.filter((v) => nextStep(v) !== null).length} canRegister={canRegister} />
+      <main className="main" id="main">
+        {children}
+      </main>
     </div>
   );
 }

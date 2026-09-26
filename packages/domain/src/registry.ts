@@ -47,6 +47,18 @@ export type CaseKind = (typeof CASE_KINDS)[number];
 export const CASE_TRIGGERS = ["initial", "change", "periodic", "incident"] as const;
 export type CaseTrigger = (typeof CASE_TRIGGERS)[number];
 
+/** How people refer to a case: its number within the tenant, as in "CASE-0142". */
+export function caseLabel(number: number): string {
+  return `CASE-${String(number).padStart(4, "0")}`;
+}
+
+/** Reads "CASE-0142", "case 142" or "142" as case number 142; anything else as null. */
+export function parseCaseLabel(text: string): number | null {
+  const match = /^\s*(?:case[\s-]*)?#?0*(\d{1,9})\s*$/i.exec(text);
+  const n = match ? Number(match[1]) : 0;
+  return n > 0 ? n : null;
+}
+
 export function caseKindFor(kind: AssetKind): CaseKind {
   return kind === "content_item" ? "content_review" : "risk_review";
 }

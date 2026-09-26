@@ -1,513 +1,48 @@
-import {
-  type AssetView,
-  type Case,
-  type ConditionView,
-  type ControlView,
-  type DomainReviewView,
-  type EvidenceView,
-  type HistoryEntry,
-} from "@aegis/core";
-import type { ReviewDraft } from "@aegis/domain";
+import type { AssetView } from "@aegis/core";
+import { caseLabel } from "@aegis/domain";
 import type { InitiativePack } from "@aegis/frameworks";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  ConditionActions,
-  EvidenceForm,
-  ExceptionActions,
-  ExceptionRequestForm,
-  RequestDraft,
-  ReviewActions,
-  WithdrawEvidence,
-} from "@/components/Assurance";
 import { AutoRefresh } from "@/components/AutoRefresh";
-import { IntakeForm } from "@/components/IntakeForm";
-import { DecisionPanel, OpenReviewForm, OperatePanel } from "@/components/Panels";
-import { Pill } from "@/components/Pill";
+import { CaseTable } from "@/components/CaseTable";
+import { ConditionsTab, ControlsTab, HistoryTab } from "@/components/CaseTabs";
+import { RiskDial, Tag } from "@/components/ds";
+import { OpenReviewForm, OperatePanel, StartReview } from "@/components/Forms";
+import { Intake } from "@/components/Intake";
 import { governance } from "@/lib/db";
 import { refusal } from "@/lib/errors";
-import {
-  ASSET_KIND,
-  ASSET_STATE,
-  CASE_STATE,
-  CONDITION_STATE,
-  EXCEPTION_STATE,
-  FAILURE,
-  REVIEW_STATUS,
-  TIER,
-  TRIGGER,
-  actorName,
-  ago,
-  describe,
-  formatTime,
-  nextStep,
-} from "@/lib/labels";
+import { ASSET_KIND, ASSET_STATE, CASE_STATE, TRIGGER, becauseText, formatDate, hash4, nextStep } from "@/lib/labels";
 import { requireViewer } from "@/lib/viewer";
 
-export const metadata: Metadata = { title: "Asset" };
+export const metadata: Metadata = { title: "Case" };
 
 const TABS = [
-  { id: "review", label: "Review" },
+  { id: "table", label: "The table" },
   { id: "controls", label: "Controls & evidence" },
   { id: "conditions", label: "Conditions" },
   { id: "history", label: "History" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
 
-const STEPS = ["Intake", "Triage", "Review", "Decision"];
-const PROGRESS: Record<string, number> = {
-  draft: 0,
-  changes_requested: 0,
-  submitted: 1,
-  triaged: 2,
-  in_review: 2,
-  ai_reviewed: 2,
-};
-
-function Stepper({ review }: { review: Case }) {
-  const at = review.decidedAt ? STEPS.length : (PROGRESS[review.state] ?? 0);
-  return (
-    <div className="stepper" style={{ gridTemplateColumns: `repeat(${STEPS.length}, 1fr)` }}>
-      {STEPS.map((step, i) => (
-        <span className="step" key={step} data-state={i < at ? "done" : i === at ? "current" : "todo"}>
-          {step}
-        </span>
-      ))}
-    </div>
-  );
-}
-
-function TriageSummary({ review }: { review: Case }) {
-  if (!review.triage) return null;
-  const tier = TIER[review.triage.tier];
-  return (
-    <div className="stack" style={{ gap: 10 }}>
-      <div className="row">
-        <Pill tone={tier.tone}>{tier.label}</Pill>
-        <span className="faint" style={{ fontSize: 13 }}>
-          under {review.packId} v{review.packVersion}
-        </span>
-      </div>
-      <ul className="reasons">
-        {review.triage.explanation.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
-function Evidence({ items, assetId }: { items: readonly EvidenceView[]; assetId: string }) {
-  if (items.length === 0) return null;
-  return (
-    <ul className="evidence-list">
-      {items.map((e) => (
-        <li key={e.id}>
-          <span className="evidence-kind" aria-hidden>
-            {e.kind === "link" ? "↗" : "✎"}
-          </span>
-          <div className="stack" style={{ gap: 2 }}>
-            {e.url ? (
-              <a href={e.url} target="_blank" rel="noreferrer" className="evidence-title">
-                {e.title}
-              </a>
-            ) : (
-              <strong className="evidence-title">{e.title}</strong>
-            )}
-            {e.detail ? <span className="muted">{e.detail}</span> : null}
-            <span className="faint" style={{ fontSize: 12.5 }}>
-              {e.addedBy.name ?? "Someone removed"} · {ago(e.addedAt)}
-              {e.canWithdraw ? (
-                <>
-                  {" · "}
-                  <WithdrawEvidence assetId={assetId} evidenceId={e.id} />
-                </>
-              ) : null}
-            </span>
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ControlStatus({ control }: { control: ControlView }) {
-  if (control.exception && (control.exception.state === "approved" || control.exception.state === "requested")) {
-    const x = EXCEPTION_STATE[control.exception.state];
-    return <Pill tone={x.tone}>{x.label}</Pill>;
-  }
-  if (control.evidence.length > 0) return <Pill tone="good">Evidenced</Pill>;
-  return control.enforcement === "gate" ? <Pill tone="bad">Missing evidence</Pill> : <Pill tone="neutral">Not yet evidenced</Pill>;
-}
-
-function ControlsTab({ view }: { view: AssetView }) {
-  const { controls, canContribute, canRequestExceptions } = view.assurance;
-  if (controls.length === 0) {
-    return <p className="muted card">No controls apply yet. They appear once the intake is triaged.</p>;
-  }
-  const domains = [...new Set(controls.map((c) => c.domainLabel))];
-  return (
-    <div className="stack" style={{ gap: 20 }}>
-      {domains.map((domain) => (
-        <section className="card stack" key={domain} style={{ gap: 0, padding: 0 }}>
-          <h2 style={{ padding: "16px 20px 4px" }}>{domain}</h2>
-          {controls
-            .filter((c) => c.domainLabel === domain)
-            .map((control) => {
-              const x = control.exception;
-              const live = x && (x.state === "requested" || x.state === "approved");
-              return (
-                <article className="control" key={control.id} id={control.id}>
-                  <div className="row" style={{ justifyContent: "space-between" }}>
-                    <div className="row" style={{ gap: 8 }}>
-                      <span className="mono chip">{control.id}</span>
-                      <strong>{control.name}</strong>
-                      <span className={`chip ${control.enforcement === "gate" ? "chip-gate" : ""}`}>
-                        {control.enforcement === "gate" ? "Gate" : "Monitor"}
-                      </span>
-                    </div>
-                    <ControlStatus control={control} />
-                  </div>
-                  <p className="faint" style={{ fontSize: 13 }}>
-                    Expects: {control.requiredEvidence} · {control.cadence} · Helps evidence {control.frameworkRefs.join(", ")}
-                  </p>
-                  <Evidence items={control.evidence} assetId={view.asset.id} />
-                  {x ? (
-                    <div className={`exception tone-${EXCEPTION_STATE[x.state].tone}`}>
-                      <div className="stack" style={{ gap: 4 }}>
-                        <strong>
-                          {EXCEPTION_STATE[x.state].label}
-                          {x.state === "approved" && x.expiresAt ? ` until ${formatTime(x.expiresAt)}` : ` · ${x.days} days`}
-                        </strong>
-                        {x.reason ? <span style={{ color: "var(--text)" }}>{x.reason}</span> : null}
-                        <span className="faint" style={{ fontSize: 12.5 }}>
-                          Requested by {x.requestedBy.name ?? "someone removed"}
-                          {x.decidedBy ? ` · decided by ${x.decidedBy.name ?? "someone removed"}` : ""}
-                        </span>
-                      </div>
-                      {x.actions.length > 0 ? <ExceptionActions exceptionId={x.id} actions={x.actions} /> : null}
-                    </div>
-                  ) : null}
-                  <div className="row" style={{ gap: 8 }}>
-                    {canContribute && view.asset.state !== "retired" ? (
-                      <EvidenceForm assetId={view.asset.id} controlId={control.id} hint={control.requiredEvidence} />
-                    ) : null}
-                    {canRequestExceptions && control.enforcement === "gate" && !control.covered && !live ? (
-                      <ExceptionRequestForm assetId={view.asset.id} controlId={control.id} />
-                    ) : null}
-                  </div>
-                </article>
-              );
-            })}
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function ConditionsTab({ view }: { view: AssetView }) {
-  const { conditions, canContribute } = view.assurance;
-  if (conditions.length === 0) {
-    return <p className="muted card">No conditions. They appear when a review is approved with conditions.</p>;
-  }
-  return (
-    <section className="card stack" style={{ gap: 0, padding: 0 }}>
-      {conditions.map((c: ConditionView) => {
-        const state = CONDITION_STATE[c.state];
-        return (
-          <article className="control" key={c.id}>
-            <div className="row" style={{ justifyContent: "space-between" }}>
-              <strong>{c.text ?? "Condition text erased at a person's request"}</strong>
-              <div className="row" style={{ gap: 6 }}>
-                <span className="chip">{c.due === "before_use" ? "Before use" : "Ongoing"}</span>
-                <Pill tone={state.tone}>{state.label}</Pill>
-              </div>
-            </div>
-            <Evidence items={c.evidence} assetId={view.asset.id} />
-            <div className="stack" style={{ gap: 8 }}>
-              {canContribute && (c.state === "open" || c.state === "submitted") ? (
-                <div>
-                  <EvidenceForm assetId={view.asset.id} conditionId={c.id} />
-                </div>
-              ) : null}
-              {c.actions.length > 0 ? (
-                <ConditionActions conditionId={c.id} actions={c.actions} evidenceCount={c.evidence.length} />
-              ) : null}
-            </div>
-          </article>
-        );
-      })}
-    </section>
-  );
-}
-
-const CONCERN: Record<string, string> = {
-  missing_evidence: "Missing evidence",
-  weak_evidence: "Weak evidence",
-  risk: "Risk",
-  note: "Note",
-};
-
-/**
- * The review drafter's work on one review: in progress, failed, or a draft
- * for a person to sign, edit or ignore. Drafts the viewer cannot act on are
- * folded, so each reviewer sees their own work first.
- */
-function DraftBlock({ review }: { review: DomainReviewView }) {
-  const { draft } = review;
-  if (review.status !== "pending" && review.status !== "drafted") return null;
-  if (draft.status === "queued") {
-    return (
-      <p className="drafting" role="status">
-        <span className="spinner" aria-hidden /> The review drafter is drafting this review…
-      </p>
-    );
-  }
-  if (draft.status === "failed") {
-    return (
-      <div className="draft draft-failed">
-        <p>
-          The review drafter {FAILURE[draft.error ?? ""] ?? "failed"}, so there is no draft. Review it yourself
-          {review.canRequestDraft ? ", or ask again." : "."}
-        </p>
-        {review.canRequestDraft ? <RequestDraft caseId={review.caseId} domain={review.domain} again /> : null}
-      </div>
-    );
-  }
-  if (review.status === "drafted" && draft.content) {
-    const { summary, findings, questionsForOwner, proposedConditions } = draft.content;
-    const head = (
-      <div className="draft-head">
-        <span className="agent-badge">AI draft</span>
-        <span className="faint">
-          Review drafter · {findings.length} finding{findings.length === 1 ? "" : "s"} · nobody has signed this yet
-        </span>
-      </div>
-    );
-    if (review.actions.length === 0) {
-      return (
-        <details className="draft draft-folded">
-          <summary>{head}</summary>
-          <p>{summary}</p>
-          {findings.length > 0 ? (
-            <ul className="draft-findings">
-              {findings.map((f, i) => (
-                <li key={i}>
-                  {f.controlId ? <span className="mono chip">{f.controlId}</span> : null}
-                  <span className={`concern concern-${f.concern}`}>{CONCERN[f.concern] ?? f.concern}</span> {f.text}
-                </li>
-              ))}
-            </ul>
-          ) : null}
-        </details>
-      );
-    }
-    return (
-      <div className="draft">
-        {head}
-        <p>{summary}</p>
-        {findings.length > 0 ? (
-          <ul className="draft-findings">
-            {findings.map((f, i) => (
-              <li key={i}>
-                {f.controlId ? <span className="mono chip">{f.controlId}</span> : null}
-                <span className={`concern concern-${f.concern}`}>{CONCERN[f.concern] ?? f.concern}</span> {f.text}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        {questionsForOwner.length > 0 ? (
-          <div className="stack" style={{ gap: 4 }}>
-            <span className="label">Questions for the owner</span>
-            <ul className="reasons">
-              {questionsForOwner.map((q) => (
-                <li key={q}>{q}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        {proposedConditions.length > 0 ? (
-          <div className="stack" style={{ gap: 4 }}>
-            <span className="label">Conditions it suggests</span>
-            <ul className="reasons">
-              {proposedConditions.map((c) => (
-                <li key={c}>{c}</li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        {review.canRequestDraft ? <RequestDraft caseId={review.caseId} domain={review.domain} again /> : null}
-      </div>
-    );
-  }
-  return review.canRequestDraft ? <RequestDraft caseId={review.caseId} domain={review.domain} again={false} /> : null;
-}
-
-function draftSummary(body: string | null): string | null {
-  try {
-    const draft = JSON.parse(body ?? "") as ReviewDraft;
-    const n = draft.findings.length;
-    return `${draft.summary}${n > 0 ? ` (${n} finding${n === 1 ? "" : "s"})` : ""}`;
-  } catch {
-    return body;
-  }
-}
-
-function Reason({ entry }: { entry: HistoryEntry }) {
-  if (entry.reasonStatus === "none") return null;
-  if (entry.reasonStatus === "erased") {
-    return <p className="quote erased">Text erased at a person&apos;s request. The log keeps its fingerprint.</p>;
-  }
-  return (
-    <p className={`quote${entry.reasonStatus === "altered" ? " altered" : ""}`}>
-      {entry.action === "review.draft" ? draftSummary(entry.reason) : entry.reason}
-      {entry.reasonStatus === "altered" ? (
-        <strong style={{ color: "var(--bad)", display: "block", fontSize: 12.5 }}>
-          This text no longer matches what the audit log recorded.
-        </strong>
-      ) : null}
-    </p>
-  );
-}
-
-function HistoryTab({
-  history,
-  labels,
-  triggerOf,
-}: {
-  history: readonly HistoryEntry[];
-  labels: Record<string, string>;
-  triggerOf: Map<string, Case["trigger"]>;
-}) {
-  return (
-    <section className="card">
-      <div className="card-head">
-        <p className="faint" style={{ fontSize: 13 }}>
-          Every change, who made it, why, and under which policy. Newest first. Recorded in a tamper-evident log.
-        </p>
-      </div>
-      <ol className="timeline">
-        {history.map((entry, i) => (
-          <li className="event" key={i} data-decision={entry.decision}>
-            <span className="dot" aria-hidden />
-            <div className="event-body">
-              <span>
-                <strong>{actorName(entry.actor)}</strong>
-                {entry.actor.kind === "agent" ? (
-                  <>
-                    {" "}
-                    <span className="agent-badge">AI agent</span>
-                  </>
-                ) : null}{" "}
-                {describe(entry, labels)}
-                {entry.decision ? (
-                  <>
-                    {" "}
-                    <Pill tone={CASE_STATE[entry.after ?? ""]?.tone ?? "neutral"} plain>
-                      Decision
-                    </Pill>
-                  </>
-                ) : null}
-              </span>
-              <span className="event-meta">
-                <time dateTime={entry.at.toISOString()} title={formatTime(entry.at)}>
-                  {formatTime(entry.at)} · {ago(entry.at)}
-                </time>
-                {entry.caseId ? <span>{TRIGGER[triggerOf.get(entry.caseId) ?? "initial"]}</span> : null}
-                {entry.policy ? (
-                  <span>
-                    Policy {entry.policy.packId} v{entry.policy.packVersion}
-                  </span>
-                ) : null}
-              </span>
-              <Reason entry={entry} />
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
-
-export default async function AssetPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string }>;
-}) {
-  const [{ id }, { tab: requested }] = await Promise.all([params, searchParams]);
-  const tab: Tab = TABS.some((t) => t.id === requested) ? (requested as Tab) : "review";
-  const { principal } = await requireViewer();
-  const gov = await governance();
-
-  let view: AssetView;
-  try {
-    view = await gov.getAsset(principal, id);
-  } catch (error) {
-    if (refusal(error)?.code === "not_found") notFound();
-    throw error;
-  }
-  const history = (await gov.assetHistory(principal, id)).slice().reverse();
-  const { asset, openCase, clearance, actions, assurance } = view;
-  const state = ASSET_STATE[asset.state];
-  const step = nextStep(view);
-  const mustAnswer = openCase && (actions.openCase.includes("submit") || actions.openCase.includes("resubmit"));
-  const decisions = actions.openCase.filter((a) => a !== "submit" && a !== "resubmit");
-  const pack = mustAnswer ? ((await gov.policyPack(principal, { caseId: openCase.id })) as InitiativePack) : null;
-  const assistant = mustAnswer ? await gov.agentOn(principal, "intake") : false;
-  const previous = view.cases.filter((c) => Object.keys(c.answers).length > 0).at(-1)?.answers ?? {};
-  const triggerOf = new Map(view.cases.map((c) => [c.id, c.trigger]));
-  const latest = openCase ?? view.cases.at(-1) ?? null;
-  const labels = Object.fromEntries([
-    ...assurance.reviews.map((r) => [r.domain, r.label]),
-    ...assurance.controls.map((c) => [c.domain, c.domainLabel]),
-  ]);
-  const proposals = assurance.reviews.flatMap((r) => r.proposedConditions);
+function Clearance({ view }: { view: AssetView }) {
+  const { clearance, asset } = view;
   const blockers = clearance.cleared ? [] : clearance.reason.split("; ");
-  const drafting = assurance.reviews.some((r) => r.draft.status === "queued");
-  const signed = assurance.reviews.filter((r) => r.status === "signed" || r.status === "abstained").length;
-  const covered = assurance.controls.filter((c) => c.covered).length;
-  const openConditions = assurance.conditions.filter((c) => c.state === "open" || c.state === "submitted").length;
-  const counts: Record<Tab, string | null> = {
-    review: assurance.reviews.length > 0 ? `${signed}/${assurance.reviews.length}` : null,
-    controls: assurance.controls.length > 0 ? `${covered}/${assurance.controls.length}` : null,
-    conditions: openConditions > 0 ? `${openConditions} open` : null,
-    history: String(history.length),
-  };
-
   return (
-    <>
-      {drafting ? <AutoRefresh /> : null}
-      <div className="page-head">
-        <div>
-          <div className="crumbs">
-            <Link href="/registry">Registry</Link> / <span>{asset.name}</span>
-          </div>
-          <div className="row" style={{ marginTop: 6 }}>
-            <h1>{asset.name}</h1>
-            <Pill tone={state.tone}>{state.label}</Pill>
-          </div>
-          <p className="muted">
-            {ASSET_KIND[asset.kind]} · owned by {view.ownerName ?? "a removed user"}
-          </p>
-        </div>
-      </div>
-
-      <div className={`banner tone-${clearance.cleared ? "good" : asset.state === "retired" ? "neutral" : "warn"}`}>
-        <span className="banner-icon" aria-hidden>
-          {clearance.cleared ? "✓" : "!"}
-        </span>
+    <section className="notice" data-tone={clearance.cleared ? "ok" : asset.state === "retired" ? undefined : "warn"} aria-label="Clearance">
+      <span className="notice-mark" aria-hidden="true">
+        {clearance.cleared ? "✓" : "!"}
+      </span>
+      <div className="stack" style={{ gap: 10, flex: 1 }}>
         {clearance.cleared ? (
           <p>
-            <strong>Cleared for use.</strong> Approved in its{" "}
-            {TRIGGER[triggerOf.get(clearance.caseId) ?? "initial"].toLowerCase()}, with every gate control covered.
+            <strong>Cleared for use.</strong> Approved in {caseLabel(view.cases.find((c) => c.id === clearance.caseId)?.number ?? 0)}, with every gate
+            control covered.
           </p>
         ) : blockers.length > 1 ? (
           <div className="stack" style={{ gap: 4 }}>
             <strong>Not cleared for use:</strong>
-            <ul className="blockers">
+            <ul>
               {blockers.map((b) => (
                 <li key={b}>{b}</li>
               ))}
@@ -518,152 +53,160 @@ export default async function AssetPage({
             <strong>Not cleared for use:</strong> {blockers[0]}.
           </p>
         )}
+        {view.actions.asset.length > 0 ? <OperatePanel assetId={asset.id} actions={view.actions.asset} clearance={clearance} /> : null}
+      </div>
+    </section>
+  );
+}
+
+export default async function CasePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string; seat?: string }>;
+}) {
+  const [{ id }, query] = await Promise.all([params, searchParams]);
+  const tab: Tab = TABS.some((t) => t.id === query.tab) ? (query.tab as Tab) : "table";
+  const { principal } = await requireViewer();
+  const gov = await governance();
+
+  let view: AssetView;
+  try {
+    view = await gov.getAsset(principal, id);
+  } catch (error) {
+    if (refusal(error)?.code === "not_found") notFound();
+    throw error;
+  }
+  const history = await gov.assetHistory(principal, id);
+  const { asset, openCase, actions, assurance } = view;
+  const latest = openCase ?? view.cases.at(-1) ?? null;
+  const triaged = view.cases.filter((c) => c.triage !== null).at(-1) ?? null;
+  const packOf = triaged ?? latest;
+  const pack = packOf ? await gov.policyPack(principal, { caseId: packOf.id }) : null;
+  const initiative = pack?.kind === "initiative" ? pack : null;
+  const mustAnswer = openCase && (actions.openCase.includes("submit") || actions.openCase.includes("resubmit"));
+  const intakePack = mustAnswer ? ((await gov.policyPack(principal, { caseId: openCase.id })) as InitiativePack) : null;
+  const assistant = mustAnswer ? await gov.agentOn(principal, "intake") : false;
+  const previous = view.cases.filter((c) => Object.keys(c.answers).length > 0).at(-1)?.answers ?? {};
+  const step = nextStep(view);
+  const drafting = assurance.reviews.some((r) => r.draft.status === "queued");
+  const labels = Object.fromEntries([...assurance.reviews.map((r) => [r.domain, r.label]), ...assurance.controls.map((c) => [c.domain, c.domainLabel])]);
+  const signed = assurance.reviews.filter((r) => r.status === "signed" || r.status === "abstained").length;
+  const covered = assurance.controls.filter((c) => c.covered).length;
+  const openConditions = assurance.conditions.filter((c) => c.state === "open" || c.state === "submitted").length;
+  const counts: Record<Tab, string | null> = {
+    table: assurance.reviews.length > 0 ? `${signed}/${assurance.reviews.length}` : null,
+    controls: assurance.controls.length > 0 ? `${covered}/${assurance.controls.length}` : null,
+    conditions: openConditions > 0 ? `${openConditions} open` : null,
+    history: String(history.length),
+  };
+  const base = `/registry/${id}`;
+  const state = ASSET_STATE[asset.state];
+  const fastLane = latest ? history.find((e) => e.caseId === latest.id && e.action === "case.fast_lane_approve") : undefined;
+
+  return (
+    <>
+      {drafting ? <AutoRefresh /> : null}
+      <div className="case-head">
+        <div className="stack" style={{ gap: 10, minWidth: 0 }}>
+          <span className="crumbs">
+            <Link href="/registry">Registry</Link> / {latest ? caseLabel(latest.number) : "not reviewed"}
+          </span>
+          {latest ? (
+            <span className="eyebrow">
+              {caseLabel(latest.number)} · {TRIGGER[latest.trigger]} · {CASE_STATE[latest.state]?.label ?? latest.state}
+            </span>
+          ) : null}
+          <h1 className="display-l">{asset.name}</h1>
+          <div className="row" style={{ gap: 10 }}>
+            <Tag tone={state.tone}>{state.label}</Tag>
+            <span className="muted">
+              {ASSET_KIND[asset.kind]} · owned by {view.ownerName ?? "a removed person"}
+              {latest ? ` · ${latest.packId}@${latest.packVersion}` : ""}
+            </span>
+          </div>
+          {step ? (
+            <p className="row" style={{ gap: 10 }}>
+              <span className="eyebrow">Your next step</span>
+              <strong>{step.label}</strong>
+            </p>
+          ) : null}
+        </div>
+        {triaged?.triage ? (
+          <RiskDial small tier={triaged.triage.tier} ruleId={triaged.triage.tierRuleId} because={becauseText(pack, triaged.triage.tierRuleId)} />
+        ) : null}
       </div>
 
-      {step ? (
-        <div className={`next-step tone-${step.tone}`}>
-          <span className="eyebrow">Your next step</span>
-          <strong>{step.label}</strong>
-        </div>
-      ) : null}
+      <Clearance view={view} />
 
-      {mustAnswer && pack ? (
-        <section className="stack">
-          <h2>Answer the {TRIGGER[openCase.trigger].toLowerCase()}</h2>
-          <IntakeForm pack={{ ...pack, goldenSets: undefined }} mode={{ kind: "case", caseId: openCase.id, previous }} assistant={assistant} />
+      {mustAnswer && intakePack ? (
+        <section className="panel panel-xl stack" style={{ gap: 18 }} aria-label="Intake">
+          <span className="eyebrow">
+            {caseLabel(openCase.number)} · {TRIGGER[openCase.trigger]} · your intake
+          </span>
+          <p className="muted">
+            {Object.keys(previous).length > 0 ? "Your answers from last time are filled in. Change anything that is different now." : "Settle each phrase, then submit."}
+          </p>
+          <Intake pack={{ ...intakePack, goldenSets: undefined }} mode={{ kind: "case", caseId: openCase.id, previous }} assistant={assistant} />
         </section>
+      ) : openCase && (openCase.state === "draft" || openCase.state === "changes_requested") ? (
+        <p className="notice">
+          <span className="notice-mark" aria-hidden="true">
+            …
+          </span>
+          <span>
+            {caseLabel(openCase.number)} waits on {view.ownerName ?? "the owner"} to answer the {TRIGGER[openCase.trigger].toLowerCase()} intake.
+          </span>
+        </p>
       ) : null}
 
-      <nav className="tabs" aria-label="Asset sections">
+      {openCase && actions.openCase.includes("start_review") ? <StartReview caseId={openCase.id} /> : null}
+
+      <nav className="tabs" aria-label="Case sections">
         {TABS.map((t) => (
-          <Link key={t.id} href={t.id === "review" ? `/registry/${id}` : `/registry/${id}?tab=${t.id}`} aria-current={tab === t.id ? "page" : undefined}>
+          <Link key={t.id} href={t.id === "table" ? base : `${base}?tab=${t.id}`} aria-current={tab === t.id ? "page" : undefined}>
             {t.label}
-            {counts[t.id] ? <span className="tab-count">{counts[t.id]}</span> : null}
+            {counts[t.id] ? <span className="count">{counts[t.id]}</span> : null}
           </Link>
         ))}
       </nav>
 
-      {tab === "review" ? (
-        <div className="grid-2">
-          <div className="stack" style={{ gap: 20 }}>
-            <section className="card stack" style={{ gap: 16 }}>
-              <div className="card-head" style={{ marginBottom: 0 }}>
-                <h2>{latest ? TRIGGER[latest.trigger] : "Review"}</h2>
-                {latest ? (
-                  <Pill tone={CASE_STATE[latest.state]?.tone ?? "neutral"} plain>
-                    {CASE_STATE[latest.state]?.label ?? latest.state}
-                  </Pill>
-                ) : null}
-              </div>
-              {latest ? <Stepper review={latest} /> : null}
-              {latest ? <TriageSummary review={latest} /> : <p className="muted">No review has been started.</p>}
-
-              {openCase && decisions.length > 0 ? (
-                <div className="stack" style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-                  <h3>Your decision</h3>
-                  <DecisionPanel caseId={openCase.id} actions={decisions} readiness={assurance.readiness} proposals={proposals} />
-                </div>
-              ) : openCase && !mustAnswer && assurance.reviews.length === 0 ? (
-                <p className="faint">
-                  {openCase.state === "draft" || openCase.state === "changes_requested"
-                    ? `Waiting on ${view.ownerName ?? "the owner"} to answer the intake.`
-                    : "Waiting on an approver's decision."}
-                </p>
-              ) : null}
-
-              {!openCase && actions.newCase.length > 0 ? (
-                <div className="stack" style={{ borderTop: "1px solid var(--border)", paddingTop: 16 }}>
-                  <h3>{actions.newCase[0] === "initial" ? "Start its review" : "Re-review"}</h3>
-                  <OpenReviewForm assetId={asset.id} triggers={actions.newCase} />
-                </div>
-              ) : null}
-            </section>
-
-            {assurance.reviews.length > 0 ? (
-              <section className="card stack" style={{ gap: 0, padding: 0 }}>
-                <div style={{ padding: "16px 20px 6px" }}>
-                  <h2>Domain reviews</h2>
-                  <p className="faint" style={{ fontSize: 13, marginTop: 4 }}>
-                    {assurance.readiness?.reason ?? "Each required domain signs off before a decision."}
-                  </p>
-                </div>
-                {assurance.reviews.map((r) => {
-                  const status = REVIEW_STATUS[r.status];
-                  return (
-                    <article className="control" key={r.id}>
-                      <div className="row" style={{ justifyContent: "space-between" }}>
-                        <strong>{r.label}</strong>
-                        <div className="row" style={{ gap: 8 }}>
-                          {r.reviewer ? <span className="faint" style={{ fontSize: 13 }}>{r.reviewer.name}</span> : null}
-                          <Pill tone={status.tone}>{status.label}</Pill>
-                        </div>
-                      </div>
-                      {r.note ? <p className="quote">{r.note}</p> : null}
-                      {r.proposedConditions.length > 0 ? (
-                        <ul className="reasons">
-                          {r.proposedConditions.map((p) => (
-                            <li key={p}>Proposed condition: {p}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                      {r.uncoveredGates.length > 0 && r.status !== "signed" ? (
-                        <p className="faint" style={{ fontSize: 13 }}>
-                          Needs evidence or an exception for{" "}
-                          <Link href={`/registry/${id}?tab=controls`} className="inline-link">
-                            {r.uncoveredGates.join(", ")}
-                          </Link>
-                        </p>
-                      ) : null}
-                      <DraftBlock review={r} />
-                      {r.actions.length > 0 ? (
-                        <ReviewActions
-                          caseId={r.caseId}
-                          domain={r.domain}
-                          revision={r.revision}
-                          actions={r.actions}
-                          uncoveredGates={r.uncoveredGates}
-                          draft={r.status === "drafted" ? r.draft.content : null}
-                        />
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </section>
-            ) : null}
-          </div>
-
-          <div className="stack" style={{ gap: 20 }}>
-            <section className="card stack">
-              <h2>In use?</h2>
-              <OperatePanel assetId={asset.id} actions={actions.asset} clearance={clearance} />
-            </section>
-            <section className="card stack">
-              <h2>Reviews</h2>
-              {view.cases.length === 0 ? <p className="muted">None yet.</p> : null}
-              {view.cases
-                .slice()
-                .reverse()
-                .map((c) => (
-                  <div className="row" key={c.id} style={{ justifyContent: "space-between" }}>
-                    <span>
-                      {TRIGGER[c.trigger]}
-                      <span className="faint" style={{ display: "block", fontSize: 12.5 }}>
-                        {c.decidedAt ? `Decided ${formatTime(c.decidedAt)}` : "Under way"}
-                        {c.tier ? ` · ${TIER[c.tier].label.toLowerCase()}` : ""}
-                      </span>
-                    </span>
-                    <Pill tone={CASE_STATE[c.state]?.tone ?? "neutral"} plain>
-                      {CASE_STATE[c.state]?.label ?? c.state}
-                    </Pill>
-                  </div>
-                ))}
-            </section>
-          </div>
-        </div>
+      {tab === "table" ? (
+        assurance.reviews.length > 0 ? (
+          <CaseTable view={view} pack={initiative} history={history} selected={query.seat ?? null} baseHref={base} />
+        ) : fastLane && latest ? (
+          <section className="panel panel-xl stack" style={{ gap: 12 }}>
+            <span className="eyebrow">{caseLabel(latest.number)} · no table needed</span>
+            <p className="display-m">
+              Approved in the fast lane under <span className="mono">{String(fastLane.payload.fastLanePolicyId)}</span>.
+            </p>
+            <p>
+              Accountable: <strong>{String(fastLane.payload.accountableApprover)}</strong>. Low risk, and nothing in the intake disqualified it, so no
+              review team had to sign.
+            </p>
+            <span className="mono-s muted">
+              approved {formatDate(fastLane.at)} by the triage rules · audit log #{hash4(fastLane.hash)}
+            </span>
+          </section>
+        ) : (
+          <section className="panel panel-xl stack" style={{ gap: 12 }}>
+            <p className="muted">
+              {latest ? "No review team has a seat yet. Seats appear once the intake is triaged." : "This system has not been reviewed yet."}
+            </p>
+            {!latest && actions.newCase.length > 0 ? <OpenReviewForm assetId={asset.id} triggers={actions.newCase} /> : null}
+          </section>
+        )
+      ) : null}
+      {tab === "table" && latest && !openCase && actions.newCase.length > 0 ? (
+        <section className="panel stack" style={{ gap: 10 }} aria-label="Re-review">
+          <h2 className="section-title">Review it again</h2>
+          <OpenReviewForm assetId={asset.id} triggers={actions.newCase} />
+        </section>
       ) : null}
       {tab === "controls" ? <ControlsTab view={view} /> : null}
       {tab === "conditions" ? <ConditionsTab view={view} /> : null}
-      {tab === "history" ? <HistoryTab history={history} labels={labels} triggerOf={triggerOf} /> : null}
+      {tab === "history" ? <HistoryTab history={history.slice().reverse()} labels={labels} /> : null}
     </>
   );
 }

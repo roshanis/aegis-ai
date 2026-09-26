@@ -48,6 +48,7 @@ beforeAll(async () => {
     "0004_sandbox.sql",
     "0005_governance_core.sql",
     "0006_agents.sql",
+    "0007_case_numbers.sql",
   ]);
   expect(await migrate(db)).toEqual([]);
   await seedTenant(A, "tenant-a", userA, assetA);
@@ -264,5 +265,60 @@ describe("purging a tenant", () => {
 
     await expect(db.exec(`DELETE FROM audit_events WHERE tenant_id = '${B}'`)).rejects.toThrow(/append-only/);
     expect(await withTenant(db, B, verifyAuditChain)).toBeNull();
+  });
+});
+
+describe("case numbers", () => {
+  it("numbers existing cases per tenant, in the order they were opened, when the migration arrives", async () => {
+    const old = new PGlite();
+    await migrate(old, { through: "0006_agents.sql" });
+    const seed = async (tenant: string, slug: string, user: string, asset: string, cases: [string, string][]) => {
+      await old.query("INSERT INTO tenants (id, slug, name) VALUES ($1, $2, $2)", [tenant, slug]);
+      await old.query("INSERT INTO users (id, tenant_id, email, display_name) VALUES ($1, $2, $3, 'Req')", [user, tenant, `${slug}@x.test`]);
+      await old.query("INSERT INTO policy_packs (tenant_id, pack_id, version, content) VALUES ($1, 'p', '1.0.0', '{}')", [tenant]);
+      await old.query("INSERT INTO assets (id, tenant_id, kind, name, owner_id) VALUES ($1, $2, 'ai_system', 'Bot', $3)", [asset, tenant, user]);
+      for (const [id, created] of cases) {
+        await old.query(
+          `INSERT INTO cases (id, tenant_id, asset_id, kind, trigger, state, owner_id, pack_id, pack_version, decided_at, created_at)
+           VALUES ($1, $2, $3, 'risk_review', 'initial', 'approved', $4, 'p', '1.0.0', $5, $5)`,
+          [id, tenant, asset, user, created],
+        );
+      }
+    };
+    await seed(A, "tenant-a", userA, assetA, [
+      ["00000000-0000-4000-8000-0000000000f2", "2026-02-01T00:00:00Z"],
+      ["00000000-0000-4000-8000-0000000000f1", "2026-01-01T00:00:00Z"],
+    ]);
+    await seed(B, "tenant-b", userB, assetB, [["00000000-0000-4000-8000-0000000000f3", "2026-03-01T00:00:00Z"]]);
+    expect(await migrate(old)).toEqual(["0007_case_numbers.sql"]);
+    const { rows } = await old.query<{ id: string; number: number }>("SELECT id, number FROM cases ORDER BY id");
+    expect(rows.map((r) => [r.id.slice(-2), r.number])).toEqual([
+      ["f1", 1],
+      ["f2", 2],
+      ["f3", 1],
+    ]);
+    await old.close();
+  });
+
+  it("counts up within each tenant, and never changes", async () => {
+    const n = async (tenant: typeof A, caseId: string) =>
+      withTenant(db, tenant, async (tx) => {
+        const { rows } = await tx.query<{ number: number }>("SELECT number FROM cases WHERE id = $1", [caseId]);
+        return rows[0]!.number;
+      });
+    const before = await withTenant(db, A, async (tx) => (await tx.query<{ n: number }>("SELECT count(*)::int AS n FROM cases")).rows[0]!.n);
+    const first = "00000000-0000-4000-8000-0000000000d1";
+    const second = "00000000-0000-4000-8000-0000000000d2";
+    const other = "00000000-0000-4000-8000-0000000000d3";
+    await withTenant(db, A, (tx) => tx.exec(insertCase(first, A, assetA, userA, "now()")));
+    await withTenant(db, A, (tx) => tx.exec(insertCase(second, A, assetA, userA, "now()")));
+    const bBefore = await withTenant(db, B, async (tx) => (await tx.query<{ n: number }>("SELECT count(*)::int AS n FROM cases")).rows[0]!.n);
+    await withTenant(db, B, (tx) => tx.exec(insertCase(other, B, assetB, userB, "now()")));
+    expect(await n(A, first)).toBe(before + 1);
+    expect(await n(A, second)).toBe(before + 2);
+    expect(await n(B, other)).toBe(bBefore + 1);
+    await expect(withTenant(db, A, (tx) => tx.exec(`UPDATE cases SET number = 99 WHERE id = '${first}'`))).rejects.toThrow(
+      /a case number cannot change/,
+    );
   });
 });

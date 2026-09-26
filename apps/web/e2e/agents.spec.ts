@@ -1,67 +1,70 @@
 import { expect, test, type Page } from "@playwright/test";
 
 /**
- * Phase 2 through the real UI: the intake assistant suggests answers the
- * requester checks, the review drafter drafts each domain review, a
- * reviewer signs from a draft, and an admin controls the agents behind a
- * golden-set gate that a model change resets.
+ * Agents through the real UI: the intake assistant suggests phrases the
+ * requester checks, the review drafter drafts each seat's review in a
+ * dashed frame, a reviewer signs from a draft, and an admin controls the
+ * agents behind a golden-set gate that a model change resets.
  */
 
+const person = (page: Page) => page.locator("details.menu > summary");
+
 async function actAs(page: Page, name: string) {
-  await page.locator("summary[aria-label='Switch person']").click();
+  await person(page).click();
   await page.getByRole("button", { name: new RegExp(name) }).click();
-  await expect(page.locator("summary[aria-label='Switch person']")).toContainText(name);
+  await expect(person(page)).toHaveAttribute("aria-label", new RegExp(`^${name},`));
 }
 
+const rail = (page: Page, name: string) => page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name, exact: true });
 const agentCard = (page: Page, title: string) => page.getByRole("region", { name: title });
 
 test("agents draft and suggest, people decide, and an admin keeps them behind the golden-set gate", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: /Open a sandbox/ }).click();
+  await page.getByRole("button", { name: "Open a sandbox" }).click();
   // Seeding runs the agents' golden sets and drafts, which takes a few seconds.
-  await expect(page).toHaveURL(/\/registry$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/today$/, { timeout: 30_000 });
 
-  // Requester: describe it, take the suggestions, answer what the assistant could not tell.
-  await page.getByRole("link", { name: "+ Register AI" }).click();
+  // Requester: say what it does, take the suggested phrases, settle what the assistant could not tell.
+  await rail(page, "Intake").click();
   await page.getByLabel("What is it called?").fill("Marketing email drafter");
   await page
-    .getByLabel("Describe it in a sentence or two")
+    .getByLabel("What does it do? In your words")
     .fill("Generates first drafts of Medicare Advantage marketing emails. Compliance reviews every email before it is sent to members.");
-  await page.getByRole("button", { name: "Suggest answers" }).click();
-  const members = page.locator(".question").filter({ hasText: "Will members see or interact with it?" });
-  await expect(members.getByText(/Suggested: Yes/)).toBeVisible();
-  await expect(members.getByRole("button", { name: "Yes" })).toHaveAttribute("aria-pressed", "true");
-  await expect(page.getByText("2 left")).toBeVisible();
+  await page.getByRole("button", { name: "Suggest the phrases" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Draft by intake assistant." })).toContainText("It suggested 4 phrases");
+  const members = page.getByRole("group", { name: "Will members see or interact with it?" }).getByRole("button");
+  await expect(members).toHaveAttribute("aria-label", /^Yes: see/);
+  await expect(members).toHaveAttribute("data-suggested", "true");
+  await expect(page.getByText("Provisional · 2 left")).toBeVisible();
   for (const question of ["Does it use protected health information?", "Is the model or service hosted by a vendor?"]) {
-    await page.getByRole("group", { name: question }).getByRole("button", { name: "No" }).click();
+    await page.getByRole("group", { name: question }).getByRole("button", { name: /^No: / }).click();
   }
-  await expect(page.locator(".tier-big")).toHaveText("Medium risk");
+  await expect(page.getByTestId("verdict")).toContainText("Medium risk");
   await page.getByRole("button", { name: "Submit for review" }).click();
   await expect(page).toHaveURL(/\/registry\/[0-9a-f-]{36}$/);
   const asset = page.url();
 
-  // Reviewer: the drafter's draft is waiting; sign Security from it.
+  // Reviewer: the drafter's draft waits at the Security seat; sign it as drafted.
   await actAs(page, "Rowan Ellis");
   await page.goto(asset);
-  await expect(page.getByText("is drafting this review")).toHaveCount(0, { timeout: 20_000 });
-  await expect(page.locator(".next-step")).toContainText("drafts ready");
-  const security = page.locator("article").filter({ has: page.locator("strong", { hasText: /^Security$/ }) });
-  await expect(security.getByText("AI draft")).toBeVisible();
-  await expect(security.getByText("Draft ready to sign")).toBeVisible();
-  await security.getByRole("button", { name: "Sign off" }).click();
-  await expect(security.getByLabel(/starting from the draft/)).toHaveValue(/Security review of Marketing email drafter/);
-  await security.getByRole("button", { name: "Confirm: sign off" }).click();
-  await expect(security.getByText("Signed", { exact: true })).toBeVisible();
+  await expect(page.getByText("The review drafter is drafting")).toHaveCount(0, { timeout: 20_000 });
+  await expect(page.getByText(/^Your next step/).locator("..")).toContainText("drafts ready");
+  await page.getByRole("link", { name: /^Security: Your seat · draft ready/ }).click();
+  const panel = page.getByRole("complementary");
+  const draft = panel.getByRole("region", { name: "Draft by review drafter" });
+  await expect(draft).toContainText("Draft only · cannot approve");
+  await expect(draft.getByRole("button", { name: /Approve|Sign/ })).toHaveCount(0);
+  await expect(panel.getByLabel("Memo for the approver, from the draft")).toHaveValue(/Security review of Marketing email drafter/);
+  await panel.getByRole("button", { name: /^Sign (with|without)/ }).click();
+  await expect(page.getByRole("link", { name: /^Security: / })).toHaveAttribute("aria-label", "Security: Signed by Rowan Ellis");
 
   await page.goto(`${asset}?tab=history`);
-  await expect(page.locator(".event", { hasText: "Rowan Ellis signed off Security, keeping the drafter's memo" })).toBeVisible();
-  await expect(page.locator(".event", { hasText: "Review drafter" }).filter({ hasText: "drafted the Security review" })).toContainText(
-    "AI agent",
-  );
-  await expect(page.locator(".event", { hasText: "Riley Park submitted the intake, keeping 4 of 4 suggested answers" })).toBeVisible();
+  await expect(page.locator(".timeline li", { hasText: "Rowan Ellis signed Security, keeping the drafter's memo" })).toBeVisible();
+  await expect(page.locator(".timeline li", { hasText: "drafted the Security review" }).first()).toContainText("AI agent · draft only");
+  await expect(page.locator(".timeline li", { hasText: "Riley Park submitted the intake, keeping 4 of 4 suggested answers" })).toBeVisible();
 
   // Reviewers see the agents but cannot switch them.
-  await page.getByRole("link", { name: "Agents" }).click();
+  await rail(page, "Agents").click();
   await expect(agentCard(page, "Review drafter").getByText("On", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: /Turn (on|off)|Run .* golden set/ })).toHaveCount(0);
 
@@ -93,9 +96,9 @@ test("agents draft and suggest, people decide, and an admin keeps them behind th
   await expect(page.getByRole("heading", { name: "Scripted demo model" })).toBeVisible();
   await expect(agentCard(page, "Intake assistant").getByText("Passed · off")).toBeVisible();
 
-  // With the intake assistant off, the form is the plain form.
+  // With the intake assistant off, nobody offers to suggest phrases.
   await actAs(page, "Riley Park");
-  await page.getByRole("link", { name: "Register AI", exact: true }).click();
+  await rail(page, "Intake").click();
   await expect(page.getByLabel("What is it called?")).toBeVisible();
-  await expect(page.getByLabel("Describe it in a sentence or two")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Suggest the phrases" })).toHaveCount(0);
 });

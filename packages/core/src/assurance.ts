@@ -75,6 +75,8 @@ export interface DomainReviewView {
   };
   /** Whether this viewer may ask the drafter for a fresh draft. */
   readonly canRequestDraft: boolean;
+  /** When the review last changed. */
+  readonly updatedAt: Date;
 }
 
 export interface EvidenceView {
@@ -152,6 +154,7 @@ interface ReviewRow {
   draft_status: DomainReviewView["draft"]["status"];
   draft_error: string | null;
   draft_body: string | null;
+  updated_at: Date;
 }
 
 interface EvidenceRow {
@@ -224,7 +227,7 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
   async function reviewRows(tx: Connection, caseId: string): Promise<ReviewRow[]> {
     const { rows } = await tx.query<ReviewRow>(
       `SELECT r.id, r.case_id, r.domain, r.status, r.revision, r.reviewer_id, u.display_name AS reviewer_name,
-              r.note_id, n.body AS note_body, r.proposed_conditions, r.draft_status, r.draft_error, d.body AS draft_body
+              r.note_id, n.body AS note_body, r.proposed_conditions, r.draft_status, r.draft_error, d.body AS draft_body, r.updated_at
        FROM domain_reviews r
        LEFT JOIN users u ON u.id = r.reviewer_id
        LEFT JOIN notes n ON n.id = r.note_id
@@ -380,6 +383,7 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
             r.draft_status !== "queued" &&
             canSignDomain(actor, r.domain) &&
             !isCaseOwner,
+          updatedAt: new Date(r.updated_at),
         };
       }),
       readiness: focus && inReview ? await readinessFor(tx, focus) : null,

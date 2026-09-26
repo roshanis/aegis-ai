@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assetLifecycle, caseKindFor, clearance, isDecided, type CaseSummary } from "./registry";
+import { assetLifecycle, caseKindFor, caseLabel, clearance, isDecided, parseCaseLabel, type CaseSummary } from "./registry";
 import { agent, human, system } from "./test-principals";
 
 const at = new Date("2026-09-24T12:00:00Z");
@@ -76,5 +76,16 @@ describe("clearance", () => {
       reason: "an incident review is still open",
       caseId: "c3",
     });
+  });
+});
+
+describe("case labels", () => {
+  it("writes and reads case numbers the way people say them", () => {
+    expect(caseLabel(7)).toBe("CASE-0007");
+    expect(caseLabel(14207)).toBe("CASE-14207");
+    for (const text of ["CASE-0142", "case 142", "Case-142", "#142", "142", " 0142 "]) {
+      expect(parseCaseLabel(text)).toBe(142);
+    }
+    for (const text of ["", "CASE-", "CASE-0", "claims", "142a", "-3"]) expect(parseCaseLabel(text)).toBeNull();
   });
 });

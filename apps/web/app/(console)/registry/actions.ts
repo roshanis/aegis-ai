@@ -25,7 +25,7 @@ async function attempt(fn: () => Promise<unknown>): Promise<ActionState> {
     if (refused) return { error: refused.message };
     throw error;
   }
-  revalidatePath("/registry", "layout");
+  revalidatePath("/", "layout");
   return { error: null };
 }
 

@@ -11,7 +11,7 @@ const MIGRATIONS_DIR = fileURLToPath(new URL("../migrations/", import.meta.url))
  * transaction. A migration that changed after it was applied is an error:
  * fix forward with a new migration instead.
  */
-export async function migrate(db: Connection): Promise<string[]> {
+export async function migrate(db: Connection, options: { readonly through?: string } = {}): Promise<string[]> {
   await db.exec(`CREATE TABLE IF NOT EXISTS schema_migrations (
     name text PRIMARY KEY,
     checksum text NOT NULL,
@@ -19,7 +19,9 @@ export async function migrate(db: Connection): Promise<string[]> {
   )`);
   const { rows } = await db.query<{ name: string; checksum: string }>("SELECT name, checksum FROM schema_migrations");
   const applied = new Map(rows.map((r) => [r.name, r.checksum]));
-  const files = (await readdir(MIGRATIONS_DIR)).filter((f) => f.endsWith(".sql")).sort();
+  const files = (await readdir(MIGRATIONS_DIR))
+    .filter((f) => f.endsWith(".sql") && (options.through === undefined || f <= options.through))
+    .sort();
 
   const ran: string[] = [];
   for (const file of files) {

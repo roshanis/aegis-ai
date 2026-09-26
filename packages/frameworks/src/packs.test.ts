@@ -70,6 +70,21 @@ describe("healthcare-ai pack", () => {
     expect(referencedFields(healthcareAiPack.triage)).toEqual(asked);
   });
 
+  it("words every question once in its intake sentence, and every tier rule's reason", () => {
+    const sentence = healthcareAiPack.sentence!;
+    const slots = [...sentence.template.matchAll(/\{(\w+)\}/g)].map((m) => m[1]!);
+    const fields = healthcareAiPack.questions.map((q) => q.field);
+    expect(slots.filter((s) => s !== "purpose").sort()).toEqual([...fields].sort());
+    expect(slots.filter((s) => s === "purpose")).toHaveLength(1);
+    expect(Object.keys(sentence.phrases).sort()).toEqual([...fields].sort());
+    for (const phrase of Object.values(sentence.phrases)) {
+      expect(phrase.yes.trim()).not.toBe("");
+      expect(phrase.no.trim()).not.toBe(phrase.yes.trim());
+    }
+    const rules = healthcareAiPack.triage.tierRules.map((r) => r.id);
+    expect(Object.keys(sentence.because).sort()).toEqual([...rules, "default"].sort());
+  });
+
   it("only routes to domains it defines", () => {
     const defined = Object.keys(healthcareAiPack.domains);
     const used = [

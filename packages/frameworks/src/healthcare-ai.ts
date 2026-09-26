@@ -9,12 +9,13 @@ import type { InitiativePack } from "./types";
  * equivalence tests prove both.
  *
  * 1.1.0 adds the control catalog. 1.2.0 adds the golden sets agents must
- * pass before a tenant can turn them on.
+ * pass before a tenant can turn them on. 1.3.0 adds the intake sentence;
+ * rules, controls and golden sets are unchanged.
  */
 export const healthcareAiPack: InitiativePack = {
   kind: "initiative",
   id: "healthcare-ai",
-  version: "1.2.0",
+  version: "1.3.0",
   title: "Healthcare AI initiatives",
   summary: "Risk tiers and review routing for AI that touches members, PHI, or care and coverage decisions.",
   frameworkRefs: ["NIST AI RMF 1.0", "HIPAA Privacy Rule", "ISO/IEC 42001", "EU AI Act (Annex III)"],
@@ -26,6 +27,29 @@ export const healthcareAiPack: InitiativePack = {
     { field: "vendorHosted", label: "Is the model or service hosted by a vendor?", help: "Any third-party API or SaaS." },
     { field: "individualImpact", label: "Could it materially affect an individual?", help: "Money, access, health, or reputation." },
   ],
+  sentence: {
+    template:
+      "We want to use a model {vendorHosted} that {phi} member health data, to {purpose}. " +
+      "Members {memberFacing} its output, and it {careCoverageInfluence} shape care or coverage. " +
+      "{humanInLoop} and it {individualImpact} change what happens to a person.",
+    phrases: {
+      vendorHosted: { yes: "hosted by a vendor", no: "we host ourselves" },
+      phi: { yes: "reads", no: "never touches" },
+      memberFacing: { yes: "see", no: "never see" },
+      careCoverageInfluence: { yes: "can", no: "cannot" },
+      humanInLoop: { yes: "A person checks every output,", no: "Outputs take effect on their own," },
+      individualImpact: { yes: "could", no: "could not" },
+    },
+    because: {
+      "care-without-human": "can shape care or coverage with no one checking each output",
+      "care-with-human": "can shape care or coverage, even with a person checking each output",
+      phi: "reads protected health information",
+      "member-impact": "is in front of members and can change what happens to them",
+      "individual-impact": "can change what happens to a person",
+      "member-facing": "is in front of members",
+      default: "trips none of the policy's risk rules",
+    },
+  },
   domains: {
     legal: "Legal",
     procurement: "Procurement",

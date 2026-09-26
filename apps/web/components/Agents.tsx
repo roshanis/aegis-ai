@@ -31,7 +31,7 @@ export function ModelForm({ current, providers }: { current: Current | null; pro
   if (!open) {
     return (
       <div>
-        <button className="btn" type="button" onClick={() => setOpen(true)}>
+        <button className="btn btn-sm" type="button" onClick={() => setOpen(true)}>
           Change model
         </button>
       </div>
@@ -40,18 +40,16 @@ export function ModelForm({ current, providers }: { current: Current | null; pro
   const same = current?.provider === provider;
   const needsEndpoint = provider === "azure-openai" || provider === "openai-compatible";
   return (
-    <form action={submit} className="stack evidence-form" style={{ gap: 12 }}>
+    <form action={submit} className="stack raised" style={{ gap: 12 }}>
       <input type="hidden" name="provider" value={provider} />
-      <div className="segmented" role="group" aria-label="Provider">
+      <div className="seg seg-sm" role="group" aria-label="Provider">
         {providers.map((p) => (
           <button key={p} type="button" aria-pressed={provider === p} onClick={() => setProvider(p)}>
             {PROVIDERS[p]?.label ?? p}
           </button>
         ))}
       </div>
-      <p className="faint" style={{ fontSize: 13 }}>
-        {PROVIDERS[provider]?.help}
-      </p>
+      <p className="hint">{PROVIDERS[provider]?.help}</p>
       {provider !== "scripted" ? (
         <>
           <div className="field">
@@ -87,20 +85,18 @@ export function ModelForm({ current, providers }: { current: Current | null; pro
               required={!(same && current?.keyHint)}
               placeholder={same && current?.keyHint ? `Leave blank to keep the key ending ${current.keyHint}` : "Paste the key"}
             />
-            <span className="faint" style={{ fontSize: 12.5 }}>
-              Sealed with this organization&apos;s own data key. Nobody can read it back, including admins.
-            </span>
+            <span className="hint">Sealed with this organization&apos;s own data key. Nobody can read it back, including admins.</span>
           </div>
         </>
       ) : (
         <input type="hidden" name="model" value="scripted" />
       )}
-      <p className="faint" style={{ fontSize: 13 }}>
+      <p className="hint">
         Switching to a different model turns both agents off until each passes its golden set on it again. A new key for the
         same model keeps them on.
       </p>
-      {state.error ? <div className="error">{state.error}</div> : null}
-      <div className="row">
+      {state.error ? <p className="error">{state.error}</p> : null}
+      <div className="row" style={{ gap: 8 }}>
         <button className="btn btn-primary" type="submit" disabled={pending}>
           {pending ? "Saving…" : "Save model"}
         </button>
@@ -134,7 +130,7 @@ export function AgentControls({
           <form action={flip}>
             <input type="hidden" name="agent" value={agent} />
             <input type="hidden" name="enabled" value="true" />
-            <button className="btn btn-good" type="submit" disabled={flipping} aria-label={`Turn on the ${title.toLowerCase()}`}>
+            <button className="btn btn-primary btn-sm" type="submit" disabled={flipping} aria-label={`Turn on the ${title.toLowerCase()}`}>
               {flipping ? "Turning on…" : "Turn on"}
             </button>
           </form>
@@ -143,7 +139,7 @@ export function AgentControls({
           <form action={flip}>
             <input type="hidden" name="agent" value={agent} />
             <input type="hidden" name="enabled" value="false" />
-            <button className="btn btn-warn" type="submit" disabled={flipping} aria-label={`Turn off the ${title.toLowerCase()}`}>
+            <button className="btn btn-sm" type="submit" disabled={flipping} aria-label={`Turn off the ${title.toLowerCase()}`}>
               {flipping ? "Turning off…" : "Turn off"}
             </button>
           </form>
@@ -151,13 +147,13 @@ export function AgentControls({
         {actions.evaluate ? (
           <form action={evaluate}>
             <input type="hidden" name="agent" value={agent} />
-            <button className="btn" type="submit" disabled={evaluating} aria-label={`Run the ${title.toLowerCase()}'s golden set`}>
+            <button className="btn btn-sm" type="submit" disabled={evaluating} aria-label={`Run the ${title.toLowerCase()}'s golden set`}>
               {evaluating ? "Starting…" : "Run golden set"}
             </button>
           </form>
         ) : null}
       </div>
-      {error ? <div className="error">{error}</div> : null}
+      {error ? <p className="error">{error}</p> : null}
     </div>
   );
 }

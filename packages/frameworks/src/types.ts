@@ -65,9 +65,25 @@ export interface InitiativeGoldenSets {
   readonly reviewDrafter: GoldenSet<DraftGoldenCase>;
 }
 
+/**
+ * The intake as one sentence. Each question becomes a phrase the requester
+ * can flip between its yes and no wording, and the requester's own words go
+ * where {purpose} is. Screens render it; triage still reads only the
+ * yes-or-no answers, so the sentence can never change a tier.
+ */
+export interface IntakeSentence {
+  /** Plain text with {field} for each question's phrase and {purpose} for the requester's words. */
+  readonly template: string;
+  readonly phrases: Readonly<Record<string, { readonly yes: string; readonly no: string }>>;
+  /** Finishes "… risk, because it" for each tier rule, and under "default" for when no rule matches. */
+  readonly because: Readonly<Record<string, string>>;
+}
+
 export interface InitiativePack extends PackBase {
   readonly kind: "initiative";
   readonly questions: readonly IntakeQuestion[];
+  /** The same questions as one sentence, for intake screens that offer it. */
+  readonly sentence?: IntakeSentence;
   readonly domains: Readonly<Record<string, string>>;
   readonly triage: TriagePolicy;
   readonly fastLane: FastLanePolicy;

@@ -25,6 +25,8 @@ export interface Asset {
 }
 
 export interface Case extends CaseSummary {
+  /** Counts up within the tenant; shown as CASE-0142. */
+  readonly number: number;
   readonly assetId: string;
   readonly ownerId: string;
   readonly packId: string;
@@ -69,6 +71,7 @@ export interface AssetRow {
 
 export interface CaseRow {
   id: string;
+  number: number;
   asset_id: string;
   kind: CaseKind;
   trigger: CaseTrigger;
@@ -94,6 +97,7 @@ export const toAsset = (r: AssetRow): Asset => ({
 
 export const toCase = (r: CaseRow): Case => ({
   id: r.id,
+  number: Number(r.number),
   assetId: r.asset_id,
   kind: r.kind,
   trigger: r.trigger,

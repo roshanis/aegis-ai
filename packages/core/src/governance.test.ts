@@ -132,7 +132,7 @@ describe("an AI system from intake to use", () => {
       actor: { kind: "human", name: "Avery Approver" },
       reason: "Retention control C-12 live before launch",
       reasonStatus: "intact",
-      policy: { packId: "healthcare-ai", packVersion: "1.2.0" },
+      policy: { packId: "healthcare-ai", packVersion: "1.3.0" },
     });
     const triaged = history.find((e) => e.action === "case.triage")!;
     expect(triaged.actor).toMatchObject({ kind: "system", id: "system:triage" });

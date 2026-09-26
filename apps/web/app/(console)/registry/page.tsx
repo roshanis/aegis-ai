@@ -1,120 +1,142 @@
-import { can } from "@aegis/domain";
+import type { AssetView } from "@aegis/core";
+import { can, caseLabel } from "@aegis/domain";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Pill } from "@/components/Pill";
+import { Icon, TierText } from "@/components/ds";
 import { governance } from "@/lib/db";
-import { ASSET_KIND, ASSET_STATE, CASE_STATE, TIER, currentReview, nextStep } from "@/lib/labels";
+import { ASSET_KIND, CASE_STATE, currentReview, nextStep, stageOf } from "@/lib/labels";
 import { requireViewer } from "@/lib/viewer";
 
 export const metadata: Metadata = { title: "Registry" };
 
-export default async function RegistryPage() {
-  const { principal, tenant } = await requireViewer();
+const FILTERS = [
+  { id: "all", label: "All", test: () => true },
+  { id: "live", label: "In use", test: (v: AssetView) => v.asset.state === "active" },
+  { id: "review", label: "In review", test: (v: AssetView) => v.openCase !== null },
+  { id: "paused", label: "Paused", test: (v: AssetView) => v.asset.state === "paused" },
+  { id: "idle", label: "Not in use", test: (v: AssetView) => v.asset.state === "registered" },
+  { id: "retired", label: "Retired", test: (v: AssetView) => v.asset.state === "retired" },
+] as const;
+
+const STEPS = ["intake", "review", "decided", "in use", "re-review"];
+
+function Stage({ view }: { view: AssetView }) {
+  const stage = stageOf(view);
+  return (
+    <div className="stage">
+      <div className="stage-dots" role="img" aria-label={`Stage: ${stage.at < 0 ? "retired" : STEPS[stage.at]}`}>
+        {STEPS.map((step, i) => (
+          <span key={step} style={{ display: "contents" }}>
+            {i > 0 ? <span className="bar" data-state={i <= stage.at ? "done" : "todo"} /> : null}
+            <span className="dot" data-state={i < stage.at ? "done" : i === stage.at ? (stage.warn ? "warn" : "current") : "todo"} />
+          </span>
+        ))}
+      </div>
+      <span className={stage.warn ? "status-warn" : "muted"} style={{ fontSize: 13 }}>
+        {stage.label}
+      </span>
+    </div>
+  );
+}
+
+function openCaseLine(view: AssetView) {
+  const open = view.openCase;
+  if (!open) return null;
+  const reviews = view.assurance.reviews;
+  const signed = reviews.filter((r) => r.status === "signed" || r.status === "abstained").length;
+  return reviews.length > 0 && open.state === "in_review" ? `${signed} of ${reviews.length} signed` : (CASE_STATE[open.state]?.label ?? open.state);
+}
+
+export default async function RegistryPage({ searchParams }: { searchParams: Promise<{ show?: string }> }) {
+  const { show } = await searchParams;
+  const { principal } = await requireViewer();
   const views = await (await governance()).listAssetViews(principal);
-  const todo = views.flatMap((view) => {
-    const step = nextStep(view);
-    return step ? [{ view, step }] : [];
-  });
-  const stats = [
-    { label: "In use", value: views.filter((v) => v.asset.state === "active").length },
-    { label: "Under review", value: views.filter((v) => v.openCase).length },
-    { label: "Paused", value: views.filter((v) => v.asset.state === "paused").length },
-    { label: "Not cleared", value: views.filter((v) => !v.clearance.cleared && v.asset.state !== "retired").length },
-  ];
+  const filter = FILTERS.find((f) => f.id === show) ?? FILTERS[0];
+  const shown = views.filter(filter.test);
 
   return (
     <>
       <div className="page-head">
         <div>
-          <h1>Registry</h1>
-          <p className="muted">
-            Every AI system, agent and vendor model {tenant.name} runs, and whether it&apos;s cleared for use right now.
-          </p>
+          <span className="eyebrow">Registry · systems, agents, vendor models</span>
+          <h1 className="display-l">
+            Registered <em>AI systems</em>
+          </h1>
         </div>
         {can(principal, "asset.register") ? (
           <Link className="btn btn-primary" href="/registry/new">
-            + Register AI
+            <Icon name="intake" size={16} />
+            Register a system
           </Link>
         ) : null}
       </div>
 
-      {todo.length > 0 ? (
-        <section className="stack" aria-labelledby="needs-you">
-          <h2 id="needs-you">Needs you</h2>
-          <div className="todo-grid">
-            {todo.map(({ view, step }) => (
-              <Link className="todo" href={`/registry/${view.asset.id}`} key={view.asset.id}>
-                <Pill tone={step.tone} plain>
-                  {step.label}
-                </Pill>
-                <strong>{view.asset.name}</strong>
-                <span className="faint" style={{ fontSize: 13 }}>
-                  {ASSET_KIND[view.asset.kind]} · {view.ownerName}
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section className="stats">
-        {stats.map((s) => (
-          <div className="card stat" key={s.label}>
-            <div className="stat-value">{s.value}</div>
-            <div className="stat-label">{s.label}</div>
-          </div>
+      <nav className="pills" aria-label="Filter by state">
+        {FILTERS.map((f) => (
+          <Link key={f.id} className="pill" href={f.id === "all" ? "/registry" : `/registry?show=${f.id}`} aria-current={f.id === filter.id ? "true" : undefined}>
+            {f.label} <span className="count">{views.filter(f.test).length}</span>
+          </Link>
         ))}
-      </section>
+      </nav>
 
-      <section className="card" style={{ padding: "18px 6px 6px" }}>
-        {views.length === 0 ? (
-          <p className="muted" style={{ padding: "0 14px 14px" }}>
-            Nothing registered yet.
+      <section className="panel panel-xl panel-flush" aria-label="Registered systems">
+        {shown.length === 0 ? (
+          <p className="empty" style={{ margin: 22 }}>
+            {views.length === 0 ? "Nothing is registered yet." : `Nothing is ${filter.label.toLowerCase()}.`}
           </p>
         ) : (
-          <table className="table">
+          <table className="data responsive">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Review</th>
-                <th className="hide-narrow">Risk</th>
-                <th className="hide-narrow">Cleared</th>
+                <th scope="col">System</th>
+                <th scope="col">Tier</th>
+                <th scope="col">Stage · intake → review → decided → in use → re-review</th>
+                <th scope="col">Case</th>
+                <th scope="col">Your next step</th>
               </tr>
             </thead>
             <tbody>
-              {views.map((view) => {
+              {shown.map((view) => {
                 const review = currentReview(view);
-                const state = ASSET_STATE[view.asset.state];
-                const tier = review?.tier ? TIER[review.tier] : null;
+                const step = nextStep(view);
                 return (
                   <tr key={view.asset.id}>
                     <td>
-                      <Link className="row-link name" href={`/registry/${view.asset.id}`}>
-                        {view.asset.name}
-                      </Link>
-                      <div className="faint" style={{ fontSize: 13 }}>
-                        {ASSET_KIND[view.asset.kind]}
+                      <div className="system-name">
+                        <span className="kind-mark" data-kind={view.asset.kind === "agent" ? "agent" : "system"} title={ASSET_KIND[view.asset.kind]} />
+                        <div className="stack" style={{ gap: 2 }}>
+                          <Link href={`/registry/${view.asset.id}`}>{view.asset.name}</Link>
+                          <span className="caption muted">
+                            {view.ownerName ?? "A removed person"} · {ASSET_KIND[view.asset.kind]}
+                          </span>
+                        </div>
                       </div>
                     </td>
-                    <td>
-                      <Pill tone={state.tone}>{state.label}</Pill>
+                    <td data-label="Tier">
+                      <TierText tier={view.cases.filter((c) => c.tier !== null).at(-1)?.tier ?? null} />
                     </td>
-                    <td>
+                    <td data-label="Stage">
+                      <Stage view={view} />
+                    </td>
+                    <td data-label="Case">
                       {review ? (
-                        <Pill tone={CASE_STATE[review.state]?.tone ?? "neutral"} plain>
-                          {CASE_STATE[review.state]?.label ?? review.state}
-                        </Pill>
+                        <span className="row" style={{ gap: 8 }}>
+                          <Link className="mono-s" href={`/registry/${view.asset.id}`}>
+                            {caseLabel(review.number)}
+                          </Link>
+                          <span className="caption muted">{openCaseLine(view) ?? CASE_STATE[review.state]?.label}</span>
+                        </span>
                       ) : (
-                        <span className="faint">Not started</span>
+                        <span className="muted">—</span>
                       )}
                     </td>
-                    <td className="hide-narrow">{tier ? <Pill tone={tier.tone}>{tier.label}</Pill> : "—"}</td>
-                    <td className="hide-narrow">
-                      {view.clearance.cleared ? (
-                        <span style={{ color: "var(--good)", fontWeight: 600 }}>✓ Cleared</span>
+                    <td data-label="Your next step">
+                      {step ? (
+                        <Link href={`/registry/${view.asset.id}`} style={{ fontWeight: 600 }}>
+                          {step.label}
+                        </Link>
                       ) : (
-                        <span className="faint">No</span>
+                        <span className="muted">Nothing for you</span>
                       )}
                     </td>
                   </tr>

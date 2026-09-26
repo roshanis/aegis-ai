@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendAudit, sha256Hex, withTenant, type AuditPayload, type Connection, type Database } from "@aegis/db";
+import { appendAudit, withTenant, type AuditPayload, type Connection, type Database } from "@aegis/db";
 import {
   ASSET_KINDS,
   CASE_TRIGGERS,
@@ -22,6 +22,7 @@ import {
   type CaseSummary,
   type CaseTrigger,
   type Clearance,
+  type DeploymentMode,
   type FastLaneResult,
   type HumanPrincipal,
   type Principal,
@@ -36,6 +37,7 @@ import type { InitiativePack, PolicyPack } from "@aegis/frameworks";
 import { createAgents, type AgentOptions } from "./agents";
 import { createAssurance, type Assurance, type NewCondition } from "./assurance";
 import { GovernanceError } from "./errors";
+import { createRecords } from "./records";
 import {
   PACK_KIND,
   SERVICE_ACTIONS,
@@ -85,6 +87,9 @@ export interface TenantInfo {
   readonly id: string;
   readonly name: string;
   readonly slug: string;
+  /** Where the tenant runs: the shared cloud, a dedicated deployment, or the customer's own cloud. */
+  readonly deploymentMode: DeploymentMode;
+  readonly region: string;
   /** Set for sandbox tenants, which are purged after this time. */
   readonly sandboxExpiresAt: Date | null;
 }
@@ -93,23 +98,6 @@ export interface SubmitResult {
   readonly case: Case;
   /** Why the fast lane did or did not apply, for risk reviews. */
   readonly fastLane: FastLaneResult | null;
-}
-
-export interface HistoryEntry {
-  readonly at: Date;
-  readonly action: string;
-  readonly before: string | null;
-  readonly after: string | null;
-  readonly caseId: string | null;
-  readonly actor: { readonly kind: Principal["kind"]; readonly id: string; readonly name: string | null };
-  /** True when this event decided a case. */
-  readonly decision: boolean;
-  /** The written reason, unless none was given or it has been erased. */
-  readonly reason: string | null;
-  readonly reasonStatus: "none" | "intact" | "erased" | "altered";
-  /** The policy pack version the case was reviewed under. */
-  readonly policy: { readonly packId: string; readonly packVersion: string } | null;
-  readonly payload: AuditPayload;
 }
 
 export interface GovernanceOptions extends AgentOptions {
@@ -248,6 +236,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
   const kernel: Kernel = { now, inTenant, afterCommit, loadAsset, loadCase, loadCases, loadPack, writeNote, moveCase };
   const agents = createAgents(kernel, db, options);
   const assurance = createAssurance(kernel, agents);
+  const records = createRecords(kernel, assurance);
 
   /** Deterministic triage, then the fast lane or a full review. No model is involved. */
   async function triageCase(tx: Connection, submitted: Case, pack: InitiativePack, tenant: TenantId): Promise<SubmitResult> {
@@ -349,14 +338,21 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
 
     tenant(actor: Principal): Promise<TenantInfo> {
       return inTenant(actor, async (tx) => {
-        const { rows } = await tx.query<{ id: string; name: string; slug: string; sandbox_expires_at: Date | null }>(
-          "SELECT id, name, slug, sandbox_expires_at FROM tenants",
-        );
+        const { rows } = await tx.query<{
+          id: string;
+          name: string;
+          slug: string;
+          deployment_mode: DeploymentMode;
+          region: string;
+          sandbox_expires_at: Date | null;
+        }>("SELECT id, name, slug, deployment_mode, region, sandbox_expires_at FROM tenants");
         const row = rows[0]!;
         return {
           id: row.id,
           name: row.name,
           slug: row.slug,
+          deploymentMode: row.deployment_mode,
+          region: row.region,
           sandboxExpiresAt: row.sandbox_expires_at ? new Date(row.sandbox_expires_at) : null,
         };
       });
@@ -664,53 +660,13 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
      * who acted, why, and under which policy version. Reasons are checked
      * against the hash the audit log kept.
      */
-    assetHistory(actor: Principal, assetId: string): Promise<HistoryEntry[]> {
-      return inTenant(actor, async (tx) => {
-        await loadAsset(tx, actor, assetId);
-        const { rows } = await tx.query<{
-          at: Date;
-          action: string;
-          before_state: string | null;
-          after_state: string | null;
-          case_id: string | null;
-          actor_kind: Principal["kind"];
-          actor_id: string;
-          note_id: string | null;
-          note_sha256: string | null;
-          payload: AuditPayload;
-          display_name: string | null;
-          body: string | null;
-          case_kind: CaseKind | null;
-          pack_id: string | null;
-          pack_version: string | null;
-        }>(
-          `SELECT e.at, e.action, e.before_state, e.after_state, e.case_id, e.actor_kind, e.actor_id,
-                  e.note_id, e.note_sha256, e.payload, u.display_name, n.body,
-                  c.kind AS case_kind, c.pack_id, c.pack_version
-           FROM audit_events e
-           LEFT JOIN users u ON e.actor_kind = 'human' AND u.id::text = e.actor_id
-           LEFT JOIN notes n ON n.id = e.note_id
-           LEFT JOIN cases c ON c.id = e.case_id
-           WHERE e.asset_id = $1
-           ORDER BY e.id`,
-          [assetId],
-        );
-        return rows.map((r) => ({
-          at: new Date(r.at),
-          action: r.action,
-          before: r.before_state,
-          after: r.after_state,
-          caseId: r.case_id,
-          actor: { kind: r.actor_kind, id: r.actor_id, name: r.display_name },
-          decision: r.case_kind !== null && r.after_state !== null && isDecided(r.case_kind, r.after_state),
-          reason: r.body,
-          reasonStatus:
-            r.note_id === null ? "none" : r.body === null ? "erased" : sha256Hex(r.body) === r.note_sha256 ? "intact" : "altered",
-          policy: r.pack_id && r.pack_version ? { packId: r.pack_id, packVersion: r.pack_version } : null,
-          payload: r.payload,
-        }));
-      });
-    },
+    assetHistory: records.assetHistory,
+    auditLog: records.auditLog,
+    findCases: records.findCases,
+    caseRecord: records.caseRecord,
+    recentDecisions: records.recentDecisions,
+    policyPacks: records.policyPacks,
+    exportEvidencePack: records.exportEvidencePack,
   };
 }
 

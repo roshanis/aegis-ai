@@ -76,13 +76,21 @@
    An agent may only move a review into "drafted", enforced when a lifecycle
    is defined. Each tenant connects its own model; keys are sealed with a
    per-tenant data key under the platform master key. Golden sets ship in
-   the policy pack (`healthcare-ai` 1.2.0: 12 intake cases, 9 drafting
+   the policy pack (`healthcare-ai` 1.2.0 on: 12 intake cases, 9 drafting
    cases), and an agent can be turned on only after it passes on the
    tenant's current model. Drafting and evaluations are DBOS workflows whose
    checkpoints hold IDs and codes only; on PGlite they run in-process.
    A draft is redone when evidence or an exception for one of its domain's
    controls changes. Deferred: Bedrock and Anthropic providers, spend
    limits, and human-graded or model-graded evals.
+   **Console on the Aegis design system** *(done)*. The three directions
+   from the UI/UX canvas, each where it fits: the Docket as the front page,
+   the Sentence for intake (`healthcare-ai` 1.3.0 words its questions as one
+   sentence; rules and golden sets are unchanged, and packs without a
+   sentence fall back to questions), and the Table for the case page. Case
+   numbers per tenant, an audit page that answers by case number with the
+   event chain, an audited evidence-pack export, a policy pack viewer, ⌘K,
+   and a person-chosen theme. Checked in dark, light and at phone width.
 3. **Member communications review.** Cleared's engine with a CMS pack.
 4. **Differentiators.** Agent and MCP tool inventory, evidence connectors,
    more frameworks, dedicated and BYOC deployment.
@@ -113,6 +121,11 @@
   sandbox is complete when the visitor lands in it.
 - **Monitor controls have no due dates yet.** They are tracked but never
   go overdue; cadence-driven re-attestation comes with evidence storage.
+- **The intake sentence's purpose clause stays on the page.** The words a
+  requester types about what the system does feed the intake assistant and
+  the sentence, but are not saved with the case.
+- **Chain verification reads the whole log on each audit or docket view.**
+  Fine at sandbox scale; a large tenant needs a checkpointed verifier.
 - **Owners attest control applicability through their answers.** A
   reviewer sees every control and its evidence before signing, but cannot
   yet mark evidence insufficient without returning the whole review.

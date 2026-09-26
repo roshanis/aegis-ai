@@ -17,10 +17,10 @@ export {
   type Case,
   type Governance,
   type GovernanceOptions,
-  type HistoryEntry,
   type SubmitResult,
   type TenantInfo,
 } from "./governance";
+export type { CaseMatch, CaseRecord, ChainStatus, EventQuery, HistoryEntry, PackVersion, SignOff } from "./records";
 export { provisionTenant, purgeTenant, type ProvisionInput } from "./provision";
 export { SANDBOX_LIFETIME_MS, createSandbox, purgeExpiredSandboxes, sandboxPersonas, type Persona } from "./sandbox";
 export {
