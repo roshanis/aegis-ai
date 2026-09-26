@@ -47,7 +47,10 @@ Four sets, laid out by `canvas.json`:
 
 `aegis-lean.html` is the lean flow as one standalone, clickable HTML page
 (live copy: https://claude.ai/artifact/2y7tcQfM9E6At3Xq4woTB9). Open it in a
-browser; a bar at the top jumps between the six steps and switches theme.
+browser; a bar at the top jumps between the six steps and switches theme. A
+second switch, "Register as", swaps step 1 between the sentence and one question
+at a time (the pack's own questions, big Yes/No buttons, Y and N keys, then a
+summary where any answer can be changed and the result updates).
 
 Every screen follows the rule in `docs/PLAN.md`: agents draft, people decide.
 Triage on the intake screens runs the `healthcare-ai` pack's rules from

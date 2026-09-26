@@ -42,7 +42,8 @@ body { margin: 0; background: var(--page); color: var(--ink); font: 15px/1.45 va
 button, input { font: inherit; color: inherit; }
 a { color: inherit; }
 :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
-@media (prefers-reduced-motion: no-preference) { .screen { animation: in .18s ease-out; } }
+@media (prefers-reduced-motion: no-preference) { .screen, .tf-card.enter { animation: in .18s ease-out; } }
+[tabindex="-1"]:focus { outline: none; }
 @keyframes in { from { opacity: .6; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 .mono { font-family: var(--mono); }
 .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
@@ -156,11 +157,39 @@ fieldset { margin: 0; padding: 0; border: 0; }
 tr.agent-row td { background: var(--agent-tint); }
 .actor { display: inline-flex; align-items: center; gap: 8px; }
 .actor .seal { width: 22px; height: 22px; font-size: 9px; }
+
+/* Register, one question at a time */
+.tf { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; min-height: 420px; }
+.tf-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tf-back { min-height: 44px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--control); background: transparent; cursor: pointer; }
+.tf-bar { height: 6px; border-radius: 3px; background: var(--doff); overflow: hidden; }
+.tf-bar span { display: block; height: 100%; width: 0; border-radius: 3px; background: var(--ring); }
+@media (prefers-reduced-motion: no-preference) { .tf-bar span { transition: width .25s ease; } }
+.tf-card { display: flex; flex-direction: column; gap: 18px; padding-block: 28px 8px; }
+.tf-q { margin: 0; font: 400 clamp(28px, 4vw, 42px)/1.15 var(--serif); }
+.tf-help { margin: 0; max-width: 60ch; font-size: 17px; color: var(--muted); }
+.tf-answers { display: flex; flex-wrap: wrap; gap: 12px; padding-top: 6px; }
+.tf-a { flex: 1 1 180px; max-width: 280px; min-height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 18px; border-radius: 14px; border: 1px solid var(--control); background: var(--panel); cursor: pointer; font-size: 19px; font-weight: 600; text-align: left; }
+.tf-a:hover { border-color: var(--ink); }
+.tf-a[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.tf-a kbd { min-width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid var(--control); font: 500 12px var(--mono); color: var(--muted); }
+.tf-a[aria-pressed="true"] kbd { border-color: var(--page); color: var(--page); }
+.tf-list { display: flex; flex-direction: column; }
+.tf-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 10px 0; border-top: 1px solid var(--line); }
+.tf-row .t { flex: 1 1 260px; }
+.tf-row .seg button { min-height: 44px; min-width: 64px; }
 </style>
 
 <nav class="proto" aria-label="Prototype">
   <span class="proto-label">AEGIS PROTOTYPE · CASE-0142</span>
   <div class="steps" id="steps"></div>
+  <div class="row" style="gap:8px">
+    <span class="proto-label">REGISTER AS</span>
+    <div class="seg" role="group" aria-label="Register screen style" id="variant">
+      <button type="button" data-variant="sentence" aria-pressed="false">Sentence</button>
+      <button type="button" data-variant="steps" aria-pressed="true">One at a time</button>
+    </div>
+  </div>
   <div class="seg" role="group" aria-label="Theme" id="theme">
     <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
     <button type="button" data-theme-set="dark" aria-pressed="false">Dark</button>
@@ -178,8 +207,8 @@ tr.agent-row td { background: var(--agent-tint); }
 
   <main>
     <!-- 1 · Register -->
-    <section class="screen" data-screen="1" aria-labelledby="s1h">
-      <div class="cols">
+    <section class="screen" data-screen="1" aria-label="Register an AI system">
+      <div class="cols" id="reg-sentence">
         <div style="display:flex;flex-direction:column;gap:20px">
           <h1 class="title" id="s1h">Register an AI system</h1>
           <div class="field" style="max-width:520px">
@@ -201,6 +230,52 @@ tr.agent-row td { background: var(--agent-tint); }
           <div class="row" style="gap:8px"><span class="tag" id="fast"></span><span>Fast lane</span></div>
           <div class="note">Set by healthcare-ai@1.0.0 rules, not AI.</div>
         </aside>
+      </div>
+
+      <!-- Register, one question at a time. Questions and help text are the policy pack's own. -->
+      <div id="reg-steps" hidden>
+        <form class="tf" id="tf-welcome">
+          <div class="tf-card">
+            <div class="eyebrow">Register an AI system · 6 yes-or-no questions</div>
+            <h1 class="tf-q" id="tf-wq" tabindex="-1">What’s the system called?</h1>
+            <div class="field" style="max-width:520px"><label for="tf-name">Name</label><input id="tf-name" type="text" value="Prior-auth letter summarizer"></div>
+            <div class="row"><button type="submit" class="btn">Start</button><span class="note">or press Enter</span></div>
+          </div>
+        </form>
+
+        <div class="tf" id="tf-question" hidden>
+          <div class="tf-top">
+            <button type="button" class="tf-back" id="tf-back">Back</button>
+            <span class="eyebrow" id="tf-count"></span>
+          </div>
+          <div class="tf-bar" aria-hidden="true"><span id="tf-fill"></span></div>
+          <div class="tf-card" id="tf-card">
+            <h1 class="tf-q" id="tf-q" tabindex="-1"></h1>
+            <p class="tf-help" id="tf-help"></p>
+            <div class="tf-answers" role="group" aria-labelledby="tf-q">
+              <button type="button" class="tf-a" id="tf-yes" aria-pressed="false" aria-keyshortcuts="Y"><kbd aria-hidden="true">Y</kbd>Yes</button>
+              <button type="button" class="tf-a" id="tf-no" aria-pressed="false" aria-keyshortcuts="N"><kbd aria-hidden="true">N</kbd>No</button>
+            </div>
+            <div class="eyebrow" id="tf-affects"></div>
+          </div>
+        </div>
+
+        <div class="cols" id="tf-summary" hidden>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <div class="eyebrow" id="tf-sumlabel"></div>
+            <h1 class="title" id="tf-sumh" tabindex="-1">Check your answers</h1>
+            <div class="tf-list" id="tf-list"></div>
+            <div class="row"><button type="button" class="btn" data-go="2">Submit for review</button><button type="button" class="btn-2" id="tf-restart">Start over</button></div>
+          </div>
+          <aside class="panel" aria-live="polite" aria-labelledby="tf-resh">
+            <h2 class="eyebrow" id="tf-resh" style="margin:0">Result</h2>
+            <div class="row"><strong id="tf-tier" style="font-size:22px"></strong><div class="dial" id="tf-dial" aria-hidden="true"><span></span><span></span><span></span><span></span></div></div>
+            <div class="note">Rule <span class="mono" id="tf-rule" style="color:var(--ink)"></span></div>
+            <div style="display:flex;flex-direction:column;gap:8px"><strong id="tf-teamcount" style="font-size:13px"></strong><div class="teams" id="tf-teams"></div></div>
+            <div class="row" style="gap:8px"><span class="tag" id="tf-fast"></span><span>Fast lane</span></div>
+            <div class="note">Set by healthcare-ai@1.0.0 rules, not AI.</div>
+          </aside>
+        </div>
       </div>
     </section>
 
@@ -381,27 +456,36 @@ tr.agent-row td { background: var(--agent-tint); }
     if (a.memberFacing) return ['medium', 'member-facing'];
     return ['low', 'default'];
   }
+  function triageOf(a) {
+    var r = tierOf(a), tier = r[0], idx = TIERS.indexOf(tier), set = {};
+    BASE[tier].forEach(function (d) { set[d] = 1; });
+    if (a.phi) set['privacy-hipaa'] = 1;
+    if (a.vendorHosted) { set.procurement = 1; set.legal = 1; }
+    if (a.careCoverageInfluence) set['clinical-safety'] = 1;
+    return {
+      tier: tier, idx: idx, rule: r[1],
+      teams: Object.keys(set).map(function (d) { return LABELS[d]; }).sort(),
+      fast: idx === 0 && !a.phi && !a.memberFacing && !a.careCoverageInfluence
+    };
+  }
+  // Fills a result panel; p is the id prefix ('' for the sentence version, 'tf-' for one at a time).
+  function paintResult(p, a) {
+    var t = triageOf(a);
+    $(p + 'tier').textContent = t.tier.charAt(0).toUpperCase() + t.tier.slice(1) + ' risk';
+    $(p + 'tier').style.color = 'var(--' + t.tier + ')';
+    $(p + 'rule').textContent = t.rule;
+    Array.prototype.forEach.call($(p + 'dial').children, function (s, i) { s.style.background = i <= t.idx ? 'var(--d' + (t.idx + 1) + ')' : ''; });
+    $(p + 'teamcount').textContent = t.teams.length + ' review teams';
+    $(p + 'teams').innerHTML = t.teams.map(function (n) { return '<span>' + n + '</span>'; }).join('');
+    $(p + 'fast').textContent = t.fast ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+    $(p + 'fast').style.color = t.fast ? 'var(--ok)' : 'var(--muted)';
+  }
   function chip(k, label) { return '<button type="button" class="chip" data-flip="' + k + '" aria-label="' + label + ': ' + esc(WORDS[k][ans[k] ? 0 : 1]) + '. Change">' + esc(WORDS[k][ans[k] ? 0 : 1]) + '</button>'; }
   function renderRegister() {
     $('sentence').innerHTML = 'A model ' + chip('vendorHosted', 'Hosting') + ' that ' + chip('phi', 'Health data') + ' health data. Members ' +
       chip('memberFacing', 'Member-facing') + ' it. It ' + chip('careCoverageInfluence', 'Coverage') + ' affect coverage, ' +
       chip('humanInLoop', 'Oversight') + ', and it ' + chip('individualImpact', 'Individual impact') + ' affect a person.';
-    var r = tierOf(ans), tier = r[0], idx = TIERS.indexOf(tier);
-    $('tier').textContent = tier.charAt(0).toUpperCase() + tier.slice(1) + ' risk';
-    $('tier').style.color = 'var(--' + tier + ')';
-    $('rule').textContent = r[1];
-    Array.prototype.forEach.call($('dial').children, function (s, i) { s.style.background = i <= idx ? 'var(--d' + (idx + 1) + ')' : ''; });
-    var set = {};
-    BASE[tier].forEach(function (d) { set[d] = 1; });
-    if (ans.phi) set['privacy-hipaa'] = 1;
-    if (ans.vendorHosted) { set.procurement = 1; set.legal = 1; }
-    if (ans.careCoverageInfluence) set['clinical-safety'] = 1;
-    var names = Object.keys(set).map(function (d) { return LABELS[d]; }).sort();
-    $('teamcount').textContent = names.length + ' review teams';
-    $('teams').innerHTML = names.map(function (n) { return '<span>' + n + '</span>'; }).join('');
-    var fast = idx === 0 && !ans.phi && !ans.memberFacing && !ans.careCoverageInfluence;
-    $('fast').textContent = fast ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-    $('fast').style.color = fast ? 'var(--ok)' : 'var(--muted)';
+    paintResult('', ans);
   }
   $('sentence').addEventListener('click', function (e) {
     var b = e.target.closest('[data-flip]');
@@ -409,6 +493,101 @@ tr.agent-row td { background: var(--agent-tint); }
     var k = b.dataset.flip; ans[k] = !ans[k]; renderRegister();
     var again = document.querySelector('[data-flip="' + k + '"]'); if (again) again.focus();
   });
+
+  /* ---------- 1 · register, one question at a time ---------- */
+  // Question and help text are the healthcare-ai pack's own, so nothing extra is written.
+  // "Affects" lists the rules that read each answer; the product would derive it from the pack.
+  var QUESTIONS = [
+    { field: 'phi', label: 'Does it use protected health information?', help: 'Any PHI, including de-identified data that could be re-identified.', affects: 'Risk tier · Privacy review · Fast lane' },
+    { field: 'memberFacing', label: 'Will members see or interact with it?', help: 'Chat, letters, portals, or anything a member receives.', affects: 'Risk tier · Fast lane' },
+    { field: 'careCoverageInfluence', label: 'Could it influence care or coverage decisions?', help: 'Prior auth, claims, care management, eligibility.', affects: 'Risk tier · Clinical Safety review · Fast lane' },
+    { field: 'humanInLoop', label: 'Does a person review every output before it takes effect?', help: 'A qualified person, not spot checks.', affects: 'Risk tier' },
+    { field: 'vendorHosted', label: 'Is the model or service hosted by a vendor?', help: 'Any third-party API or SaaS.', affects: 'Legal and Procurement reviews' },
+    { field: 'individualImpact', label: 'Could it materially affect an individual?', help: 'Money, access, health, or reputation.', affects: 'Risk tier' }
+  ];
+  var DONE = QUESTIONS.length;
+  var tf = { at: -1, answers: {}, busy: false };
+  var reduceMotion = false;
+  try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+  function isSet(f) { return typeof tf.answers[f] === 'boolean'; }
+  function answeredCount() { return QUESTIONS.filter(function (q) { return isSet(q.field); }).length; }
+  // Next unanswered question after `from`, wrapping round; the summary once all are answered.
+  function nextStop(from) {
+    for (var i = from + 1; i < DONE; i++) if (!isSet(QUESTIONS[i].field)) return i;
+    for (i = 0; i <= from && i < DONE; i++) if (!isSet(QUESTIONS[i].field)) return i;
+    return DONE;
+  }
+  function renderTf(focus) {
+    $('tf-welcome').hidden = tf.at !== -1;
+    $('tf-question').hidden = tf.at < 0 || tf.at >= DONE;
+    $('tf-summary').hidden = tf.at !== DONE;
+    if (tf.at >= 0 && tf.at < DONE) {
+      var q = QUESTIONS[tf.at], a = tf.answers[q.field];
+      $('tf-count').textContent = 'Question ' + (tf.at + 1) + ' of ' + DONE;
+      $('tf-fill').style.width = (answeredCount() / DONE * 100) + '%';
+      $('tf-q').textContent = q.label;
+      $('tf-help').textContent = q.help;
+      $('tf-affects').textContent = 'Affects: ' + q.affects;
+      $('tf-yes').setAttribute('aria-pressed', String(a === true));
+      $('tf-no').setAttribute('aria-pressed', String(a === false));
+    }
+    if (tf.at === DONE) {
+      $('tf-sumlabel').textContent = ($('tf-name').value.trim() || 'Untitled system') + ' · ' + answeredCount() + ' of ' + DONE + ' answered';
+      $('tf-list').innerHTML = QUESTIONS.map(function (q) {
+        var a = tf.answers[q.field];
+        return '<div class="tf-row"><span class="t">' + esc(q.label) + '</span><div class="seg" role="group" aria-label="' + esc(q.label) + '">' +
+          '<button type="button" data-sum="' + q.field + '" data-val="1" aria-pressed="' + (a === true) + '">Yes</button>' +
+          '<button type="button" data-sum="' + q.field + '" data-val="0" aria-pressed="' + (a === false) + '">No</button></div></div>';
+      }).join('');
+      paintResult('tf-', tf.answers);
+    }
+    if (focus) {
+      var target = tf.at === -1 ? $('tf-wq') : tf.at === DONE ? $('tf-sumh') : $('tf-q');
+      target.focus();
+      if (tf.at >= 0 && tf.at < DONE) { var card = $('tf-card'); card.classList.remove('enter'); void card.offsetWidth; card.classList.add('enter'); }
+    }
+  }
+  function tfAnswer(v) {
+    if (tf.busy || tf.at < 0 || tf.at >= DONE) return;
+    tf.answers[QUESTIONS[tf.at].field] = v;
+    renderTf(false);
+    tf.busy = true;
+    setTimeout(function () { tf.busy = false; tf.at = nextStop(tf.at); renderTf(true); }, reduceMotion ? 0 : 240);
+  }
+  $('tf-welcome').addEventListener('submit', function (e) { e.preventDefault(); tf.at = nextStop(-1); renderTf(true); });
+  $('tf-yes').addEventListener('click', function () { tfAnswer(true); });
+  $('tf-no').addEventListener('click', function () { tfAnswer(false); });
+  $('tf-back').addEventListener('click', function () { if (!tf.busy) { tf.at -= 1; renderTf(true); } });
+  $('tf-list').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-sum]');
+    if (!b) return;
+    var f = b.dataset.sum, v = b.dataset.val === '1';
+    tf.answers[f] = v; renderTf(false);
+    var again = document.querySelector('[data-sum="' + f + '"][data-val="' + (v ? 1 : 0) + '"]'); if (again) again.focus();
+  });
+  $('tf-restart').addEventListener('click', function () { tf.answers = {}; tf.at = -1; renderTf(true); });
+  // Y and N answer the current question, as in Typeform; ignored while typing in a field.
+  document.addEventListener('keydown', function (e) {
+    if (current !== 1 || variant !== 'steps' || tf.at < 0 || tf.at >= DONE) return;
+    if (e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
+    var el = document.activeElement;
+    if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return;
+    var k = (e.key || '').toLowerCase();
+    if (k === 'y' || k === 'n') { e.preventDefault(); tfAnswer(k === 'y'); }
+  });
+
+  /* ---------- register style switch (prototype only) ---------- */
+  var variant = 'steps';
+  try { var savedVariant = localStorage.getItem('aegis-register'); if (savedVariant === 'sentence' || savedVariant === 'steps') variant = savedVariant; } catch (e) {}
+  function setVariant(v, jump) {
+    variant = v;
+    $('reg-sentence').hidden = v !== 'sentence';
+    $('reg-steps').hidden = v !== 'steps';
+    document.querySelectorAll('[data-variant]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.variant === v)); });
+    try { localStorage.setItem('aegis-register', v); } catch (e) {}
+    if (jump) { go(1); window.scrollTo({ top: 0 }); }
+  }
+  $('variant').addEventListener('click', function (e) { var b = e.target.closest('[data-variant]'); if (b) setVariant(b.dataset.variant, true); });
 
   /* ---------- 3 · home ---------- */
   var ROWS = [
@@ -512,7 +691,7 @@ tr.agent-row td { background: var(--agent-tint); }
     catch (e) { b.textContent = 'Copy not allowed here'; }
   });
 
-  renderRegister(); renderHome(); renderReview(); renderDecide();
+  renderRegister(); renderTf(false); setVariant(variant, false); renderHome(); renderReview(); renderDecide();
   var m = /^#step([1-6])$/.exec(location.hash);
   go(m ? Number(m[1]) : 1);
 })();
