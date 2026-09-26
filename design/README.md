@@ -58,6 +58,11 @@ about how the system is run. A person confirms every answer; saying No against
 the evidence needs a one-line reason; Submit stays locked until all six are
 confirmed.
 
+Steps 7 to 9 cover life after approval: a deploy gate that stays locked until
+the teams confirm their before-deploy conditions, a live system page where a
+code rescan flags a new vendor and the owner decides what happens, and a
+re-review scoped to the three teams that change touches.
+
 Every screen follows the rule in `docs/PLAN.md`: agents draft, people decide.
 Triage on the intake screens runs the `healthcare-ai` pack's rules from
 `packages/frameworks` as written, so the example tiers and review domains match
