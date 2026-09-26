@@ -9,7 +9,9 @@
       "cache": false,
       "persistent": true
     },
-    "test": {},
+    "test": {
+      "passThroughEnv": ["AEGIS_TEST_DATABASE_URL", "AEGIS_REQUIRE_POSTGRES"]
+    },
     "typecheck": {}
   }
 }

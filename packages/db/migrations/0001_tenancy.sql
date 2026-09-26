@@ -44,31 +44,13 @@ CREATE TABLE policy_packs (
   created_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id, pack_id, version)
 );
-
-CREATE TABLE cases (
-  id uuid PRIMARY KEY,
-  tenant_id uuid NOT NULL REFERENCES tenants(id),
-  kind text NOT NULL CHECK (kind IN ('initiative', 'content')),
-  title text NOT NULL,
-  state text NOT NULL,
-  owner_id uuid NOT NULL,
-  pack_id text NOT NULL,
-  pack_version text NOT NULL,
-  tier text CHECK (tier IN ('low', 'medium', 'high', 'critical')),
-  answers jsonb NOT NULL DEFAULT '{}',
-  created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now(),
-  UNIQUE (tenant_id, id),
-  -- Composite keys stop a row pointing at another tenant's user or pack.
-  FOREIGN KEY (tenant_id, owner_id) REFERENCES users(tenant_id, id),
-  FOREIGN KEY (tenant_id, pack_id, pack_version) REFERENCES policy_packs(tenant_id, pack_id, version)
-);
-CREATE INDEX cases_tenant_state_idx ON cases (tenant_id, state);
+-- One enabled version per pack: new cases pin it, older cases keep theirs.
+CREATE UNIQUE INDEX policy_packs_one_enabled ON policy_packs (tenant_id, pack_id) WHERE enabled;
 
 DO $$
 DECLARE t text;
 BEGIN
-  FOREACH t IN ARRAY ARRAY['users', 'policy_packs', 'cases'] LOOP
+  FOREACH t IN ARRAY ARRAY['users', 'policy_packs'] LOOP
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
     EXECUTE format(
@@ -84,4 +66,4 @@ ALTER TABLE tenants FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_self ON tenants FOR SELECT USING (id = current_tenant_id());
 
 GRANT SELECT ON tenants TO aegis_app;
-GRANT SELECT, INSERT, UPDATE, DELETE ON users, policy_packs, cases TO aegis_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON users, policy_packs TO aegis_app;

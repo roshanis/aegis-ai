@@ -1,0 +1,46 @@
+{
+  "name": "@aegis/web",
+  "version": "0.0.0",
+  "private": true,
+  "license": "BUSL-1.1",
+  "type": "module",
+  "scripts": {
+    "db:migrate": "tsx ../../packages/db/src/cli.ts",
+    "dev": "pnpm db:migrate && next dev",
+    "build": "next build",
+    "start": "pnpm db:migrate && next start",
+    "test": "vitest run",
+    "typecheck": "next typegen && tsc --noEmit",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@aegis/agents": "workspace:*",
+    "@aegis/core": "workspace:*",
+    "@aegis/db": "workspace:*",
+    "@aegis/domain": "workspace:*",
+    "@aegis/frameworks": "workspace:*",
+    "@aegis/workflows": "workspace:*",
+    "@dbos-inc/dbos-sdk": "5.1.10",
+    "@electric-sql/pglite": "^0.5.8",
+    "@fontsource/geist-mono": "5.3.0",
+    "@fontsource/geist-sans": "5.3.0",
+    "@fontsource/instrument-serif": "5.3.0",
+    "@openai/agents-core": "0.18.0",
+    "@openai/agents-openai": "0.18.0",
+    "next": "^16.3.6",
+    "openai": "^7.23.0",
+    "pg": "^8.23.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "^22.0.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "tsx": "^4.23.15",
+    "vitest": "^4.1.10"
+  }
+}

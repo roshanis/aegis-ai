@@ -16,6 +16,7 @@ export const ROLES = [
 export type Role = (typeof ROLES)[number];
 
 export type Permission =
+  | "asset.register"
   | "case.submit"
   | "case.read_own"
   | "case.read_all"
@@ -27,10 +28,10 @@ export type Permission =
   | "audit.export";
 
 const GRANTS: Record<Role, readonly Permission[]> = {
-  requester: ["case.submit", "case.read_own"],
+  requester: ["asset.register", "case.submit", "case.read_own"],
   reviewer: ["case.read_all", "review.sign"],
   approver: ["case.read_all", "case.decide"],
-  admin: ["case.read_all", "deployment.operate", "policy.edit", "tenant.manage"],
+  admin: ["asset.register", "case.read_all", "deployment.operate", "policy.edit", "tenant.manage"],
   auditor: ["case.read_all", "audit.export"],
   program_office: ["case.read_all"],
 };

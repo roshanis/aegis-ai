@@ -2,18 +2,20 @@ import { can, type Permission, type Principal } from "./roles";
 
 /**
  * A declarative lifecycle engine. Ported from Jeeves' transition table and
- * generalized so both case kinds (AI initiatives and content reviews) share
- * one set of authority rules:
+ * generalized so registry assets and both case kinds (risk reviews and
+ * content reviews) share one set of authority rules:
  *
  * - AI agents can never move a case. They draft; people and deterministic
- *   system jobs act.
+ *   system jobs act. A rule admits an agent only when it names the "agent"
+ *   authority and lands in a state the lifecycle declares as a draft state,
+ *   and that is checked when the lifecycle is defined, not when it runs.
  * - Nobody decides a case they submitted.
  * - Actions marked `requiresReason` need a written note, which lands in the
  *   audit event.
  * - The pure function never reads the clock; callers pass `at`.
  */
 
-export type Authority = Permission | "system";
+export type Authority = Permission | "system" | "agent";
 
 export interface TransitionRule<S extends string> {
   readonly to: S;
@@ -21,6 +23,8 @@ export interface TransitionRule<S extends string> {
   readonly requiresReason?: boolean;
   /** Fast-lane approvals must name the pre-approved policy and an accountable person. */
   readonly requiresFastLanePolicy?: boolean;
+  /** Putting an asset into use must cite the review case that cleared it. */
+  readonly requiresClearance?: boolean;
 }
 
 export type TransitionTable<S extends string, A extends string> = Partial<
@@ -34,6 +38,8 @@ export interface TransitionContext {
   readonly accountableApprover?: string;
   /** Who submitted the case; used to block self-approval. */
   readonly caseOwnerId?: string;
+  /** The approved review case that clears an asset for use. */
+  readonly clearingCaseId?: string;
 }
 
 export interface TransitionEvent<S extends string, A extends string> {
@@ -57,35 +63,52 @@ const filled = (value: string | undefined) =>
 
 function authorized(actor: Principal, by: readonly Authority[]): boolean {
   return by.some((authority) =>
-    authority === "system" ? actor.kind === "system" : can(actor, authority),
+    authority === "system" || authority === "agent" ? actor.kind === authority : can(actor, authority),
+  );
+}
+
+function decidesOwnCase(actor: Principal, by: readonly Authority[], caseOwnerId: string | undefined): boolean {
+  return (
+    by.includes("case.decide") &&
+    actor.kind === "human" &&
+    caseOwnerId !== undefined &&
+    caseOwnerId === actor.userId
   );
 }
 
 export interface Lifecycle<S extends string, A extends string> {
   readonly table: TransitionTable<S, A>;
+  /** States an agent may move something into. Empty for every lifecycle that decides anything. */
+  readonly draftStates: readonly S[];
   transition(state: S, action: A, actor: Principal, context: TransitionContext): TransitionEvent<S, A>;
   /** Actions this actor may take from this state; drives which buttons the UI shows. */
-  available(state: S, actor: Principal): A[];
+  available(state: S, actor: Principal, context?: Pick<TransitionContext, "caseOwnerId">): A[];
 }
 
 export function defineLifecycle<S extends string, A extends string>(
   table: TransitionTable<S, A>,
+  options: { readonly draftStates?: readonly S[] } = {},
 ): Lifecycle<S, A> {
+  const draftStates = options.draftStates ?? [];
+  for (const [from, rules] of Object.entries(table) as [S, Partial<Record<A, TransitionRule<S>>>][]) {
+    for (const [action, rule] of Object.entries(rules) as [A, TransitionRule<S>][]) {
+      if (!rule.by.includes("agent")) continue;
+      if (!draftStates.includes(rule.to) || rule.by.length > 1) {
+        throw new Error(`'${action}' from '${from}' admits an agent but is not an agent-only move into a draft state`);
+      }
+    }
+  }
+
   function transition(state: S, action: A, actor: Principal, context: TransitionContext) {
     const rule = table[state]?.[action];
     if (!rule) throw new IllegalTransitionError(`no '${action}' from '${state}'`);
-    if (actor.kind === "agent") {
+    if (actor.kind === "agent" && !rule.by.includes("agent")) {
       throw new IllegalTransitionError(`agent '${actor.agent}' cannot perform '${action}'; agents only draft`);
     }
     if (!authorized(actor, rule.by)) {
       throw new IllegalTransitionError(`'${action}' requires one of [${rule.by.join(", ")}]`);
     }
-    if (
-      rule.by.includes("case.decide") &&
-      actor.kind === "human" &&
-      context.caseOwnerId !== undefined &&
-      context.caseOwnerId === actor.userId
-    ) {
+    if (decidesOwnCase(actor, rule.by, context.caseOwnerId)) {
       throw new IllegalTransitionError(`'${action}' cannot be performed on a case you submitted`);
     }
     if (rule.requiresReason && !filled(context.reason)) {
@@ -93,6 +116,9 @@ export function defineLifecycle<S extends string, A extends string>(
     }
     if (rule.requiresFastLanePolicy && (!filled(context.policyId) || !filled(context.accountableApprover))) {
       throw new IllegalTransitionError(`'${action}' requires a policyId and a named accountable approver`);
+    }
+    if (rule.requiresClearance && !filled(context.clearingCaseId)) {
+      throw new IllegalTransitionError(`'${action}' requires an approved review case`);
     }
     return {
       action,
@@ -104,52 +130,48 @@ export function defineLifecycle<S extends string, A extends string>(
     };
   }
 
-  function available(state: S, actor: Principal): A[] {
-    if (actor.kind === "agent") return [];
+  function available(state: S, actor: Principal, context: Pick<TransitionContext, "caseOwnerId"> = {}): A[] {
     const rules: Partial<Record<A, TransitionRule<S>>> = table[state] ?? {};
-    return (Object.keys(rules) as A[]).filter((action) => authorized(actor, rules[action]!.by));
+    return (Object.keys(rules) as A[]).filter((action) => {
+      const { by } = rules[action]!;
+      return authorized(actor, by) && !decidesOwnCase(actor, by, context.caseOwnerId);
+    });
   }
 
-  return { table, transition, available };
+  return { table, draftStates, transition, available };
 }
 
 /* ---------------------------------------------------------------------------
- * AI initiative lifecycle (from Jeeves)
+ * Risk review case lifecycle (from Jeeves)
+ *
+ * One review of one registered asset. Jeeves kept review and operating
+ * state on a single record; here the asset's operating state (active,
+ * paused, retired) lives in the registry, and each re-review is a new case.
  * ------------------------------------------------------------------------ */
 
-export type InitiativeState =
-  | "intake_draft"
+export type RiskReviewState =
+  | "draft"
   | "submitted"
   | "triaged"
   | "in_review"
   | "fast_lane_approved"
   | "approved"
   | "conditionally_approved"
-  | "rejected"
-  | "deployed"
-  | "paused"
-  | "re_review"
-  | "retired";
+  | "rejected";
 
-export type InitiativeAction =
+export type RiskReviewAction =
   | "submit"
   | "triage"
   | "start_review"
   | "fast_lane_approve"
   | "approve"
   | "conditionally_approve"
-  | "reject"
-  | "deploy"
-  | "pause"
-  | "resume"
-  | "open_reassessment"
-  | "retire";
+  | "reject";
 
 const decide = { by: ["case.decide"] } as const;
-const operate = ["deployment.operate", "system"] as const;
 
-export const initiativeLifecycle = defineLifecycle<InitiativeState, InitiativeAction>({
-  intake_draft: { submit: { to: "submitted", by: ["case.submit"] } },
+export const riskReviewLifecycle = defineLifecycle<RiskReviewState, RiskReviewAction>({
+  draft: { submit: { to: "submitted", by: ["case.submit"] } },
   submitted: { triage: { to: "triaged", by: ["system"] } },
   triaged: {
     start_review: { to: "in_review", by: ["system", "review.sign"] },
@@ -159,23 +181,6 @@ export const initiativeLifecycle = defineLifecycle<InitiativeState, InitiativeAc
     approve: { to: "approved", ...decide },
     conditionally_approve: { to: "conditionally_approved", ...decide, requiresReason: true },
     reject: { to: "rejected", ...decide, requiresReason: true },
-  },
-  approved: { deploy: { to: "deployed", by: operate } },
-  conditionally_approved: { deploy: { to: "deployed", by: operate } },
-  fast_lane_approved: { deploy: { to: "deployed", by: operate } },
-  deployed: {
-    pause: { to: "paused", by: operate, requiresReason: true },
-    retire: { to: "retired", by: ["deployment.operate"], requiresReason: true },
-  },
-  paused: {
-    resume: { to: "deployed", by: operate, requiresReason: true },
-    open_reassessment: { to: "re_review", by: operate },
-    retire: { to: "retired", by: ["deployment.operate"], requiresReason: true },
-  },
-  re_review: {
-    approve: { to: "approved", ...decide },
-    resume: { to: "deployed", by: operate, requiresReason: true },
-    retire: { to: "retired", by: ["deployment.operate"], requiresReason: true },
   },
 });
 
