@@ -1,5 +1,6 @@
 import { DBOS } from "@dbos-inc/dbos-sdk";
 import {
+  DRAFT_SETTLE_MS,
   MODEL_RETRY,
   draftWorkflow,
   evalWorkflow,
@@ -31,6 +32,8 @@ export interface DbosJobsOptions {
   /** Model calls running at once in this process. */
   readonly concurrency?: number;
   readonly retry?: RetryPolicy;
+  /** Draft settle time in ms; defaults to DRAFT_SETTLE_MS. */
+  readonly settleMs?: number;
   readonly logLevel?: string;
   /** How often to sweep for jobs queued but never started, in ms. 0 turns the sweep off. */
   readonly sweepEveryMs?: number;
@@ -44,11 +47,14 @@ export interface DbosJobs extends JobQueue {
   shutdown(): Promise<void>;
 }
 
-const steps: Steps = { run: (name, fn) => DBOS.runStep(fn, { name }) };
+const steps: Steps = {
+  run: (name, fn) => DBOS.runStep(fn, { name }),
+  sleep: (_name, ms) => DBOS.sleep(ms),
+};
 
 // DBOS registers workflows once per process, before launch. The runtime they
 // call is looked up on every run, so a relaunch can rebind it.
-let bound: { runtime: () => AgentRuntime; retry: RetryPolicy } | null = null;
+let bound: { runtime: () => AgentRuntime; retry: RetryPolicy; settleMs: number } | null = null;
 let workflows: {
   draft: (job: DraftJob) => Promise<unknown>;
   eval: (job: EvalJob) => Promise<unknown>;
@@ -56,7 +62,7 @@ let workflows: {
 
 function register() {
   workflows ??= {
-    draft: DBOS.registerWorkflow((job: DraftJob) => draftWorkflow(steps, bound!.runtime(), job, bound!.retry), {
+    draft: DBOS.registerWorkflow((job: DraftJob) => draftWorkflow(steps, bound!.runtime(), job, bound!.retry, bound!.settleMs), {
       name: "aegis.draftReview",
     }),
     eval: DBOS.registerWorkflow((job: EvalJob) => evalWorkflow(steps, bound!.runtime(), job, bound!.retry), {
@@ -68,7 +74,7 @@ function register() {
 
 export async function launchDbosJobs(runtime: () => AgentRuntime, options: DbosJobsOptions): Promise<DbosJobs> {
   const wf = register();
-  bound = { runtime, retry: options.retry ?? MODEL_RETRY };
+  bound = { runtime, retry: options.retry ?? MODEL_RETRY, settleMs: options.settleMs ?? DRAFT_SETTLE_MS };
   DBOS.setConfig({
     name: options.appName ?? "aegis",
     systemDatabaseUrl: options.databaseUrl,

@@ -418,9 +418,107 @@ describe("intake suggestions", () => {
 
   it("says plainly when the assistant is off or its model fails", async () => {
     behaviour = () => provider(async () => { throw Object.assign(new Error("slow"), { name: "TimeoutError" }); });
-    await expect(gov.suggestIntake(requester, DESCRIPTION)).rejects.toThrow(/didn't answer in time. Answer the questions yourself/);
+    // A description not asked about before, so the answer cannot come from the cache.
+    await expect(gov.suggestIntake(requester, `${DESCRIPTION} It runs nightly.`)).rejects.toThrow(/didn't answer in time. Answer the questions yourself/);
     await gov.setAgentEnabled(admin, "intake", false);
     await expect(gov.suggestIntake(requester, DESCRIPTION)).rejects.toThrow(/The intake assistant is off/);
+  });
+});
+
+describe("token controls", () => {
+  let calls = 0;
+  /** The scripted model, counting every call that reaches it. */
+  const counting = (): ModelProvider => {
+    const inner = scripted();
+    return {
+      async getModel(name) {
+        const model = await (await inner).getModel(name);
+        return {
+          getResponse: (request) => {
+            calls += 1;
+            return model.getResponse(request);
+          },
+          getStreamedResponse: (request) => model.getStreamedResponse(request),
+        };
+      },
+    };
+  };
+  const SECOND =
+    "Summarises call-centre transcripts so supervisors can coach staff. A supervisor reads every summary. Uses a vendor API.";
+  const spend = (tokens: number) =>
+    db.query(
+      `INSERT INTO agent_runs (id, tenant_id, agent_id, agent_version, fingerprint, purpose, requested_by, state,
+                               input_tokens, output_tokens, started_at, finished_at)
+       VALUES (gen_random_uuid(), $1, 'intake', 'test', 'test', 'intake', 'test', 'succeeded', $2, 0, $3, $3)`,
+      [tenant, tokens, new Date(clock).toISOString()],
+    );
+
+  it("answers a repeated intake description from cache at no cost, and the answer can still be cited", async () => {
+    behaviour = () => counting();
+    await gov.setAgentEnabled(admin, "intake", true);
+    calls = 0;
+    const first = await gov.suggestIntake(requester, SECOND);
+    expect(calls).toBe(1);
+    const again = await gov.suggestIntake(requester, `  ${SECOND.replace(/ /g, "  ")} `);
+    expect(calls).toBe(1);
+    expect(again.runId).not.toBe(first.runId);
+    expect(again.suggestions).toEqual(first.suggestions);
+    const { assetId } = await registerAndSubmit("Cached intake", { ...HIGH_RISK }, requester, again.runId);
+    expect((await gov.assetHistory(requester, assetId)).find((h) => h.action === "case.submit")!.payload).toMatchObject({
+      suggestionRunId: again.runId,
+    });
+    expect((await gov.agentsOverview(admin)).usage.monthReused).toBeGreaterThanOrEqual(1);
+  });
+
+  it("caps each person's intake requests per day, and only admins set budgets", async () => {
+    await expect(gov.setBudget(requester, { monthlyTokens: null, dailyIntakePerPerson: 1 })).rejects.toThrow(/only an admin/);
+    await expect(gov.setBudget(admin, { monthlyTokens: 10, dailyIntakePerPerson: 1 })).rejects.toThrow(/between 1,000/);
+    await expect(gov.setBudget(admin, { monthlyTokens: null, dailyIntakePerPerson: 0 })).rejects.toThrow(/between 1 and 1,000/);
+    await gov.setBudget(admin, { monthlyTokens: null, dailyIntakePerPerson: 1 });
+    await gov.suggestIntake(secondRequester, `${SECOND} It runs weekly.`);
+    await expect(gov.suggestIntake(secondRequester, `${SECOND} It runs daily.`)).rejects.toThrow(/today's 1 intake suggestions/);
+    // A cached answer costs nothing, so the limit does not apply to it.
+    await expect(gov.suggestIntake(requester, SECOND)).resolves.toBeDefined();
+    const { rows } = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM audit_events WHERE action = 'agent.budget'");
+    expect(rows[0]!.n).toBe(1);
+  });
+
+  it("stops model calls at the monthly budget, and resumes stopped drafts when it is raised", async () => {
+    behaviour = () => counting();
+    await gov.setAgentEnabled(admin, "review-drafter", true).catch(() => undefined);
+    await gov.setBudget(admin, { monthlyTokens: 1_000, dailyIntakePerPerson: 30 });
+    await spend(5_000);
+    calls = 0;
+    await expect(gov.suggestIntake(requester, `${SECOND} It also flags complaints.`)).rejects.toThrow(/token budget is used up/);
+    const { assetId } = await registerAndSubmit("Over budget", { ...HIGH_RISK });
+    await jobs.idle();
+    expect(calls).toBe(0);
+    const stopped = await reviews(reviewer, assetId);
+    expect(stopped.every((r) => r.draft.status === "failed" && r.draft.error === "budget")).toBe(true);
+    const usage = (await gov.agentsOverview(admin)).usage;
+    expect(usage.monthTokens).toBeGreaterThanOrEqual(5_000);
+    expect(usage.budget).toEqual({ monthlyTokens: 1_000, dailyIntakePerPerson: 30 });
+
+    // Every draft the cap stopped, on any case, goes again once the cap is lifted: one model call each.
+    const { rows } = await db.query<{ n: number }>("SELECT count(*)::int AS n FROM domain_reviews WHERE draft_error = 'budget'");
+    expect(rows[0]!.n).toBeGreaterThanOrEqual(stopped.length);
+    await gov.setBudget(admin, { monthlyTokens: null, dailyIntakePerPerson: 30 });
+    await jobs.idle();
+    expect((await reviews(reviewer, assetId)).every((r) => r.status === "drafted" && r.draft.status === "ready")).toBe(true);
+    expect(calls).toBe(rows[0]!.n);
+  });
+
+  it("keeps a draft when nothing the drafter sees has changed, without calling the model", async () => {
+    behaviour = () => counting();
+    const { assetId, caseId } = await registerAndSubmit("Unchanged inputs", { ...HIGH_RISK });
+    await jobs.idle();
+    const before = (await reviews(reviewer, assetId)).find((r) => r.domain === "security")!;
+    calls = 0;
+    await gov.requestDraft(reviewer, caseId, "security");
+    await jobs.idle();
+    const after = (await reviews(reviewer, assetId)).find((r) => r.domain === "security")!;
+    expect(calls).toBe(0);
+    expect(after).toMatchObject({ status: "drafted", revision: before.revision, draft: { status: "ready" } });
   });
 });
 

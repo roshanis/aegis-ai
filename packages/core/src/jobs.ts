@@ -15,6 +15,8 @@ export interface DraftJob {
   readonly reviewId: string;
   /** A new id per request, so each request runs once and a retry never lands on a newer one. */
   readonly requestId: string;
+  /** A redraft after a change: wait for the burst to settle first. */
+  readonly settle?: boolean;
 }
 
 export interface EvalJob {
@@ -59,7 +61,17 @@ export const MODEL_RETRY: RetryPolicy = { attempts: 3, delayMs: 2000, backoff: 2
 
 export interface Steps {
   run<T>(name: string, fn: () => Promise<T>): Promise<T>;
+  /** Wait; a durable engine resumes the wait after a restart. */
+  sleep(name: string, ms: number): Promise<void>;
 }
+
+/**
+ * How long a redraft request waits before it is claimed. Evidence often
+ * arrives in bursts, and each change asks for a redraft; a request that a
+ * newer one replaces during the wait is skipped without a model call, so a
+ * burst costs one draft instead of one per change.
+ */
+export const DRAFT_SETTLE_MS = 20_000;
 
 type Attempt<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly code: string };
 
@@ -82,7 +94,14 @@ export async function attempt<T>(fn: () => Promise<T>, policy: RetryPolicy): Pro
   }
 }
 
-export async function draftWorkflow(steps: Steps, rt: AgentRuntime, job: DraftJob, retry = MODEL_RETRY): Promise<DraftOutcome> {
+export async function draftWorkflow(
+  steps: Steps,
+  rt: AgentRuntime,
+  job: DraftJob,
+  retry = MODEL_RETRY,
+  settleMs = DRAFT_SETTLE_MS,
+): Promise<DraftOutcome> {
+  if (job.settle && settleMs > 0) await steps.sleep("settle", settleMs);
   const result = await steps.run("draft", () => attempt(() => rt.draft(job), retry));
   if (result.ok) return result.value;
   return steps.run("abandon", () => rt.abandonDraft(job, result.code));
@@ -120,11 +139,17 @@ export function inlineJobs(
      * call. For batch work such as seeding a sandbox.
      */
     readonly holdUntilIdle?: boolean;
+    /** Draft settle time; 0 (the default here) drafts at once. */
+    readonly settleMs?: number;
   } = {},
 ): InlineJobs {
   const running = new Map<string, Promise<unknown>>();
   const held: AgentJob[] = [];
-  const steps: Steps = { run: (_name, fn) => fn() };
+  const steps: Steps = {
+    run: (_name, fn) => fn(),
+    sleep: (_name, ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  };
+  const settleMs = options.settleMs ?? 0;
   const retry = options.retry ?? MODEL_RETRY;
   const onError = options.onError ?? ((error, job) => console.error(`agent job ${jobId(job)} failed`, error));
 
@@ -142,7 +167,7 @@ export function inlineJobs(
     const work = (async () => {
       await new Promise((resolve) => setImmediate(resolve));
       const rt = runtime();
-      return job.kind === "draft" ? draftWorkflow(steps, rt, job, retry) : evalWorkflow(steps, rt, job, retry);
+      return job.kind === "draft" ? draftWorkflow(steps, rt, job, retry, settleMs) : evalWorkflow(steps, rt, job, retry);
     })()
       .catch((error: unknown) => onError(error, job))
       .finally(() => running.delete(id));

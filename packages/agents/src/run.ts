@@ -16,10 +16,17 @@ export interface RunOptions {
   readonly timeoutMs?: number;
 }
 
+/**
+ * Most output tokens one call may produce. A ceiling against runaway
+ * answers, set well above a normal answer: reasoning models count their
+ * reasoning against it, and a cut-off answer fails as invalid_output.
+ */
+export const OUTPUT_CAP = { intake: 2_000, draft: 4_000 } as const;
+
 /** One model turn with structured output and no tools: agents read what they are given and nothing else. */
 export async function runStructured<T extends z.ZodType>(
   provider: ModelProvider,
-  spec: { name: string; instructions: string; model: string; outputType: T },
+  spec: { name: string; instructions: string; model: string; outputType: T; maxOutputTokens: number },
   input: string,
   options: RunOptions = {},
 ): Promise<{ output: z.infer<T>; usage: AgentUsage }> {
@@ -28,6 +35,7 @@ export async function runStructured<T extends z.ZodType>(
     instructions: spec.instructions,
     model: spec.model,
     outputType: spec.outputType,
+    modelSettings: { maxTokens: spec.maxOutputTokens },
     tools: [],
   });
   const runner = new Runner({ modelProvider: provider, tracingDisabled: true });
