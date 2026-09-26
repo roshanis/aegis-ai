@@ -3,7 +3,7 @@ import { can, caseLabel } from "@aegis/domain";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CopyLink } from "@/components/CopyLink";
-import { ActorMark, Icon, TIER_NAME, Tag } from "@/components/ds";
+import { ActorMark, Icon, TIER_NAME } from "@/components/ds";
 import { governance } from "@/lib/db";
 import { refusal } from "@/lib/errors";
 import { CASE_STATE, actorName, clock, describe, formatDate, formatTime, hash4, initials } from "@/lib/labels";
@@ -63,10 +63,10 @@ function Answer({ r, canExport, chain }: { r: CaseRecord; canExport: boolean; ch
             )}
           </h2>
           <p className="muted">
-            {r.asset.name} · owned by {r.ownerName ?? "a removed person"} · <Link href={`/registry/${r.asset.id}`}>open the case</Link>
+            <Link href={`/registry/${r.asset.id}`}>{r.asset.name}</Link>
           </p>
           {d?.reason ? <blockquote className="quote">“{d.reason}”</blockquote> : null}
-          {d?.reasonStatus === "erased" ? <p className="hint">The written reason was erased at a person&apos;s request. The audit log keeps its fingerprint.</p> : null}
+          {d?.reasonStatus === "erased" ? <p className="hint">Reason erased on request; its fingerprint stays in the log.</p> : null}
           <div className="row" style={{ gap: 10 }}>
             {canExport ? (
               <a className="btn btn-primary" href={`/audit/export/${r.case.id}`} download>
@@ -186,7 +186,7 @@ function Log({ events, who, labels }: { events: readonly HistoryEntry[]; who: st
   );
 }
 
-export default async function AuditPage({ searchParams }: { searchParams: Promise<{ q?: string; case?: string; who?: string }> }) {
+export default async function AuditPage({ searchParams }: { searchParams: Promise<{ q?: string; case?: string; who?: string; more?: string }> }) {
   const query = await searchParams;
   const { principal } = await requireViewer();
   const gov = await governance();
@@ -204,7 +204,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
     }
   }
   const { events, chain } = await gov.auditLog(principal, {
-    limit: 25,
+    limit: query.more ? 200 : 12,
     ...(who !== "all" ? { actorKind: who as HistoryEntry["actor"]["kind"] } : {}),
   });
   const related = record ? [] : await gov.recentDecisions(principal, 4);
@@ -270,14 +270,15 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
             </nav>
           ) : null}
           <Log events={events} who={who} labels={labels} />
+          {!query.more && events.length === 12 ? (
+            <Link className="link-button" href={`/audit?more=1${who !== "all" ? `&who=${who}` : ""}`}>
+              Show more
+            </Link>
+          ) : null}
           <ChainLine chain={chain} />
         </>
       ) : null}
 
-      <p className="hint" style={{ maxWidth: "80ch" }}>
-        The log stores only IDs, states and hashes. Names and written reasons are looked up when you view it, so an erasure request removes a
-        person&apos;s words without breaking the chain. <Tag>Append-only</Tag>
-      </p>
     </>
   );
 }

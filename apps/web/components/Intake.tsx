@@ -7,7 +7,7 @@ import { registerAndSubmit, submitIntake, suggestAnswers, type SuggestState } fr
 import { IDLE } from "@/lib/action-state";
 import { ASSET_KIND, becauseText, plural } from "@/lib/labels";
 import { asPurpose } from "@/lib/purpose";
-import { Meter, TIER_NAME } from "./ds";
+import { Meter, TIER_NAME, Tag } from "./ds";
 
 type Mode = { kind: "register" } | { kind: "case"; caseId: string; previous: Record<string, unknown> };
 
@@ -158,18 +158,14 @@ export function Intake({
             onChange={(e) => setPurpose(e.target.value)}
             placeholder="e.g. Summarizes provider letters for prior-auth nurses, who read every summary before deciding. Runs on our Azure OpenAI deployment."
           />
-          <div className="row" style={{ gap: 12 }}>
-            {assistant ? (
+          {assistant ? (
+            <div>
               <button className="btn btn-sm" type="button" disabled={suggest.pending || purpose.trim().length < 20} onClick={() => suggest.ask(purpose, Object.keys(answers))}>
+                <span className="mark mark-agent" style={{ "--size": "16px" } as React.CSSProperties} aria-hidden="true" />
                 {suggest.pending ? "Suggesting…" : suggest.runId ? "Suggest the phrases again" : "Suggest the phrases"}
               </button>
-            ) : null}
-            <span className="hint">
-              {assistant
-                ? "The intake assistant can suggest the phrases from this. Your words stay on this page; only the answers are saved."
-                : "Your words stay on this page; only the answers are saved."}
-            </span>
-          </div>
+            </div>
+          ) : null}
           {suggest.error ? <p className="error">{suggest.error}</p> : null}
         </div>
       </div>
@@ -178,10 +174,8 @@ export function Intake({
         <div className="agent-note" role="status">
           <span className="mark mark-agent" style={{ "--size": "20px" } as React.CSSProperties} aria-hidden="true" />
           <span>
-            <strong>Draft by intake assistant.</strong>{" "}
-            {suggest.filled.size > 0
-              ? `It suggested ${plural(suggest.filled.size, "phrase")}, outlined in dashes. Check each one: you submit the answers, not the assistant.`
-              : "It had nothing to add to what you answered."}
+            <strong>Draft by intake assistant</strong> ·{" "}
+            {suggest.filled.size > 0 ? `${plural(suggest.filled.size, "phrase")}, outlined in dashes. Check each one.` : "nothing to add."}
           </span>
         </div>
       ) : null}
@@ -189,11 +183,11 @@ export function Intake({
       <section aria-labelledby="describe" className="stack" style={{ gap: 18 }}>
         <div className="spread">
           <h2 id="describe" className="eyebrow">
-            {view === "sentence" ? "Describe the system. Select a highlighted phrase to change it." : "Answer each question"}
+            {view === "sentence" ? "Select a phrase to change it" : "Answer each question"}
           </h2>
           {pack.sentence ? (
             <button className="link-button" type="button" onClick={() => setView(view === "sentence" ? "questions" : "sentence")}>
-              {view === "sentence" ? "Answer as questions instead" : "Answer as a sentence instead"}
+              {view === "sentence" ? "Questions view" : "Sentence view"}
             </button>
           ) : null}
         </div>
@@ -223,16 +217,28 @@ export function Intake({
           <p className="result-verdict" data-testid="verdict">
             <em>{TIER_NAME[result.tier]} risk</em>, because it {becauseText(pack, result.tierRuleId)}.
           </p>
-          <p className="result-line">
-            <strong>{plural(domains.length, "team")}</strong> will review it: {domains.join(", ")}.
-          </p>
-          <p className="result-line muted">
-            {!complete
-              ? `Answer the ${plural(left.length, "remaining question")} to see whether the fast lane applies.`
-              : fastLane.eligible
-                ? `Eligible for the fast lane under ${fastLane.policyId}: approved when you submit. Accountable: ${fastLane.accountableApprover}.`
-                : `Not eligible for the fast lane: ${fastLane.reasons.join(", ")}.`}
-          </p>
+          <div className="row" style={{ gap: 8 }} aria-label={`${plural(domains.length, "team")} will review it`} role="list">
+            <span className="label" style={{ marginRight: 4 }}>
+              {plural(domains.length, "team")}
+            </span>
+            {domains.map((d) => (
+              <span className="tag" role="listitem" key={d}>
+                {d}
+              </span>
+            ))}
+          </div>
+          {complete ? (
+            <div className="row" style={{ gap: 8 }}>
+              {fastLane.eligible ? (
+                <Tag tone="ok">Fast lane · {fastLane.policyId}</Tag>
+              ) : (
+                <>
+                  <Tag>Full review</Tag>
+                  <span className="hint">{fastLane.reasons.join(" · ")}</span>
+                </>
+              )}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -243,15 +249,11 @@ export function Intake({
         </button>
         {!ready ? (
           <span className="hint">
-            {mode.kind === "register" && !name.trim() ? "Name it" : ""}
-            {mode.kind === "register" && !name.trim() && !complete ? " and answer " : !complete ? "Answer " : ""}
-            {!complete ? `${plural(left.length, "more question")}` : ""} to submit.
+            {[mode.kind === "register" && !name.trim() ? "Name it" : null, !complete ? `${left.length} left` : null].filter(Boolean).join(" · ")}
           </span>
         ) : null}
         <span className="note mono-s muted">
-          Each phrase answers one question in {pack.id}@{pack.version}.
-          <br />
-          Rules set the tier, not AI.
+          {pack.id}@{pack.version} · rules set the tier, not AI
         </span>
       </div>
     </form>
@@ -299,9 +301,7 @@ function Sentence({
               <button type="button" aria-label={`Yes: ${phrase.yes}`} onClick={() => onAnswer(part, true)}>
                 {phrase.yes}
               </button>
-              <span className="or" aria-hidden="true">
-                or
-              </span>
+              <span className="or" aria-hidden="true" />
               <button type="button" aria-label={`No: ${phrase.no}`} onClick={() => onAnswer(part, false)}>
                 {phrase.no}
               </button>

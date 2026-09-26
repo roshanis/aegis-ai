@@ -26,7 +26,6 @@ export default async function RegisterPage() {
           <h1 className="display-l">
             File a new <em>AI system</em>
           </h1>
-          <p>Name it, say what it does, and settle six phrases. You see the risk tier and who has to review it as you go.</p>
         </div>
       </div>
       {pack ? (

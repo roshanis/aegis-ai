@@ -26,7 +26,6 @@ export default async function ReviewsPage() {
           <h1 className="display-l">
             Waiting for <em>you</em>
           </h1>
-          <p>Every review, sign-off, exception and condition that needs this seat. Agents draft; people sign and decide.</p>
         </div>
       </div>
 

@@ -10,7 +10,7 @@ import { readTheme } from "@/lib/theme";
 import { requireViewer } from "@/lib/viewer";
 
 const PAGES: PaletteItem[] = [
-  { href: "/today", label: "Today: the docket", group: "Pages" },
+  { href: "/today", label: "Today", group: "Pages" },
   { href: "/registry", label: "Registry", group: "Pages" },
   { href: "/reviews", label: "Reviews", group: "Pages" },
   { href: "/audit", label: "Audit log", group: "Pages" },

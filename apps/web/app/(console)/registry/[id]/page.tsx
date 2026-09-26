@@ -145,9 +145,7 @@ export default async function CasePage({
           <span className="eyebrow">
             {caseLabel(openCase.number)} · {TRIGGER[openCase.trigger]} · your intake
           </span>
-          <p className="muted">
-            {Object.keys(previous).length > 0 ? "Your answers from last time are filled in. Change anything that is different now." : "Settle each phrase, then submit."}
-          </p>
+          {Object.keys(previous).length > 0 ? <p className="muted">Last answers filled in.</p> : null}
           <Intake pack={{ ...intakePack, goldenSets: undefined }} mode={{ kind: "case", caseId: openCase.id, previous }} assistant={assistant} />
         </section>
       ) : openCase && (openCase.state === "draft" || openCase.state === "changes_requested") ? (
@@ -156,7 +154,7 @@ export default async function CasePage({
             …
           </span>
           <span>
-            {caseLabel(openCase.number)} waits on {view.ownerName ?? "the owner"} to answer the {TRIGGER[openCase.trigger].toLowerCase()} intake.
+            Waiting on {view.ownerName ?? "the owner"}&apos;s intake
           </span>
         </p>
       ) : null}
@@ -177,23 +175,19 @@ export default async function CasePage({
           <CaseTable view={view} pack={initiative} history={history} selected={query.seat ?? null} baseHref={base} />
         ) : fastLane && latest ? (
           <section className="panel panel-xl stack" style={{ gap: 12 }}>
-            <span className="eyebrow">{caseLabel(latest.number)} · no table needed</span>
-            <p className="display-m">
-              Approved in the fast lane under <span className="mono">{String(fastLane.payload.fastLanePolicyId)}</span>.
-            </p>
-            <p>
-              Accountable: <strong>{String(fastLane.payload.accountableApprover)}</strong>. Low risk, and nothing in the intake disqualified it, so no
-              review team had to sign.
-            </p>
+            <span className="eyebrow">{caseLabel(latest.number)}</span>
+            <p className="display-m">Approved in the fast lane</p>
+            <div className="row" style={{ gap: 8 }}>
+              <Tag tone="ok">{String(fastLane.payload.fastLanePolicyId)}</Tag>
+              <span className="muted">Accountable: {String(fastLane.payload.accountableApprover)}</span>
+            </div>
             <span className="mono-s muted">
               approved {formatDate(fastLane.at)} by the triage rules · audit log #{hash4(fastLane.hash)}
             </span>
           </section>
         ) : (
           <section className="panel panel-xl stack" style={{ gap: 12 }}>
-            <p className="muted">
-              {latest ? "No review team has a seat yet. Seats appear once the intake is triaged." : "This system has not been reviewed yet."}
-            </p>
+            <p className="muted">{latest ? "Seats appear after triage." : "Not reviewed yet."}</p>
             {!latest && actions.newCase.length > 0 ? <OpenReviewForm assetId={asset.id} triggers={actions.newCase} /> : null}
           </section>
         )

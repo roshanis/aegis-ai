@@ -44,7 +44,6 @@ function Initiative({ pack }: { pack: InitiativePack }) {
               ),
             )}
           </p>
-          <p className="hint">Each bracket answers one question below. The sentence only words the answers; triage reads the answers alone.</p>
         </section>
       ) : null}
 
@@ -207,7 +206,6 @@ export default async function PacksPage() {
           <h1 className="display-l">
             The rules <em>in force</em>
           </h1>
-          <p>Screens are built from these packs: the intake, the tiers, the review teams and the controls. A case keeps the version it was reviewed under.</p>
         </div>
       </div>
       {enabled.map((p: PackVersion) => (

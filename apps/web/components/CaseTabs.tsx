@@ -51,9 +51,6 @@ export function ControlsTab({ view }: { view: AssetView }) {
   const domains = [...new Set(controls.map((c) => c.domainLabel))];
   return (
     <div className="stack" style={{ gap: 18 }}>
-      <p className="hint">
-        Gate controls must have evidence or an approved exception before a reviewer signs and before the system is used. Monitor controls are tracked but do not block.
-      </p>
       {domains.map((domain) => (
         <section className="panel stack" key={domain} style={{ gap: 0, padding: 0 }} aria-label={domain}>
           <h2 className="section-title" style={{ padding: "16px 22px 8px" }}>
@@ -74,8 +71,8 @@ export function ControlsTab({ view }: { view: AssetView }) {
                     </div>
                     <ControlStatus control={control} />
                   </div>
-                  <p className="hint">
-                    Expects: {control.requiredEvidence} · {control.cadence} · helps evidence {control.frameworkRefs.join(", ")}
+                  <p className="mono-s muted" title={`Helps evidence ${control.frameworkRefs.join(", ")}`}>
+                    {control.requiredEvidence} · {control.cadence}
                   </p>
                   <Evidence items={control.evidence} assetId={view.asset.id} />
                   {x ? (
@@ -175,9 +172,6 @@ function Said({ entry }: { entry: HistoryEntry }) {
 export function HistoryTab({ history, labels }: { history: readonly HistoryEntry[]; labels: Record<string, string> }) {
   return (
     <section className="panel stack" style={{ gap: 16 }} aria-label="History">
-      <p className="hint">
-        Every change, who made it, why, and under which policy. Newest first. Each line is an event in the tenant&apos;s hash-chained audit log.
-      </p>
       <ol className="timeline">
         {history.map((entry) => (
           <li key={entry.id} data-decision={entry.decision}>

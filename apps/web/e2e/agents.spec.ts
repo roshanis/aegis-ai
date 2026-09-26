@@ -31,7 +31,7 @@ test("agents draft and suggest, people decide, and an admin keeps them behind th
     .getByLabel("What does it do? In your words")
     .fill("Generates first drafts of Medicare Advantage marketing emails. Compliance reviews every email before it is sent to members.");
   await page.getByRole("button", { name: "Suggest the phrases" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Draft by intake assistant." })).toContainText("It suggested 4 phrases");
+  await expect(page.getByRole("status").filter({ hasText: "Draft by intake assistant" })).toContainText("4 phrases");
   const members = page.getByRole("group", { name: "Will members see or interact with it?" }).getByRole("button");
   await expect(members).toHaveAttribute("aria-label", /^Yes: see/);
   await expect(members).toHaveAttribute("data-suggested", "true");

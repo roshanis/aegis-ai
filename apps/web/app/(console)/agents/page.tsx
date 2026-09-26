@@ -35,7 +35,7 @@ function EvalReport({ report, fields }: { report: EvalView; fields: Record<strin
           {report.goldenSet} · needs {pct(report.threshold)}, no critical failures
         </span>
       </div>
-      <div className="progress" aria-hidden="true">
+      <div className="progress" data-tone="agent" aria-hidden="true">
         <span style={{ width: `${(report.done / report.total) * 100}%` }} data-state={report.state} />
       </div>
       <p className="caption muted">
@@ -91,7 +91,10 @@ function AgentCard({ agent, fields }: { agent: AgentView; fields: Record<string,
       </header>
       <p>{agent.purpose}</p>
       <p className="hint">{agent.statusReason}</p>
-      <p className="caption muted">Sends your model: {agent.sends}</p>
+      <details className="caption muted">
+        <summary style={{ cursor: "pointer", minHeight: 28 }}>What it sends your model</summary>
+        {agent.sends}
+      </details>
       {agent.latestEval ? <EvalReport report={agent.latestEval} fields={fields} /> : null}
       <AgentControls agent={agent.id} title={agent.title} actions={agent.actions} />
     </section>
@@ -116,10 +119,6 @@ export default async function AgentsPage() {
           <h1 className="display-l">
             Agents draft, <em>people decide</em>
           </h1>
-          <p>
-            Each agent stays off until it passes its golden set on your model, and an admin turns it on. Change the model and it has to pass
-            again. No agent can sign, approve or reject.
-          </p>
         </div>
       </div>
 
@@ -138,14 +137,8 @@ export default async function AgentsPage() {
             {connection.endpoint ? ` · ${connection.endpoint}` : ""} · fingerprint <span className="mono-s">{connection.fingerprint}</span>
           </p>
         ) : (
-          <p className="muted">Connect your organization&apos;s model. Agents never share a key across organizations.</p>
+          <p className="muted">Connect your organization&apos;s model.</p>
         )}
-        {overview.sandbox ? (
-          <p className="hint">
-            This sandbox runs the scripted demo model: deterministic rules, not AI. You can connect your own OpenAI key to try a real model; it is
-            deleted with the sandbox.
-          </p>
-        ) : null}
         {overview.canManage ? (
           <ModelForm
             current={
@@ -167,7 +160,6 @@ export default async function AgentsPage() {
       <section className="panel panel-flush" aria-label="Recent runs">
         <div className="spread" style={{ padding: "18px 22px 6px" }}>
           <h2 className="section-title">Recent runs</h2>
-          <span className="hint">Each call to your model. Only ids, outcomes and token counts are kept here.</span>
         </div>
         {overview.recentRuns.length === 0 ? (
           <p className="hint" style={{ padding: "0 22px 18px" }}>

@@ -36,7 +36,7 @@ const seat = (page: Page, domain: string) => page.getByRole("link", { name: new 
 
 test("an AI system goes from a one-sentence intake through the table to use, and the audit log proves it", async ({ page }) => {
   await openSandbox(page);
-  await expect(page.getByRole("heading", { name: "The Aegis Docket" })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Today" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Waiting for you" })).toBeVisible();
 
   // Requester: the intake is one sentence, triaged live by the pack's rules.
@@ -55,7 +55,13 @@ test("an AI system goes from a one-sentence intake through the table to use, and
   await members.getByRole("button", { name: /^Yes: see/ }).click();
   await expect(page.getByTestId("verdict")).toContainText("Low risk");
   await members.getByRole("button", { name: /^No: never see/ }).click();
-  await expect(page.getByText("5 teams will review it: Data Governance, Legal, Responsible AI, Security, Tech Architecture.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "5 teams will review it" }).getByRole("listitem")).toHaveText([
+    "Data Governance",
+    "Legal",
+    "Responsible AI",
+    "Security",
+    "Tech Architecture",
+  ]);
   await page.getByRole("button", { name: "Submit for review" }).click();
   await expect(page).toHaveURL(/\/registry\/[0-9a-f-]{36}$/);
   const asset = page.url();

@@ -259,9 +259,9 @@ export function SeatForm({
             />
           </div>
           {uncoveredGates.length > 0 ? (
-            <p className="hint">
-              Signing waits on evidence or an exception for{" "}
-              <Link href={controlsHref}>{uncoveredGates.join(", ")}</Link>.
+            <p className="row" style={{ gap: 8 }}>
+              <span className="eyebrow">Needs evidence</span>
+              <Link href={controlsHref}>{uncoveredGates.join(", ")}</Link>
             </p>
           ) : null}
           <Refusal state={state} />
@@ -288,7 +288,6 @@ export function SeatForm({
           <div className="field">
             <label htmlFor={`question-${domain}`}>Your question for the owner</label>
             <textarea id={`question-${domain}`} name="note" rows={4} defaultValue={questions} required autoFocus />
-            <span className="hint">The review waits until the owner answers. You resume it after.</span>
           </div>
           <Refusal state={state} />
           <div className="row" style={{ gap: 10 }}>
@@ -495,7 +494,6 @@ export function DecisionForm({
       <div className="field">
         <label htmlFor={`reason-${caseId}`}>Reason {conditional ? "(required)" : "(required to reject or to attach conditions)"}</label>
         <textarea id={`reason-${caseId}`} name="reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
-        <span className="hint">The requester and auditors read this. It is kept as a note; the audit log keeps its fingerprint.</span>
       </div>
       {missing ? <p className="error">{missing}</p> : null}
       <Refusal state={state} />
@@ -518,10 +516,8 @@ export function DecisionForm({
       </div>
       {approveBlocked && approveBlocked !== "not available" ? (
         <p className="hint">
-          {conditional ? "Approving with conditions" : "Approving"} is {approveBlocked}.
-          {!conditional && readiness?.canConditionallyApprove && actions.includes("conditionally_approve")
-            ? " Add a condition to approve with conditions now; the unsigned drafts are recorded with the decision."
-            : ""}
+          {approveBlocked.charAt(0).toUpperCase() + approveBlocked.slice(1)}.
+          {!conditional && readiness?.canConditionallyApprove && actions.includes("conditionally_approve") ? " Add a condition to approve now." : ""}
         </p>
       ) : null}
     </form>
@@ -580,7 +576,7 @@ export function OpenReviewForm({ assetId, triggers }: { assetId: string; trigger
           ))}
         </div>
       ) : null}
-      {trigger === "incident" ? <p className="hint">An open incident review takes away clearance until it is decided.</p> : null}
+      {trigger === "incident" ? <p className="hint">Takes away clearance until decided.</p> : null}
       <Refusal state={state} />
       <div>
         <button className="btn btn-primary" type="submit" disabled={pending}>
@@ -687,7 +683,7 @@ export function ExceptionRequestForm({ assetId, controlId }: { assetId: string; 
         <label htmlFor={`days-${controlId}`}>For how many days?</label>
         <input id={`days-${controlId}`} name="days" type="text" inputMode="numeric" defaultValue="90" />
       </div>
-      <p className="hint">An approver other than you decides. The exception stops covering the control when it expires.</p>
+      <p className="hint">Another approver decides. It lapses when it expires.</p>
       <Refusal state={state} />
       <div className="row" style={{ gap: 8 }}>
         <button className="btn btn-primary btn-sm" type="submit" disabled={pending}>

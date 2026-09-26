@@ -85,16 +85,13 @@ export function ModelForm({ current, providers }: { current: Current | null; pro
               required={!(same && current?.keyHint)}
               placeholder={same && current?.keyHint ? `Leave blank to keep the key ending ${current.keyHint}` : "Paste the key"}
             />
-            <span className="hint">Sealed with this organization&apos;s own data key. Nobody can read it back, including admins.</span>
+            <span className="hint">Sealed with this organization&apos;s key; nobody can read it back.</span>
           </div>
         </>
       ) : (
         <input type="hidden" name="model" value="scripted" />
       )}
-      <p className="hint">
-        Switching to a different model turns both agents off until each passes its golden set on it again. A new key for the
-        same model keeps them on.
-      </p>
+      <p className="hint">A different model turns the agents off until they pass again.</p>
       {state.error ? <p className="error">{state.error}</p> : null}
       <div className="row" style={{ gap: 8 }}>
         <button className="btn btn-primary" type="submit" disabled={pending}>

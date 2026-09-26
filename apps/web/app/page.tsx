@@ -8,19 +8,19 @@ const MARKS = [
     kind: "human" as const,
     name: "Avery Brooks",
     title: "People sign and decide",
-    body: "Every review team signs its own seat, and an approver decides with a written reason. Nobody decides a case they submitted.",
+    body: "Each review team signs its seat. An approver decides.",
   },
   {
     kind: "system" as const,
     name: "",
     title: "Rules set the tier, not AI",
-    body: "Your policy pack decides the risk tier and who reviews, and names the rule that fired. The same answers always give the same result.",
+    body: "Your policy pack sets the tier and names the rule.",
   },
   {
     kind: "agent" as const,
     name: "",
     title: "Agents draft, behind a gate",
-    body: "Agents suggest intake answers and draft reviews in a dashed frame. Each stays off until it passes its golden set on your model.",
+    body: "Agents draft. They stay off until they pass their tests.",
   },
 ];
 
@@ -49,10 +49,7 @@ export default async function Landing() {
         <h1>
           Agents draft, <em>people decide.</em>
         </h1>
-        <p>
-          One registry of every AI system you run. Triage your own policy decides. A table where each review team signs its seat, and an audit
-          log that answers who approved what, why, and under which rule.
-        </p>
+        <p>Register every AI system, triage it by your own rules, and prove who approved what.</p>
         <div className="row" style={{ gap: 16 }}>
           {viewer ? (
             <Link className="btn btn-primary btn-lg" href="/today">
@@ -66,7 +63,7 @@ export default async function Landing() {
             </form>
           )}
           <span className="hint">
-            {viewer ? `${viewer.tenant.name}, your private sandbox.` : "A private organization with sample data, yours for 7 days. No sign-up."}
+            {viewer ? viewer.tenant.name : "Sample data · 7 days · no sign-up"}
           </span>
         </div>
       </main>

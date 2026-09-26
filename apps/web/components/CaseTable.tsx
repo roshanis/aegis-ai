@@ -187,7 +187,7 @@ export function CaseTable({
           {seats.map((s, i) => seatLink(s, i, true))}
           {drafterPresent ? (
             <p className="hint" style={{ padding: "4px 10px" }}>
-              The review drafter drafts reviews. It has no seat and cannot sign or decide.
+              review drafter · draft only · no seat
             </p>
           ) : null}
         </nav>
@@ -271,14 +271,13 @@ function SeatPanel({
               </span>
             </div>
             {decisionEvent.reason ? <blockquote className="signed-quote">“{decisionEvent.reason}”</blockquote> : null}
-            {decisionEvent.reasonStatus === "erased" ? <p className="hint">The written reason was erased at a person&apos;s request. The audit log keeps its fingerprint.</p> : null}
+            {decisionEvent.reasonStatus === "erased" ? <p className="hint">Reason erased on request; its fingerprint stays in the audit log.</p> : null}
             <span className="mono-s muted">
               decided {formatDate(decisionEvent.at)} · audit log #{hash4(decisionEvent.hash)}
             </span>
           </>
         ) : canDecide ? (
           <>
-            <p>You decide. Agents cannot, and nobody decides a case they submitted.</p>
             <DecisionForm
               caseId={tableCase.id}
               actions={view.actions.openCase}
@@ -288,7 +287,7 @@ function SeatPanel({
             />
           </>
         ) : (
-          <p>{assurance.readiness?.reason ?? "Waiting for the approver."} An approver decides; nobody decides a case they submitted.</p>
+          <p>{assurance.readiness?.reason ?? "Waiting for the approver."}</p>
         )}
         {foot}
       </aside>
@@ -308,19 +307,13 @@ function SeatPanel({
         Seat · {index + 1} of {seats.length}
       </span>
       <h2 id="seat-h">{r.label}</h2>
-      <p>
-        {seat.state === "you"
-          ? r.status === "drafted"
-            ? "Your review. The agent wrote a draft; you decide what to sign."
-            : "Your review."
-          : `${seat.status}.`}
-      </p>
+      <p className="muted">{seat.status}</p>
 
       {seat.state === "you" ? (
         <>
           {r.draft.status === "queued" ? <Pending>A fresh draft is on its way. You can review it yourself meanwhile.</Pending> : null}
           {r.draft.status === "failed" ? (
-            <p className="hint">The review drafter {FAILURE[r.draft.error ?? ""] ?? "failed"}, so there is no draft. Review it yourself.</p>
+            <p className="hint">No draft: the review drafter {FAILURE[r.draft.error ?? ""] ?? "failed"}.</p>
           ) : null}
           <SeatForm
             key={`${r.domain}-${r.revision}-${r.draft.status}`}
@@ -366,10 +359,7 @@ function SeatPanel({
       {seat.state === "returned" ? (
         <>
           {r.note ? <blockquote className="signed-quote">“{r.note}”</blockquote> : null}
-          <span className="hint">
-            Asked by {r.reviewer?.name ?? "the reviewer"}.{" "}
-            {tableCase.decidedAt ? "The case was decided before the owner answered." : "The review waits for the owner's answer."}
-          </span>
+          <span className="mono-s muted">asked by {r.reviewer?.name ?? "the reviewer"}</span>
           {r.actions.includes("respond") ? <RespondForm caseId={r.caseId} domain={r.domain} revision={r.revision} /> : null}
           {r.actions.includes("resume") ? <ReviewButton caseId={r.caseId} domain={r.domain} revision={r.revision} action="resume" label="Resume the review" /> : null}
         </>
@@ -385,18 +375,19 @@ function SeatPanel({
       {seat.state === "open" ? (
         <>
           {why ? (
-            <p>
-              Why this seat exists: <strong>{why}</strong>.
+            <p className="row" style={{ gap: 8 }}>
+              <span className="eyebrow">Why this seat</span>
+              <span>{why}</span>
             </p>
           ) : null}
           {r.uncoveredGates.length > 0 ? (
-            <p className="hint">
-              Signing waits on evidence or an exception for <Link href={controlsHref}>{r.uncoveredGates.join(", ")}</Link>.
+            <p className="row" style={{ gap: 8 }}>
+              <span className="eyebrow">Needs evidence</span>
+              <Link href={controlsHref}>{r.uncoveredGates.join(", ")}</Link>
             </p>
           ) : null}
           {seat.drafted && r.draft.content ? (
             <>
-              <p className="hint">A draft is waiting for a {r.label} reviewer. It is not a decision.</p>
               <DraftPreview draft={r.draft.content} meta={drafterMeta} />
             </>
           ) : null}
