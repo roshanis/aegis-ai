@@ -2,10 +2,17 @@
 
 UI/UX work for Aegis, kept next to the code so it can be reviewed and versioned.
 
+> **Status: frozen on 2026-09-27.** Build from the clickable prototype,
+> `prototype/aegis-lean.html` (live at
+> https://claude.ai/artifact/2y7tcQfM9E6At3Xq4woTB9). It covers the whole flow
+> in nine steps. The screens canvas in `screens/` predates the start-from-repo
+> option and steps 7 to 9, so where the two differ, the prototype wins.
+
 The live, editable versions are Claude artifacts:
 
 - Design system: https://claude.ai/artifact/VEHgC5bWZyfbcxPNUfc1dx
 - Screens canvas: https://claude.ai/artifact/HX2KRgJSKpSsMHkaVpf9Zn
+- Prototype (the build reference): https://claude.ai/artifact/2y7tcQfM9E6At3Xq4woTB9
 
 Both are private until shared from their Share menu. The files here are a snapshot
 of those artifacts; the artifacts are the source of truth until the screens are
@@ -57,6 +64,11 @@ coverage, vendor-hosted). It never suggests No and never answers the questions
 about how the system is run. A person confirms every answer; saying No against
 the evidence needs a one-line reason; Submit stays locked until all six are
 confirmed.
+
+Steps 7 to 9 cover life after approval: a deploy gate that stays locked until
+the teams confirm their before-deploy conditions, a live system page where a
+code rescan flags a new vendor and the owner decides what happens, and a
+re-review scoped to the three teams that change touches.
 
 Every screen follows the rule in `docs/PLAN.md`: agents draft, people decide.
 Triage on the intake screens runs the `healthcare-ai` pack's rules from
