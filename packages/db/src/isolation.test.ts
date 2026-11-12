@@ -1,13 +1,14 @@
 import { PGlite } from "@electric-sql/pglite";
 import { tenantId } from "@aegis/domain";
 import { beforeAll, describe, expect, it } from "vitest";
-import { appendAudit, sha256Hex, verifyAuditChain } from "./audit";
+import { appendAudit, checkAuditChain, sha256Hex, verifyAuditChain } from "./audit";
 import { serialized } from "./database";
 import { migrate } from "./migrate";
 import { withTenant } from "./tenant";
 
 const A = tenantId("00000000-0000-4000-8000-00000000000a");
 const B = tenantId("00000000-0000-4000-8000-00000000000b");
+const D = tenantId("00000000-0000-4000-8000-00000000000d");
 const userA = "00000000-0000-4000-8000-0000000000a1";
 const userB = "00000000-0000-4000-8000-0000000000b1";
 const assetA = "00000000-0000-4000-8000-0000000000e1";
@@ -55,6 +56,9 @@ beforeAll(async () => {
     "0011_member_communications.sql",
     "0012_agent_tools.sql",
     "0013_api_keys.sql",
+    "0014_audit_checkpoints.sql",
+    "0015_rate_limits.sql",
+    "0016_case_purpose.sql",
   ]);
   expect(await migrate(db)).toEqual([]);
   await seedTenant(A, "tenant-a", userA, assetA);
@@ -249,6 +253,38 @@ describe("audit log", () => {
       ALTER TABLE audit_events ENABLE TRIGGER audit_events_no_update;`);
     expect(await withTenant(db, A, verifyAuditChain)).not.toBeNull();
     expect(await withTenant(db, B, verifyAuditChain)).toBeNull();
+  });
+
+  it("verifies from checkpoints, and still catches a rewritten checkpoint or, in full, anything before it", async () => {
+    const at = new Date("2026-11-12T09:00:00Z");
+    await db.query("INSERT INTO tenants (id, slug, name) VALUES ($1, 'tenant-d', 'D')", [D]);
+    const add = (action: string) =>
+      withTenant(db, D, (tx) => appendAudit(tx, { actorKind: "system", actorId: "system:test", action, at }));
+    for (const action of ["one", "two", "three"]) await add(action);
+    const total = (await withTenant(db, D, (tx) => tx.query<{ n: number }>("SELECT count(*)::int AS n FROM audit_events"))).rows[0]!.n;
+
+    const first = await withTenant(db, D, (tx) => checkAuditChain(tx, at, { every: 2 }));
+    expect(first).toMatchObject({ brokenAt: null, walked: total, events: total });
+    await add("four");
+    const second = await withTenant(db, D, (tx) => checkAuditChain(tx, at, { every: 2 }));
+    expect(second).toMatchObject({ brokenAt: null, walked: 1, events: total + 1 });
+    expect((await withTenant(db, D, (tx) => tx.query("SELECT * FROM audit_checkpoints"))).rows).toHaveLength(1);
+    await expect(withTenant(db, D, (tx) => tx.exec("UPDATE audit_checkpoints SET through_hash = 'x'"))).rejects.toThrow(/permission denied/);
+
+    // Rewriting an event before the checkpoint escapes the quick check, but not a full one.
+    const rewrite = (where: string) =>
+      db.exec(`
+        ALTER TABLE audit_events DISABLE TRIGGER audit_events_no_update;
+        UPDATE audit_events SET ${where};
+        ALTER TABLE audit_events ENABLE TRIGGER audit_events_no_update;`);
+    await rewrite(`action = 'rewritten' WHERE tenant_id = '${D}' AND action = 'one'`);
+    expect(await withTenant(db, D, (tx) => checkAuditChain(tx, at))).toMatchObject({ brokenAt: null });
+    expect((await withTenant(db, D, (tx) => checkAuditChain(tx, at, { full: true }))).brokenAt).not.toBeNull();
+
+    // Rewriting the checkpointed event itself is caught at once.
+    const { rows } = await withTenant(db, D, (tx) => tx.query<{ through_id: string }>("SELECT through_id FROM audit_checkpoints"));
+    await rewrite(`hash = repeat('0', 64) WHERE id = ${rows[0]!.through_id}`);
+    expect((await withTenant(db, D, (tx) => checkAuditChain(tx, at))).brokenAt).toBe(Number(rows[0]!.through_id));
   });
 });
 

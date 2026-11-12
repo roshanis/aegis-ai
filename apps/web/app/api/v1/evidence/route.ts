@@ -14,10 +14,19 @@ import { refusal } from "@/lib/errors";
  */
 
 const MAX_BODY = 16_384;
-const STATUS: Record<string, number> = { forbidden: 401, not_found: 404, invalid: 422, conflict: 409, unavailable: 503 };
+const STATUS: Record<string, number> = { forbidden: 401, not_found: 404, invalid: 422, conflict: 409, unavailable: 503, rate_limited: 429 };
 
-const problem = (status: number, error: string) =>
-  NextResponse.json({ error }, { status, headers: status === 401 ? { "WWW-Authenticate": 'Bearer realm="aegis"' } : {} });
+const problem = (status: number, error: string, retryAfter?: number) =>
+  NextResponse.json(
+    { error },
+    {
+      status,
+      headers: {
+        ...(status === 401 ? { "WWW-Authenticate": 'Bearer realm="aegis"' } : {}),
+        ...(retryAfter ? { "Retry-After": String(retryAfter) } : {}),
+      },
+    },
+  );
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const auth = request.headers.get("authorization") ?? "";
@@ -48,7 +57,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
     const refused = refusal(error);
-    if (refused) return problem(STATUS[refused.code] ?? 400, refused.message);
+    if (refused) return problem(STATUS[refused.code] ?? 400, refused.message, (error as { retryAfter?: number }).retryAfter);
     throw error;
   }
 }

@@ -83,6 +83,8 @@ E2E_DATABASE_URL=postgres://postgres:postgres@localhost:5432/aegis_e2e pnpm --fi
 | `AEGIS_PGLITE_DIR` | Where the local PGlite database lives. Default `.data/pglite`. |
 | `AEGIS_PUBLIC_URL` | The console's public URL, for sign-in redirects. Required in production. Every tenant registers `<AEGIS_PUBLIC_URL>/sso/callback` with its provider. |
 | `AEGIS_SESSION_HOURS` | How long a single sign-on session lasts. Default 12, at most 24. |
+| `AEGIS_SANDBOXES_PER_CLIENT_HOUR` | Sandboxes one client address may open an hour. Default 5. |
+| `AEGIS_SANDBOXES_PER_HOUR` | Sandboxes everyone together may open an hour. Default 300. |
 | `AEGIS_SSO_ALLOW_HTTP` | `1` lets a provider on `localhost` use plain http, for the e2e mock provider. Off by default. |
 
 `pnpm dev` and `pnpm start` apply pending migrations before the server starts.
@@ -119,8 +121,8 @@ curl -X POST https://aegis.example.com/api/v1/evidence \
 ```
 
 Send `detail` instead of `url` for an attestation. Answers are `201 {"id"}`,
-or `401` (key not valid), `404`, `422` (the evidence or control is wrong)
-with `{"error"}`.
+or `401` (key not valid), `404`, `422` (the evidence or control is wrong),
+`429` with `Retry-After` past 120 calls a minute per key, with `{"error"}`.
 
 ## License
 

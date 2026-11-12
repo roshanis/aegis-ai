@@ -63,7 +63,11 @@ export async function submitIntake(_: ActionState, form: FormData): Promise<Acti
   return attempt(() => gov.submitCase(principal, text(form, "caseId"), answers(form), suggestion(form)));
 }
 
-const suggestion = (form: FormData) => (optional(form, "suggestionRunId") ? { suggestionRunId: text(form, "suggestionRunId") } : {});
+/** The intake assistant run the answers came from, if any, and the requester's own words for what it does. */
+const suggestion = (form: FormData) => ({
+  ...(optional(form, "suggestionRunId") ? { suggestionRunId: text(form, "suggestionRunId") } : {}),
+  ...(optional(form, "purpose") ? { purpose: text(form, "purpose") } : {}),
+});
 
 export type SuggestState =
   | { readonly error: string | null; readonly runId?: undefined }

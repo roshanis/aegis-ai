@@ -3029,3 +3029,10 @@ a.bar-row:hover .bar-label {
 .key-list li[data-revoked] {
   opacity: 0.6;
 }
+
+/* The requester's own words for what a system does, under its name. */
+.case-purpose {
+  max-width: 70ch;
+  color: var(--ink-muted);
+  font-style: italic;
+}

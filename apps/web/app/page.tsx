@@ -24,8 +24,9 @@ const MARKS = [
   },
 ];
 
-export default async function Landing() {
+export default async function Landing({ searchParams }: { searchParams: Promise<{ busy?: string }> }) {
   const viewer = await getViewer();
+  const busy = Number((await searchParams).busy);
   return (
     <div className="landing">
       <header className="spread">
@@ -71,6 +72,14 @@ export default async function Landing() {
             {viewer ? viewer.tenant.name : "Sandbox: sample data · 7 days · no sign-up"}
           </span>
         </div>
+        {!viewer && Number.isInteger(busy) && busy > 0 ? (
+          <p className="notice" data-tone="warn" role="status">
+            <span className="notice-mark" aria-hidden="true">
+              !
+            </span>
+            <span>Too many sandboxes opened from here for now. Try again in {busy === 1 ? "a minute" : `${Math.min(busy, 60)} minutes`}.</span>
+          </p>
+        ) : null}
       </main>
 
       <section className="landing-marks" aria-label="How Aegis works">

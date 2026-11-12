@@ -66,6 +66,8 @@ test("an AI system goes from a one-sentence intake through the table to use, and
   await expect(page).toHaveURL(/\/registry\/[0-9a-f-]{36}$/);
   const asset = page.url();
   await expect(page.getByText("CASE-0011 · Initial review · In review")).toBeVisible();
+  // The requester's own words are kept with the case.
+  await expect(page.locator(".case-purpose")).toHaveText("“answer members' benefits questions”");
   await expect(page.getByText("Add evidence for 3 controls")).toBeVisible();
 
   // Requester: evidence for the three gate controls.
@@ -199,4 +201,14 @@ test("a session cookie edited to become the admin gets no one in", async ({ page
   await page.goto("/registry");
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByRole("button", { name: "Open a sandbox" })).toBeVisible();
+});
+
+test("a visitor who opened too many sandboxes is told when to come back, and the audit log can be recomputed in full", async ({ page }) => {
+  await page.goto("/?busy=12");
+  await expect(page.getByRole("status")).toHaveText(/Too many sandboxes opened from here for now\. Try again in 12 minutes\./);
+  await page.getByRole("button", { name: "Open a sandbox" }).click();
+  await expect(page).toHaveURL(/\/today$/, { timeout: 30_000 });
+  await page.goto("/audit");
+  await page.getByRole("link", { name: "Recompute every event" }).click();
+  await expect(page.getByText(/Hash chain verified · \d+ events, every event recomputed/)).toBeVisible();
 });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { appendAudit, withTenant, type AuditPayload, type Connection, type Database } from "@aegis/db";
+import { appendAudit, sha256Hex, takeRateToken, withTenant, type AuditPayload, type Connection, type Database } from "@aegis/db";
 import {
   ASSET_KINDS,
   CASE_TRIGGERS,
@@ -40,13 +40,14 @@ import { GovernanceError } from "./errors";
 import { createContent } from "./content";
 import { createPeople } from "./people";
 import { createTools } from "./tools";
-import { authenticateApiKey, createApiKeys } from "./apikeys";
+import { API_KEY_RATE, authenticateApiKey, createApiKeys, parseApiKey } from "./apikeys";
 import { createRecords } from "./records";
 import {
   PACK_KIND,
   SERVICE_ACTIONS,
   SUBMIT_ACTIONS,
   UUID,
+  CASES_WITH_PURPOSE,
   actorId,
   canSee,
   toAsset,
@@ -118,6 +119,9 @@ function validateAnswers(pack: InitiativePack, answers: Answers): void {
   }
 }
 
+/** The requester's description of what a system does, saved with the case. */
+const MAX_PURPOSE = 2000;
+
 export function createGovernance(db: Database, options: GovernanceOptions = {}) {
   const now = options.now ?? (() => new Date());
   const hooks = new WeakMap<Connection, (() => void)[]>();
@@ -156,7 +160,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
   async function loadCase(tx: Connection, actor: Principal, caseId: string): Promise<Case> {
     const notFound = new GovernanceError("not_found", `case ${caseId} not found`);
     if (!UUID.test(caseId)) throw notFound;
-    const { rows } = await tx.query<CaseRow>("SELECT * FROM cases WHERE id = $1 FOR UPDATE", [caseId]);
+    const { rows } = await tx.query<CaseRow>(`${CASES_WITH_PURPOSE} WHERE c.id = $1 FOR UPDATE OF c`, [caseId]);
     if (!rows[0]) throw notFound;
     const found = toCase(rows[0]);
     await loadAsset(tx, actor, found.assetId).catch(() => {
@@ -166,7 +170,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
   }
 
   async function loadCases(tx: Connection, assetId: string): Promise<Case[]> {
-    const { rows } = await tx.query<CaseRow>("SELECT * FROM cases WHERE asset_id = $1 ORDER BY created_at, id", [
+    const { rows } = await tx.query<CaseRow>(`${CASES_WITH_PURPOSE} WHERE c.asset_id = $1 ORDER BY c.created_at, c.id`, [
       assetId,
     ]);
     return rows.map(toCase);
@@ -524,7 +528,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
       actor: Principal,
       caseId: string,
       answers: Answers = {},
-      extras: { suggestionRunId?: string } = {},
+      extras: { suggestionRunId?: string; purpose?: string } = {},
     ): Promise<SubmitResult> {
       return inTenant(actor, async (tx) => {
         const current = await loadCase(tx, actor, caseId);
@@ -538,12 +542,24 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
           throw new GovernanceError("invalid", "a content review is submitted with the communication's text");
         }
         validateAnswers(pack, answers);
-        await tx.query("UPDATE cases SET answers = $2 WHERE id = $1", [current.id, JSON.stringify(answers)]);
+        // The requester's own words, kept as a note so an erasure can remove them; unchanged words keep the last note.
+        const words = (extras.purpose ?? "").replace(/\s+/g, " ").trim();
+        if (words.length > MAX_PURPOSE) throw new GovernanceError("invalid", `keep what it does under ${MAX_PURPOSE} characters`);
+        const purposeNote = words && words !== current.purpose ? await writeNote(tx, actor, { assetId: current.assetId, caseId: current.id }, words) : undefined;
+        await tx.query("UPDATE cases SET answers = $2, purpose_note_id = coalesce($3, purpose_note_id) WHERE id = $1", [
+          current.id,
+          JSON.stringify(answers),
+          purposeNote?.id ?? null,
+        ]);
         // Record how the submission relates to the intake assistant's suggestions, if it used them.
         const suggestion = extras.suggestionRunId
           ? await agents.claimSuggestion(tx, actor, extras.suggestionRunId, current, answers)
           : {};
-        const submitted = await moveCase(tx, { ...current, answers }, action, actor, {}, suggestion);
+        const purpose = purposeNote ? purposeNote.body : current.purpose;
+        const submitted = await moveCase(tx, { ...current, answers, purpose }, action, actor, {}, {
+          ...suggestion,
+          ...(purposeNote ? { purposeNoteId: purposeNote.id, purposeSha256: sha256Hex(purposeNote.body) } : {}),
+        });
         return triageCase(tx, submitted, pack, actor.tenantId);
       });
     },
@@ -611,7 +627,12 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
      * Any failure to authenticate reads the same: no such key.
      */
     async addEvidenceWithKey(token: string, input: Parameters<typeof assurance.addEvidence>[1]): Promise<string> {
-      const key = await authenticateApiKey(db, token, "evidence:write", now());
+      const keyId = parseApiKey(token)?.keyId;
+      if (!keyId) throw new GovernanceError("forbidden", "that API key is not valid");
+      const at = now();
+      const allowed = await db.run((conn) => takeRateToken(conn, `api-key:${keyId}`, API_KEY_RATE, at));
+      if (!allowed.ok) throw new GovernanceError("rate_limited", "too many requests with this key; slow down", allowed.retryAfter);
+      const key = await authenticateApiKey(db, token, "evidence:write", at);
       const actor = key ? await service.principal(key.tenant, key.userId) : null;
       if (!key || !actor || !can(actor, "tenant.manage")) throw new GovernanceError("forbidden", "that API key is not valid");
       return assurance.addEvidence(actor, input, { apiKeyId: key.keyId });
@@ -691,6 +712,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
      */
     assetHistory: records.assetHistory,
     auditLog: records.auditLog,
+    verifyAuditLog: records.verifyAuditLog,
     findCases: records.findCases,
     caseRecord: records.caseRecord,
     recentDecisions: records.recentDecisions,

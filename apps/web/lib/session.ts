@@ -1,5 +1,5 @@
 import "server-only";
-import { randomBytes } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { signPending, signSession, verifyPending, verifySession, type PendingSignIn, type SessionPayload } from "./token";
 
@@ -18,6 +18,14 @@ function secret(): string {
   // Development only: sessions last until the dev server restarts.
   cache.aegisDevSecret ??= randomBytes(32).toString("hex");
   return cache.aegisDevSecret;
+}
+
+/**
+ * A stable, unguessable stand-in for a client's address, for rate limits:
+ * the address itself is never stored.
+ */
+export function clientKey(address: string): string {
+  return createHmac("sha256", secret()).update(`client.${address}`).digest("hex").slice(0, 32);
 }
 
 const secure = () => process.env.NODE_ENV === "production";

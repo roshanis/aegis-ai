@@ -47,6 +47,8 @@ export default defineConfig({
         NEXT_TELEMETRY_DISABLED: "1",
         // Redraft at once, so the e2e flow does not wait out the settle time.
         AEGIS_DRAFT_SETTLE_MS: "0",
+        // Every test opens a sandbox from the same address.
+        AEGIS_SANDBOXES_PER_CLIENT_HOUR: "1000",
       },
     },
   ],

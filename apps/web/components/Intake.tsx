@@ -10,7 +10,7 @@ import { ASSET_KIND, becauseText, plural } from "@/lib/labels";
 import { asPurpose } from "@/lib/purpose";
 import { Meter, TIER_NAME, Tag } from "./ds";
 
-type Mode = { kind: "register" } | { kind: "case"; caseId: string; previous: Record<string, unknown> };
+type Mode = { kind: "register" } | { kind: "case"; caseId: string; previous: Record<string, unknown>; previousPurpose?: string | null };
 
 const KINDS: { kind: AssetKind; available: boolean }[] = [
   { kind: "ai_system", available: true },
@@ -87,7 +87,7 @@ export function Intake({
   const [state, action, pending] = useActionState(mode.kind === "register" ? registerAndSubmit : submitIntake, IDLE);
   const [name, setName] = useState("");
   const [assetKind, setAssetKind] = useState<AssetKind>("ai_system");
-  const [purpose, setPurpose] = useState("");
+  const [purpose, setPurpose] = useState(mode.kind === "case" ? (mode.previousPurpose ?? "") : "");
   const [view, setView] = useState<"sentence" | "questions">(pack.sentence ? "sentence" : "questions");
   const [answers, setAnswers] = useState<Record<string, boolean>>(() =>
     mode.kind === "case"
@@ -153,6 +153,7 @@ export function Intake({
           <label htmlFor="purpose">What does it do? In your words</label>
           <textarea
             id="purpose"
+            name="purpose"
             rows={3}
             maxLength={2000}
             value={purpose}

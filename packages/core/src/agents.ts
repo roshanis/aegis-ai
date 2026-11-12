@@ -55,7 +55,7 @@ import {
 } from "./budget";
 import { GovernanceError } from "./errors";
 import type { AgentJob, AgentRuntime, DraftJob, DraftOutcome, EvalJob, JobQueue } from "./jobs";
-import { UUID, actorId, toCase, type Case, type CaseRow, type Kernel } from "./model";
+import { CASES_WITH_PURPOSE, UUID, actorId, toCase, type Case, type CaseRow, type Kernel } from "./model";
 import { openSecret, sealSecret, type Keyring } from "./secrets";
 
 /**
@@ -473,7 +473,7 @@ export function createAgents(k: Kernel, db: Database, options: AgentOptions = {}
   }
 
   async function loadCaseRow(tx: Connection, caseId: string): Promise<Case> {
-    const { rows } = await tx.query<CaseRow>("SELECT * FROM cases WHERE id = $1", [caseId]);
+    const { rows } = await tx.query<CaseRow>(`${CASES_WITH_PURPOSE} WHERE c.id = $1`, [caseId]);
     return toCase(rows[0]!);
   }
 
