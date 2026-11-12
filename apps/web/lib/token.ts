@@ -1,8 +1,9 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 /**
- * Session tokens: a payload and its HMAC. A visitor can read their own
- * token but cannot forge one for another tenant or person.
+ * Signed cookies: a JSON payload and its HMAC. A visitor can read their own
+ * token but cannot forge one for another tenant or person. Each kind of
+ * token signs under its own label, so one can never be replayed as another.
  */
 export interface SessionPayload {
   /** Tenant id. */
@@ -13,24 +14,56 @@ export interface SessionPayload {
   readonly exp: number;
 }
 
-const mac = (body: string, secret: string) => createHmac("sha256", secret).update(body).digest("base64url");
-
-export function signSession(payload: SessionPayload, secret: string): string {
-  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `${body}.${mac(body, secret)}`;
+/** A sign-in under way at a tenant's provider, kept until the provider sends the person back. */
+export interface PendingSignIn {
+  /** Tenant slug. */
+  readonly o: string;
+  readonly state: string;
+  readonly nonce: string;
+  /** PKCE code verifier. */
+  readonly v: string;
+  readonly exp: number;
 }
 
-export function verifySession(token: string, secret: string, now: number = Date.now()): SessionPayload | null {
+const mac = (label: string, body: string, secret: string) =>
+  createHmac("sha256", secret).update(`${label}.${body}`).digest("base64url");
+
+function sign(label: string, payload: object, secret: string): string {
+  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  return `${body}.${mac(label, body, secret)}`;
+}
+
+function verify(label: string, token: string, secret: string, now: number): Record<string, unknown> | null {
   const [body, signature, extra] = token.split(".");
   if (!body || !signature || extra !== undefined) return null;
-  const expected = Buffer.from(mac(body, secret));
+  const expected = Buffer.from(mac(label, body, secret));
   const given = Buffer.from(signature);
   if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
   try {
-    const payload = JSON.parse(Buffer.from(body, "base64url").toString()) as SessionPayload;
-    if (typeof payload.t !== "string" || typeof payload.u !== "string" || typeof payload.exp !== "number") return null;
-    return payload.exp > now ? payload : null;
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString()) as Record<string, unknown>;
+    if (typeof payload.exp !== "number" || payload.exp <= now) return null;
+    return payload;
   } catch {
     return null;
   }
+}
+
+const strings = (payload: Record<string, unknown>, keys: readonly string[]) => keys.every((k) => typeof payload[k] === "string");
+
+export function signSession(payload: SessionPayload, secret: string): string {
+  return sign("session", payload, secret);
+}
+
+export function verifySession(token: string, secret: string, now: number = Date.now()): SessionPayload | null {
+  const payload = verify("session", token, secret, now);
+  return payload && strings(payload, ["t", "u"]) ? (payload as unknown as SessionPayload) : null;
+}
+
+export function signPending(payload: PendingSignIn, secret: string): string {
+  return sign("sso", payload, secret);
+}
+
+export function verifyPending(token: string, secret: string, now: number = Date.now()): PendingSignIn | null {
+  const payload = verify("sso", token, secret, now);
+  return payload && strings(payload, ["o", "state", "nonce", "v"]) ? (payload as unknown as PendingSignIn) : null;
 }

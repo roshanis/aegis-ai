@@ -23,7 +23,7 @@ export async function startSandbox(): Promise<void> {
 }
 
 /** Pages a person may be sent back to after switching; anything else goes to the front page. */
-const SAFE_RETURN = /^\/(today|reviews|audit|agents|packs|registry(\/new|\/[0-9a-f-]{36})?)(\?[\w=&%.-]*)?$/;
+const SAFE_RETURN = /^\/(today|reviews|audit|agents|packs|people|registry(\/new|\/[0-9a-f-]{36})?)(\?[\w=&%.-]*)?$/;
 
 /** Act as someone else in the same sandbox. Refused for any tenant that is not a live sandbox. */
 export async function switchPersona(formData: FormData): Promise<void> {

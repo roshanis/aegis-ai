@@ -1,4 +1,4 @@
-import { createGovernance, inlineJobs, keyringFromEnv, type Governance, type JobQueue } from "@aegis/core";
+import { createGovernance, inlineJobs, keyringFromEnv, type Governance, type JobQueue, type Keyring } from "@aegis/core";
 import { pooled, serialized, type Database } from "@aegis/db";
 
 /**
@@ -14,6 +14,8 @@ import { pooled, serialized, type Database } from "@aegis/db";
 export interface Runtime {
   readonly db: Database;
   readonly gov: Governance;
+  /** The platform master keys, for secrets read outside a governance call (a tenant's SSO client secret). */
+  readonly keys: Keyring;
   /** "dbos" on Postgres, "inline" on PGlite. */
   readonly engine: "dbos" | "inline";
 }
@@ -32,9 +34,10 @@ async function openDatabase(): Promise<Database> {
 
 async function boot(): Promise<Runtime> {
   const db = await openDatabase();
+  const keys = keyringFromEnv();
   let queue: JobQueue | null = null;
   const gov = createGovernance(db, {
-    secrets: keyringFromEnv(),
+    secrets: keys,
     jobs: { enqueue: (job) => queue?.enqueue(job) },
     endpointPolicy: { allowPrivateEndpoints: process.env.AEGIS_ALLOW_PRIVATE_MODEL_ENDPOINTS === "1" },
   });
@@ -48,12 +51,12 @@ async function boot(): Promise<Runtime> {
     });
     queue = jobs;
     await jobs.recover();
-    return { db, gov, engine: "dbos" };
+    return { db, gov, keys, engine: "dbos" };
   }
   const jobs = inlineJobs(() => gov.agentRuntime);
   queue = jobs;
   await jobs.recover();
-  return { db, gov, engine: "inline" };
+  return { db, gov, keys, engine: "inline" };
 }
 
 export function runtime(): Promise<Runtime> {

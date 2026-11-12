@@ -20,7 +20,8 @@ type IconName =
   | "check"
   | "cross"
   | "download"
-  | "link";
+  | "link"
+  | "people";
 
 const PATHS: Record<IconName, ReactNode> = {
   today: (
@@ -68,6 +69,12 @@ const PATHS: Record<IconName, ReactNode> = {
     <>
       <rect x="5" y="11" width="14" height="9" rx="2" />
       <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  people: (
+    <>
+      <circle cx="9" cy="8.5" r="3.5" />
+      <path d="M3 19.5a6 6 0 0 1 12 0M15.5 5.2a3.5 3.5 0 0 1 0 6.6M17.5 14a6 6 0 0 1 3.5 5.5" />
     </>
   ),
   check: <path d="M5 12.5l4.5 4.5L19 7.5" />,

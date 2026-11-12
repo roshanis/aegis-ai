@@ -2628,8 +2628,8 @@ a.bar-row:hover .bar-label {
 
   .rail a {
     width: auto;
-    min-width: 52px;
-    flex: 1 0 auto;
+    min-width: 44px;
+    flex: 1 1 0;
     min-height: 52px;
     font-size: 10px;
   }
@@ -2839,5 +2839,53 @@ a.bar-row:hover .bar-label {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* Sign in: the landing's hero, quieter. */
+.landing-hero.signin h1 {
+  font-size: clamp(44px, 6vw, 72px);
+}
+
+.landing-hero.signin p.error {
+  color: var(--status-bad);
+  font-size: 15px;
+  line-height: 22px;
+}
+
+/* People: the editor opens in its own row; on phones each person is a card. */
+.people-editor > td {
+  padding-top: 0;
+}
+
+.people-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px 32px;
+  align-items: start;
+}
+
+@media (max-width: 760px) {
+  .people-table thead {
+    display: none;
+  }
+
+  .people-table tr {
+    display: block;
+    padding: 12px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .people-table tr.people-editor {
+    border-top: 0;
+    padding-top: 0;
+  }
+
+  .people-table td,
+  .people-table td:first-child,
+  .people-table td:last-child {
+    display: block;
+    border-top: 0;
+    padding: 4px 0;
   }
 }
