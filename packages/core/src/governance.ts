@@ -40,6 +40,7 @@ import { GovernanceError } from "./errors";
 import { createContent } from "./content";
 import { createPeople } from "./people";
 import { createTools } from "./tools";
+import { authenticateApiKey, createApiKeys } from "./apikeys";
 import { createRecords } from "./records";
 import {
   PACK_KIND,
@@ -243,6 +244,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
   const people = createPeople(kernel);
   const content = createContent(kernel);
   const tools = createTools(kernel);
+  const apiKeys = createApiKeys(kernel);
 
   /** Deterministic triage, then the fast lane or a full review. No model is involved. */
   async function triageCase(tx: Connection, submitted: Case, pack: InitiativePack, tenant: TenantId): Promise<SubmitResult> {
@@ -318,7 +320,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
     };
   }
 
-  return {
+  const service = {
     /** The signed-in person, as the tenant currently knows them; null if they are not in it. */
     principal(tenant: TenantId, user: string): Promise<HumanPrincipal | null> {
       if (!UUID.test(user)) return Promise.resolve(null);
@@ -601,7 +603,22 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
     suggestIntake: agents.suggestIntake,
     /** The steps agent workflows run, for a workflow engine. */
     agentRuntime: agents.runtime,
-    addEvidence: assurance.addEvidence,
+    addEvidence: (actor: Principal, input: Parameters<typeof assurance.addEvidence>[1]) => assurance.addEvidence(actor, input),
+
+    /**
+     * Evidence a tool posts with an API key. The key acts for the admin who
+     * made it, so it stops working when they stop being an active admin.
+     * Any failure to authenticate reads the same: no such key.
+     */
+    async addEvidenceWithKey(token: string, input: Parameters<typeof assurance.addEvidence>[1]): Promise<string> {
+      const key = await authenticateApiKey(db, token, "evidence:write", now());
+      const actor = key ? await service.principal(key.tenant, key.userId) : null;
+      if (!key || !actor || !can(actor, "tenant.manage")) throw new GovernanceError("forbidden", "that API key is not valid");
+      return assurance.addEvidence(actor, input, { apiKeyId: key.keyId });
+    },
+    apiKeys: apiKeys.apiKeys,
+    createApiKey: apiKeys.createApiKey,
+    revokeApiKey: apiKeys.revokeApiKey,
     withdrawEvidence: assurance.withdrawEvidence,
     requestException: assurance.requestException,
     actOnException: assurance.actOnException,
@@ -690,6 +707,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
     people: people.people,
     updatePerson: people.updatePerson,
   };
+  return service;
 }
 
 export type Governance = ReturnType<typeof createGovernance>;

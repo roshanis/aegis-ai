@@ -24,7 +24,7 @@ function Evidence({ items, assetId }: { items: readonly EvidenceView[]; assetId:
           </span>
           {e.detail ? <span>{e.detail}</span> : null}
           <span className="caption muted">
-            {e.addedBy.name ?? "A removed person"} · {ago(e.addedAt)}
+            {e.via ? `Posted by ${e.via}, a key of ${e.addedBy.name ?? "a removed person"}` : (e.addedBy.name ?? "A removed person")} · {ago(e.addedAt)}
             {e.canWithdraw ? (
               <>
                 {" · "}
@@ -51,6 +51,11 @@ export function ControlsTab({ view }: { view: AssetView }) {
   const domains = [...new Set(controls.map((c) => c.domainLabel))];
   return (
     <div className="stack" style={{ gap: 18 }}>
+      {canContribute ? (
+        <p className="caption muted">
+          Tools can post evidence here through the evidence API, with this system&apos;s id <code className="mono-s">{view.asset.id}</code> and a control id.
+        </p>
+      ) : null}
       {domains.map((domain) => (
         <section className="panel stack" key={domain} style={{ gap: 0, padding: 0 }} aria-label={domain}>
           <h2 className="section-title" style={{ padding: "16px 22px 8px" }}>

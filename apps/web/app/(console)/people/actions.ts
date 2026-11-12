@@ -47,3 +47,28 @@ export async function updatePerson(_: ActionState, form: FormData): Promise<Acti
     }),
   );
 }
+
+export interface KeyState extends ActionState {
+  /** The new key, shown this once. */
+  readonly key: string | null;
+}
+
+export async function createApiKey(_: KeyState, form: FormData): Promise<KeyState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  try {
+    const { key } = await gov.createApiKey(principal, { name: text(form, "name") });
+    revalidatePath("/people");
+    return { error: null, key };
+  } catch (error) {
+    const refused = refusal(error);
+    if (refused) return { error: refused.message, key: null };
+    throw error;
+  }
+}
+
+export async function revokeApiKey(_: ActionState, form: FormData): Promise<ActionState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  return attempt(() => gov.revokeApiKey(principal, text(form, "keyId")));
+}

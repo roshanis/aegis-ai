@@ -2,6 +2,7 @@ import { can } from "@aegis/domain";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { ApiKeys } from "@/components/ApiKeys";
 import { AddPerson, PersonRow } from "@/components/People";
 import { Tag } from "@/components/ds";
 import { governance } from "@/lib/db";
@@ -14,7 +15,8 @@ export const metadata: Metadata = { title: "People" };
 export default async function PeoplePage() {
   const { principal, tenant } = await requireViewer();
   if (!can(principal, "tenant.manage")) redirect("/today");
-  const { people, sso, domains } = await (await governance()).people(principal);
+  const gov = await governance();
+  const [{ people, sso, domains }, keys] = await Promise.all([gov.people(principal), gov.apiKeys(principal)]);
   const h = await headers();
   const origin = publicOrigin(`${h.get("x-forwarded-proto") ?? "http"}://${h.get("host") ?? "localhost"}`);
   const active = people.filter((p) => p.active).length;
@@ -92,6 +94,19 @@ export default async function PeoplePage() {
             ))}
           </tbody>
         </table>
+      </section>
+
+      <section className="panel stack" style={{ gap: 12 }} aria-label="API keys">
+        <div className="stack" style={{ gap: 4 }}>
+          <span className="eyebrow">Evidence API</span>
+          <h2 className="section-title">API keys</h2>
+          <p className="caption muted">Your pipelines and scanners post evidence to a control with a key, instead of someone pasting a link.</p>
+        </div>
+        <ApiKeys
+          keys={keys}
+          endpoint={`${origin}/api/v1/evidence`}
+          when={Object.fromEntries(keys.flatMap((k) => [[`${k.id}:made`, ago(k.createdAt)], [`${k.id}:used`, k.lastUsedAt ? ago(k.lastUsedAt) : ""]]))}
+        />
       </section>
     </>
   );

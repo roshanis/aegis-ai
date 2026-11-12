@@ -87,6 +87,8 @@ export interface EvidenceView {
   readonly detail: string | null;
   readonly addedBy: Person;
   readonly addedAt: Date;
+  /** The API key a tool posted it through, when a tool did. */
+  readonly via: string | null;
   readonly canWithdraw: boolean;
 }
 
@@ -168,6 +170,7 @@ interface EvidenceRow {
   added_by: string;
   added_by_name: string | null;
   added_at: Date;
+  via: string | null;
 }
 
 interface ExceptionRow {
@@ -242,8 +245,8 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
   async function evidenceRows(tx: Connection, assetId: string): Promise<EvidenceRow[]> {
     const { rows } = await tx.query<EvidenceRow>(
       `SELECT e.id, e.control_id, e.condition_id, e.kind, e.title, e.url, e.detail, e.added_by,
-              u.display_name AS added_by_name, e.added_at
-       FROM evidence e LEFT JOIN users u ON u.id = e.added_by
+              u.display_name AS added_by_name, e.added_at, k.name AS via
+       FROM evidence e LEFT JOIN users u ON u.id = e.added_by LEFT JOIN api_keys k ON k.id = e.api_key_id
        WHERE e.asset_id = $1
        ORDER BY e.added_at, e.id`,
       [assetId],
@@ -351,6 +354,7 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
       detail: e.detail,
       addedBy: { id: e.added_by, name: e.added_by_name },
       addedAt: new Date(e.added_at),
+      via: e.via,
       canWithdraw: actor.kind === "human" && actor.userId === e.added_by,
     });
     const caseOwner = new Map(cases.map((c) => [c.id, c.ownerId]));
@@ -646,6 +650,8 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
         url?: string;
         detail?: string;
       },
+      /** Set when a tool posted it with an API key acting for `actor`. */
+      via?: { readonly apiKeyId: string },
     ): Promise<string> {
       return k.inTenant(actor, async (tx) => {
         const asset = await k.loadAsset(tx, actor, input.assetId, true);
@@ -681,16 +687,18 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
         const id = randomUUID();
         const at = k.now();
         await tx.query(
-          `INSERT INTO evidence (id, tenant_id, asset_id, control_id, condition_id, kind, title, url, detail, added_by, added_at)
-           VALUES ($1, current_tenant_id(), $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [id, asset.id, input.controlId ?? null, input.conditionId ?? null, input.kind, title, input.kind === "link" ? url : null, detail, actor.userId, at.toISOString()],
+          `INSERT INTO evidence (id, tenant_id, asset_id, control_id, condition_id, kind, title, url, detail, added_by, added_at, api_key_id)
+           VALUES ($1, current_tenant_id(), $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+          [id, asset.id, input.controlId ?? null, input.conditionId ?? null, input.kind, title, input.kind === "link" ? url : null, detail, actor.userId, at.toISOString(), via?.apiKeyId ?? null],
         );
         await appendAudit(tx, {
           assetId: asset.id,
-          actorKind: actor.kind,
-          actorId: actorId(actor),
+          // A tool's post is recorded as the key, acting for the admin who made it.
+          actorKind: via ? "system" : actor.kind,
+          actorId: via ? `api-key:${via.apiKeyId}` : actorId(actor),
           action: "evidence.add",
           payload: {
+            ...(via ? { onBehalfOf: actor.userId } : {}),
             evidenceId: id,
             ...(input.controlId ? { controlId: input.controlId } : { conditionId: input.conditionId! }),
             kind: input.kind,
