@@ -54,6 +54,7 @@ beforeAll(async () => {
     "0010_sso.sql",
     "0011_member_communications.sql",
     "0012_agent_tools.sql",
+    "0013_api_keys.sql",
   ]);
   expect(await migrate(db)).toEqual([]);
   await seedTenant(A, "tenant-a", userA, assetA);

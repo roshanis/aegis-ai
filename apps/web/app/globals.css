@@ -3010,3 +3010,22 @@ a.bar-row:hover .bar-label {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ------------------------------------------------------------- API keys */
+.key-reveal {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+.key-list li {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  gap: 12px;
+}
+.key-list li[data-revoked] {
+  opacity: 0.6;
+}

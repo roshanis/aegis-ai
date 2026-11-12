@@ -126,8 +126,20 @@
      edited or deleted. One page lists every agent's tools. Deferred:
      reading a live MCP server directly, and giving the review drafter
      the tool list.
+   - *Evidence API: done.* An admin makes an API key on the People page
+     (shown once, kept as a hash). A pipeline or scanner posts a link or
+     an attestation to `POST /api/v1/evidence` for a control or condition.
+     The evidence is checked exactly as a person's is, shows which key
+     posted it, and is audited as the key acting for the admin who made
+     it. A key stops working when it is revoked or its maker stops being
+     an active admin. Deferred: pulling evidence from GitHub or SharePoint,
+     and per-asset key scopes.
 
 ## Known gaps
+
+- **API keys are tenant-wide.** A key can post evidence to any control on
+  any system in its tenant; there are no per-system keys yet, and the
+  evidence API has no rate limit of its own.
 
 - **The tool inventory is what owners record.** Aegis does not see what an
   agent actually calls at runtime, and MCP annotations are the server's
