@@ -68,8 +68,15 @@ export function exceptionActive(state: ExceptionState, expiresAt: Date | null, n
 export function useBlockers(input: {
   readonly pendingConditions: number;
   readonly uncoveredGates: readonly { readonly id: string; readonly name: string }[];
+  /** Tools added to an agent after the decision that cleared it. */
+  readonly toolsSinceApproval?: readonly string[];
 }): string[] {
   const blockers: string[] = [];
+  const tools = input.toolsSinceApproval ?? [];
+  if (tools.length > 0) {
+    const named = tools.length <= 3 ? `: ${tools.join(", ")}` : "";
+    blockers.push(`${tools.length} tool${tools.length === 1 ? " was" : "s were"} added after its approval and need a re-review${named}`);
+  }
   if (input.pendingConditions > 0) {
     blockers.push(
       `${input.pendingConditions} condition${input.pendingConditions === 1 ? "" : "s"} must be met before use`,

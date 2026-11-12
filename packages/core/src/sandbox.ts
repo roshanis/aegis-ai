@@ -186,12 +186,29 @@ export async function createSandbox(
 
   // Paused by monitoring; an incident review waits on its owner.
   const agent = await review("Claims triage agent", "agent", yesTo("careCoverageInfluence", "phi", "individualImpact"));
+  // What it can reach, recorded before the decision so the approval covers it.
+  await gov.addAgentTools(riley, agent.assetId, [
+    { server: "claims-core", name: "get_claim", effect: "read", phi: true, description: "Read one claim with its lines and diagnosis codes" },
+    { server: "claims-core", name: "search_policies", effect: "read", phi: false, description: "Search medical policies by code" },
+    { server: "claims-core", name: "set_claim_queue", effect: "write", phi: true, description: "Route a claim to a review queue" },
+    { server: "provider-directory", name: "find_provider", effect: "read", phi: false, description: "Look up a provider by NPI" },
+  ]);
   await evidence(agent.assetId);
   await sign(agent.assetId);
   await gov.actOnCase(avery, agent.caseId, "approve", "Approved for a two-region pilot with weekly denial-rate reporting.");
   await gov.actOnAsset(admin, agent.assetId, "activate");
   await gov.actOnAsset(monitor, agent.assetId, "pause", "Denial rate drifted 14% above the pilot baseline.");
   await gov.openCase(admin, { assetId: agent.assetId, trigger: "incident" });
+
+  // In use, fast-laned with its tools recorded first, so the decision covers them.
+  const directory = await gov.registerAsset(riley, { kind: "agent", name: "Provider directory assistant" });
+  await gov.addAgentTools(riley, directory.id, [
+    { server: "provider-directory", name: "find_provider", effect: "read", phi: false, description: "Look up a provider by NPI or name" },
+    { server: "provider-directory", name: "list_specialties", effect: "read", phi: false, description: "List the network's specialties" },
+  ]);
+  const directoryCase = await gov.openCase(riley, { assetId: directory.id });
+  await gov.submitCase(riley, directoryCase.id, yesTo());
+  await gov.actOnAsset(admin, directory.id, "activate");
 
   // Rejected after the responsible-AI reviewer returned it, so not cleared for use.
   const fraud = await review(

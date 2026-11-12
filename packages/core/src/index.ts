@@ -68,3 +68,4 @@ export {
   type SsoSettings,
 } from "./sso";
 export type { CommunicationView, ContentVersionView, CriterionView } from "./content";
+export type { AgentToolsView, InventoryRow, ToolView } from "./tools";

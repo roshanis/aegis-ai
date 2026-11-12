@@ -467,3 +467,10 @@ export const MARKET: Record<string, string> = {
   UK: "United Kingdom",
   EU: "European Union",
 };
+
+/** What an agent's tool can do, in words, with how much it should worry a reviewer. */
+export const TOOL_EFFECT: Readonly<Record<string, { label: string; hint: string; tone: Tone }>> = {
+  read: { label: "Reads", hint: "only looks things up", tone: "neutral" },
+  write: { label: "Changes data", hint: "changes records in the system behind it", tone: "warn" },
+  external: { label: "Acts outside", hint: "sends, posts or pays outside the system", tone: "bad" },
+};

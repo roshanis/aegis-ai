@@ -2977,3 +2977,36 @@ a.bar-row:hover .bar-label {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---------------------------------------------------------- agent tools */
+.tool-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.tools ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.tool {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 22px;
+  border-top: 1px solid var(--line);
+}
+.tool strong {
+  overflow-wrap: anywhere;
+}
+.tool-table td,
+.tool-table th {
+  vertical-align: top;
+}
+@media (max-width: 720px) {
+  .tool-fields,
+  .tool {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

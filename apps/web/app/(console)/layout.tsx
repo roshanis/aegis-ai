@@ -12,6 +12,7 @@ import { requireViewer } from "@/lib/viewer";
 const PAGES: PaletteItem[] = [
   { href: "/today", label: "Today", group: "Pages" },
   { href: "/registry", label: "Registry", group: "Pages" },
+  { href: "/registry/tools", label: "Agent tools", group: "Pages" },
   { href: "/reviews", label: "Reviews", group: "Pages" },
   { href: "/audit", label: "Audit log", group: "Pages" },
   { href: "/packs", label: "Policy packs", group: "Pages" },
