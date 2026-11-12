@@ -1,6 +1,6 @@
-import type { AssetView } from "@aegis/core";
+import type { AssetView, CommunicationView } from "@aegis/core";
 import { caseLabel } from "@aegis/domain";
-import type { InitiativePack } from "@aegis/frameworks";
+import type { ContentPack, InitiativePack } from "@aegis/frameworks";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -8,7 +8,9 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { CaseTable } from "@/components/CaseTable";
 import { ConditionsTab, ControlsTab, HistoryTab } from "@/components/CaseTabs";
 import { RiskDial, Tag } from "@/components/ds";
-import { OpenReviewForm, OperatePanel, StartReview } from "@/components/Forms";
+import { CommunicationForm } from "@/components/CommunicationForm";
+import { CommunicationPanel } from "@/components/Communication";
+import { DecisionForm, OpenReviewForm, OperatePanel, StartReview } from "@/components/Forms";
 import { Intake } from "@/components/Intake";
 import { governance } from "@/lib/db";
 import { refusal } from "@/lib/errors";
@@ -59,15 +61,66 @@ function Clearance({ view }: { view: AssetView }) {
   );
 }
 
+/** A member communication: the version shown, and the officer's decision or the writer's revision under the latest. */
+function ContentTab({
+  view,
+  communication,
+  pack,
+  version,
+  baseHref,
+}: {
+  view: AssetView;
+  communication: CommunicationView | null;
+  /** The pack the writer's draft is checked against as they type; only when they may submit. */
+  pack: ContentPack | null;
+  version: string | undefined;
+  baseHref: string;
+}) {
+  const { openCase, actions } = view;
+  const latest = communication?.versions.at(-1);
+  if (!communication || !latest) {
+    return (
+      <section className="panel panel-xl stack" style={{ gap: 18 }}>
+        {openCase && pack ? (
+          <CommunicationForm pack={pack} mode={{ kind: "case", caseId: openCase.id, body: "", markets: [] }} />
+        ) : (
+          <p className="muted">{openCase ? `Waiting on ${view.ownerName ?? "the owner"} to paste the text.` : "Not reviewed yet."}</p>
+        )}
+      </section>
+    );
+  }
+  const shown = communication.versions.find((v) => String(v.version) === version) ?? latest;
+  const deciding = openCase && actions.openCase.includes("approve");
+  return (
+    <CommunicationPanel view={communication} shown={shown} baseHref={baseHref}>
+      {deciding ? (
+        <section className="stack" style={{ gap: 10 }} aria-label="Decision">
+          <h2 className="section-title">Your decision</h2>
+          <DecisionForm caseId={openCase.id} actions={actions.openCase} readiness={null} proposals={[]} labels={{}} reasonAlways />
+        </section>
+      ) : openCase && pack ? (
+        <section className="stack" style={{ gap: 10 }} aria-label="Revise">
+          <h2 className="section-title">Send a new version</h2>
+          <CommunicationForm pack={pack} mode={{ kind: "case", caseId: openCase.id, body: latest.body, markets: latest.markets }} />
+        </section>
+      ) : openCase ? (
+        <p className="muted">
+          {openCase.state === "changes_requested" ? `Waiting on ${view.ownerName ?? "the owner"} to send a new version.` : "Waiting on the compliance officer."}
+        </p>
+      ) : null}
+    </CommunicationPanel>
+  );
+}
+
 export default async function CasePage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ tab?: string; seat?: string }>;
+  searchParams: Promise<{ tab?: string; seat?: string; v?: string }>;
 }) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
-  const tab: Tab = TABS.some((t) => t.id === query.tab) ? (query.tab as Tab) : "table";
+  let tab: Tab = TABS.some((t) => t.id === query.tab) ? (query.tab as Tab) : "table";
   const { principal } = await requireViewer();
   const gov = await governance();
 
@@ -81,11 +134,16 @@ export default async function CasePage({
   const history = await gov.assetHistory(principal, id);
   const { asset, openCase, actions, assurance } = view;
   const latest = openCase ?? view.cases.at(-1) ?? null;
+  const isContent = asset.kind === "content_item";
+  const communication: CommunicationView | null = isContent && latest ? await gov.communication(principal, latest.id) : null;
+  if (isContent && tab !== "history") tab = "table";
+  const writing = isContent && openCase && (actions.openCase.includes("submit") || actions.openCase.includes("resubmit"));
+  const writerPack = writing ? ((await gov.policyPack(principal, { caseId: openCase.id })) as ContentPack) : null;
   const triaged = view.cases.filter((c) => c.triage !== null).at(-1) ?? null;
   const packOf = triaged ?? latest;
   const pack = packOf ? await gov.policyPack(principal, { caseId: packOf.id }) : null;
   const initiative = pack?.kind === "initiative" ? pack : null;
-  const mustAnswer = openCase && (actions.openCase.includes("submit") || actions.openCase.includes("resubmit"));
+  const mustAnswer = !isContent && openCase && (actions.openCase.includes("submit") || actions.openCase.includes("resubmit"));
   const intakePack = mustAnswer ? ((await gov.policyPack(principal, { caseId: openCase.id })) as InitiativePack) : null;
   const assistant = mustAnswer ? await gov.agentOn(principal, "intake") : false;
   const previous = view.cases.filter((c) => Object.keys(c.answers).length > 0).at(-1)?.answers ?? {};
@@ -102,6 +160,7 @@ export default async function CasePage({
     history: String(history.length),
   };
   const base = `/registry/${id}`;
+  const tabs = isContent ? [{ id: "table" as const, label: "The communication" }, TABS[3]] : TABS;
   const state = ASSET_STATE[asset.state];
   const fastLane = latest ? history.find((e) => e.caseId === latest.id && e.action === "case.fast_lane_approve") : undefined;
 
@@ -148,7 +207,7 @@ export default async function CasePage({
           {Object.keys(previous).length > 0 ? <p className="muted">Last answers filled in.</p> : null}
           <Intake pack={{ ...intakePack, goldenSets: undefined }} mode={{ kind: "case", caseId: openCase.id, previous }} assistant={assistant} />
         </section>
-      ) : openCase && (openCase.state === "draft" || openCase.state === "changes_requested") ? (
+      ) : !isContent && openCase && (openCase.state === "draft" || openCase.state === "changes_requested") ? (
         <p className="notice">
           <span className="notice-mark" aria-hidden="true">
             …
@@ -162,7 +221,7 @@ export default async function CasePage({
       {openCase && actions.openCase.includes("start_review") ? <StartReview caseId={openCase.id} /> : null}
 
       <nav className="tabs" aria-label="Case sections">
-        {TABS.map((t) => (
+        {tabs.map((t) => (
           <Link key={t.id} href={t.id === "table" ? base : `${base}?tab=${t.id}`} aria-current={tab === t.id ? "page" : undefined}>
             {t.label}
             {counts[t.id] ? <span className="count">{counts[t.id]}</span> : null}
@@ -170,7 +229,9 @@ export default async function CasePage({
         ))}
       </nav>
 
-      {tab === "table" ? (
+      {tab === "table" && isContent ? (
+        <ContentTab view={view} communication={communication} pack={writerPack} version={query.v} baseHref={base} />
+      ) : tab === "table" ? (
         assurance.reviews.length > 0 ? (
           <CaseTable view={view} pack={initiative} history={history} selected={query.seat ?? null} baseHref={base} />
         ) : fastLane && latest ? (

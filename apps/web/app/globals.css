@@ -2889,3 +2889,91 @@ a.bar-row:hover .bar-label {
     padding: 4px 0;
   }
 }
+
+/* Member communications: the text beside the pack's rules. */
+.communication {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.communication-body {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  line-height: 26px;
+}
+
+.communication-body mark {
+  background: transparent;
+  color: inherit;
+  border-bottom: 2px solid var(--status-bad);
+  box-shadow: inset 0 -0.5em 0 color-mix(in srgb, var(--status-bad) 18%, transparent);
+}
+
+.communication-body mark[data-unsure] {
+  border-bottom-color: var(--status-warn);
+  box-shadow: inset 0 -0.5em 0 color-mix(in srgb, var(--status-warn) 18%, transparent);
+}
+
+.communication-body mark sup {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.communication-input {
+  font-family: inherit;
+  line-height: 24px;
+}
+
+.criteria {
+  display: flex;
+  flex-direction: column;
+}
+
+.criterion {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.criterion:first-child {
+  border-top: 0;
+}
+
+.criterion-mark {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1.5px solid var(--line);
+  color: var(--ink-muted);
+}
+
+.criterion-mark[data-tone="ok"] {
+  border-color: var(--status-ok);
+  color: var(--status-ok);
+}
+
+.criterion-mark[data-tone="bad"] {
+  border-color: var(--status-bad);
+  color: var(--status-bad);
+}
+
+.criterion-mark[data-tone="warn"] {
+  border-color: var(--status-warn);
+  color: var(--status-warn);
+}
+
+@media (max-width: 1100px) {
+  .communication {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -37,6 +37,7 @@ import type { InitiativePack, PolicyPack } from "@aegis/frameworks";
 import { createAgents, type AgentOptions } from "./agents";
 import { createAssurance, type Assurance, type NewCondition } from "./assurance";
 import { GovernanceError } from "./errors";
+import { createContent } from "./content";
 import { createPeople } from "./people";
 import { createRecords } from "./records";
 import {
@@ -239,6 +240,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
   const assurance = createAssurance(kernel, agents);
   const records = createRecords(kernel, assurance);
   const people = createPeople(kernel);
+  const content = createContent(kernel);
 
   /** Deterministic triage, then the fast lane or a full review. No model is involved. */
   async function triageCase(tx: Connection, submitted: Case, pack: InitiativePack, tenant: TenantId): Promise<SubmitResult> {
@@ -529,7 +531,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
         const pack = await loadPack(tx, current);
 
         if (pack.kind !== "initiative") {
-          return { case: await moveCase(tx, current, action, actor), fastLane: null };
+          throw new GovernanceError("invalid", "a content review is submitted with the communication's text");
         }
         validateAnswers(pack, answers);
         await tx.query("UPDATE cases SET answers = $2 WHERE id = $1", [current.id, JSON.stringify(answers)]);
@@ -675,6 +677,9 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
     recentDecisions: records.recentDecisions,
     policyPacks: records.policyPacks,
     exportEvidencePack: records.exportEvidencePack,
+
+    submitCommunication: content.submitCommunication,
+    communication: content.communication,
 
     people: people.people,
     updatePerson: people.updatePerson,

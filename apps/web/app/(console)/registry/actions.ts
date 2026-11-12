@@ -200,3 +200,29 @@ export async function openReview(_: ActionState, form: FormData): Promise<Action
     gov.openCase(principal, { assetId: text(form, "assetId"), trigger: text(form, "trigger") as CaseTrigger }),
   );
 }
+
+const markets = (form: FormData) => form.getAll("markets").map(String);
+
+/** Register a member communication, open its review and submit its text: the writer's one form. */
+export async function registerCommunication(_: ActionState, form: FormData): Promise<ActionState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  let assetId: string | null = null;
+  const result = await attempt(async () => {
+    const asset = await gov.registerAsset(principal, { kind: "content_item", name: text(form, "name") });
+    assetId = asset.id;
+    const draft = await gov.openCase(principal, { assetId: asset.id });
+    await gov.submitCommunication(principal, draft.id, { body: String(form.get("body") ?? ""), markets: markets(form) });
+  });
+  if (assetId) redirect(`/registry/${assetId}`);
+  return result;
+}
+
+/** Submit a communication's text on an open review: the first time, or a new version after changes were asked for. */
+export async function submitCommunication(_: ActionState, form: FormData): Promise<ActionState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  return attempt(() =>
+    gov.submitCommunication(principal, text(form, "caseId"), { body: String(form.get("body") ?? ""), markets: markets(form) }),
+  );
+}

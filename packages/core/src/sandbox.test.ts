@@ -49,6 +49,8 @@ describe("sandbox", () => {
       ["Claims triage agent", "paused", "draft", false],
       ["Provider fraud-scoring model", "registered", null, false],
       ["Member benefits chat assistant", "registered", "in_review", false],
+      ["Diabetes eye exam reminder postcard", "active", null, true],
+      ["2027 benefits flyer", "registered", "ai_reviewed", false],
     ]);
     const transcription = views.find((v) => v.asset.name === "Call transcription API")!;
     expect(transcription.clearance).toMatchObject({
@@ -56,6 +58,16 @@ describe("sandbox", () => {
       reason: "L-01 Vendor contract AI addendum has no evidence or exception; P-01 Vendor risk assessment has no evidence or exception",
     });
     expect(await withTenant(pglite, sandbox.tenantId, verifyAuditChain)).toBeNull();
+  });
+
+  it("seeds member communications through the content check and an officer's request for changes", async () => {
+    const flyer = (await gov.listAssetViews(await as("Avery Brooks"))).find((v) => v.asset.name === "2027 benefits flyer")!;
+    const view = await gov.communication(await as("Avery Brooks"), flyer.openCase!.id);
+    expect(view.versions.map((v) => [v.version, v.verdict, v.findings.map((f) => f.criterionId)])).toEqual([
+      [1, "fail", ["M1", "M7", "M14"]],
+      [2, "needs_human_review", []],
+    ]);
+    expect(flyer.actions.openCase).toEqual(["approve", "request_changes", "reject"]);
   });
 
   it("leaves each persona something to do", async () => {
