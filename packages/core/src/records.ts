@@ -1,4 +1,4 @@
-import { appendAudit, sha256Hex, verifyAuditChain, type AuditPayload, type Connection } from "@aegis/db";
+import { appendAudit, checkAuditChain, sha256Hex, type AuditPayload, type Connection } from "@aegis/db";
 import {
   can,
   caseLabel,
@@ -55,6 +55,10 @@ export interface ChainStatus {
   readonly brokenAt: number | null;
   readonly latest: string | null;
   readonly events: number;
+  /** Events recomputed this time; earlier ones were verified up to a checkpoint. */
+  readonly walked: number;
+  /** True when the whole chain was recomputed, ignoring checkpoints. */
+  readonly full: boolean;
 }
 
 export interface SignOff {
@@ -209,12 +213,10 @@ export function createRecords(k: Kernel, assurance: { view: (tx: Connection, act
     return rows.map(toEntry);
   }
 
-  async function chainStatus(tx: Connection): Promise<ChainStatus> {
-    const brokenAt = await verifyAuditChain(tx);
-    const { rows } = await tx.query<{ hash: string | null; n: number }>(
-      "SELECT (SELECT hash FROM audit_events ORDER BY id DESC LIMIT 1) AS hash, (SELECT count(*)::int FROM audit_events) AS n",
-    );
-    return { intact: brokenAt === null, brokenAt, latest: rows[0]?.hash ?? null, events: rows[0]?.n ?? 0 };
+  /** From the latest checkpoint, or the whole chain when `full`. */
+  async function chainStatus(tx: Connection, full = false): Promise<ChainStatus> {
+    const check = await checkAuditChain(tx, k.now(), { full });
+    return { intact: check.brokenAt === null, brokenAt: check.brokenAt, latest: check.latest, events: check.events, walked: check.walked, full };
   }
 
   /** A case and its asset, if this viewer may see them. Reads only: nothing is locked. */
@@ -222,8 +224,8 @@ export function createRecords(k: Kernel, assurance: { view: (tx: Connection, act
     const notFound = new GovernanceError("not_found", `case ${caseId} not found`);
     if (!UUID.test(caseId)) throw notFound;
     const { rows } = await tx.query<CaseRow & { a_id: string; a_kind: AssetRow["kind"]; a_name: string; a_state: AssetRow["state"]; a_owner: string; a_created: Date }>(
-      `SELECT c.*, a.id AS a_id, a.kind AS a_kind, a.name AS a_name, a.state AS a_state, a.owner_id AS a_owner, a.created_at AS a_created
-       FROM cases c JOIN assets a ON a.id = c.asset_id WHERE c.id = $1`,
+      `SELECT c.*, pn.body AS purpose, a.id AS a_id, a.kind AS a_kind, a.name AS a_name, a.state AS a_state, a.owner_id AS a_owner, a.created_at AS a_created
+       FROM cases c JOIN assets a ON a.id = c.asset_id LEFT JOIN notes pn ON pn.id = c.purpose_note_id WHERE c.id = $1`,
       [caseId],
     );
     const row = rows[0];
@@ -287,6 +289,11 @@ export function createRecords(k: Kernel, assurance: { view: (tx: Connection, act
     /** The audit log as this viewer may see it, newest first unless asked otherwise, and whether the chain verifies. */
     auditLog(actor: Principal, query: EventQuery = {}): Promise<{ events: HistoryEntry[]; chain: ChainStatus }> {
       return k.inTenant(actor, async (tx) => ({ events: await events(tx, actor, query), chain: await chainStatus(tx) }));
+    },
+
+    /** Recompute the whole chain, ignoring checkpoints: what an auditor runs before relying on the log. */
+    verifyAuditLog(actor: Principal): Promise<ChainStatus> {
+      return k.inTenant(actor, (tx) => chainStatus(tx, true));
     },
 
     /** Everything that happened to one asset and its cases, oldest first. */
@@ -371,7 +378,8 @@ export function createRecords(k: Kernel, assurance: { view: (tx: Connection, act
         const r = await record(tx, actor, caseId);
         const cases = await k.loadCases(tx, r.asset.id);
         const view = await assurance.view(tx, actor, r.asset, cases);
-        const chain = await chainStatus(tx);
+        // An export stands on its own: walk the whole chain, not from a checkpoint.
+        const chain = await chainStatus(tx, true);
         const at = k.now();
         const person = (p: Person | null) => (p ? { id: p.id, name: p.name } : null);
         const pack = {
@@ -389,6 +397,7 @@ export function createRecords(k: Kernel, assurance: { view: (tx: Connection, act
             tier: r.case.tier,
             tierRule: r.tierRule,
             triage: r.case.triage,
+            purpose: r.case.purpose,
             answers: r.case.answers,
             fastLane: r.fastLane,
           },

@@ -6,7 +6,7 @@ import { healthcareAiPack } from "@aegis/frameworks";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createGovernance, type Governance } from "./governance";
 import { provisionTenant } from "./provision";
-import { SANDBOX_LIFETIME_MS, createSandbox, purgeExpiredSandboxes, sandboxPersonas, type Persona } from "./sandbox";
+import { SANDBOX_LIFETIME_MS, createSandbox, purgeExpiredSandboxes, sandboxAllowed, sandboxPersonas, type Persona } from "./sandbox";
 
 const now = new Date("2026-09-24T12:00:00Z");
 let pglite: PGlite;
@@ -205,4 +205,27 @@ describe("sandbox", () => {
       /append-only/,
     );
   }, 30_000);
+});
+
+describe("sandbox rate limits", () => {
+  const rate = { perClient: { limit: 2, windowMs: 3_600_000 }, overall: { limit: 3, windowMs: 3_600_000 } };
+  const at = new Date("2026-11-12T10:15:00Z");
+
+  it("lets one client open a few sandboxes an hour, and everyone together a few more", async () => {
+    const ok = async (client: string | null, when = at) => (await sandboxAllowed(db, client, when, rate)).ok;
+    expect(await ok("client-a")).toBe(true);
+    expect(await ok("client-a")).toBe(true);
+    const refused = await sandboxAllowed(db, "client-a", at, rate);
+    expect(refused).toEqual({ ok: false, retryAfter: 45 * 60 });
+    expect(await ok("client-b")).toBe(true);
+    // The overall limit counts every client: client-a's two, client-b's one.
+    expect(await ok("client-c")).toBe(false);
+    expect(await ok(null)).toBe(false);
+    // A new hour starts afresh.
+    expect(await ok("client-a", new Date("2026-11-12T11:00:00Z"))).toBe(true);
+  });
+
+  it("keeps the counters away from the app role", async () => {
+    await expect(withTenant(pglite, sandbox.tenantId, (tx) => tx.exec("SELECT * FROM rate_limits"))).rejects.toThrow(/permission denied/);
+  });
 });

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { withTenant, type Database } from "@aegis/db";
+import { takeRateToken, withTenant, type Database, type RateLimit } from "@aegis/db";
 import { draftMemo, tenantId, userId, type HumanPrincipal, type Role, type SystemPrincipal, type TenantId } from "@aegis/domain";
 import { cmsMemberCommunicationsPack, healthcareAiPack } from "@aegis/frameworks";
 import { createGovernance } from "./governance";
@@ -27,6 +27,32 @@ export interface Persona {
 type Field = (typeof healthcareAiPack.questions)[number]["field"];
 const FIELDS = healthcareAiPack.questions.map((q) => q.field);
 const yesTo = (...yes: Field[]) => Object.fromEntries(FIELDS.map((f) => [f, yes.includes(f)]));
+
+/** Sandboxes one client may open, and all clients together, per hour. */
+export const SANDBOX_RATE: { readonly perClient: RateLimit; readonly overall: RateLimit } = {
+  perClient: { limit: 5, windowMs: HOUR },
+  overall: { limit: 300, windowMs: HOUR },
+};
+
+/**
+ * Whether another sandbox may be opened now. `client` identifies the
+ * visitor without naming them (the web app passes a keyed hash of their
+ * address); without one, only the overall limit applies.
+ */
+export async function sandboxAllowed(
+  db: Database,
+  client: string | null,
+  at: Date = new Date(),
+  rate: typeof SANDBOX_RATE = SANDBOX_RATE,
+): Promise<{ ok: boolean; retryAfter: number }> {
+  return db.run(async (conn) => {
+    if (client) {
+      const mine = await takeRateToken(conn, `sandbox:client:${client}`, rate.perClient, at);
+      if (!mine.ok) return mine;
+    }
+    return takeRateToken(conn, "sandbox:all", rate.overall, at);
+  });
+}
 
 /** Create and seed a sandbox tenant; the returned personas are who the visitor can act as. */
 export async function createSandbox(

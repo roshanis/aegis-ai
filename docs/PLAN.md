@@ -137,9 +137,20 @@
 
 ## Known gaps
 
+- **Rate limits count by address and key, in fixed windows.** One client
+  may open 5 sandboxes an hour and everyone together 300; behind a proxy
+  the client is the first `X-Forwarded-For` address, so the proxy must set
+  it. A window boundary can let a burst of twice the limit through.
+- **The quick chain check trusts checkpoints.** Pages verify the audit
+  chain from the latest checkpoint (one per 100 newly verified events) and
+  confirm the checkpointed event is unchanged; a rewrite of an earlier
+  event that also forges every later hash is caught only by a full
+  recompute, which evidence-pack exports and the audit page's "Recompute
+  every event" run.
+
 - **API keys are tenant-wide.** A key can post evidence to any control on
   any system in its tenant; there are no per-system keys yet, and the
-  evidence API has no rate limit of its own.
+  evidence API allows each key 120 calls a minute.
 
 - **The tool inventory is what owners record.** Aegis does not see what an
   agent actually calls at runtime, and MCP annotations are the server's
@@ -156,8 +167,6 @@
   the People page or join on first sign-in; SCIM is not built, so someone
   removed at the provider keeps their Aegis record until an admin switches
   it off, though they can no longer sign in once their session ends.
-- **Sandbox creation is not rate-limited.** Expired sandboxes are purged,
-  but nothing stops one visitor opening many.
 - **Offboarding a customer tenant** is a platform command
   (`pnpm platform offboard`) that deletes everything, audit log included.
   What a departing customer keeps, and for how long, is still a contract
@@ -185,11 +194,6 @@
   sandbox is complete when the visitor lands in it.
 - **Monitor controls have no due dates yet.** They are tracked but never
   go overdue; cadence-driven re-attestation comes with evidence storage.
-- **The intake sentence's purpose clause stays on the page.** The words a
-  requester types about what the system does feed the intake assistant and
-  the sentence, but are not saved with the case.
-- **Chain verification reads the whole log on each audit or home page view.**
-  Fine at sandbox scale; a large tenant needs a checkpointed verifier.
 - **Owners attest control applicability through their answers.** A
   reviewer sees every control and its evidence before signing, but cannot
   yet mark evidence insufficient without returning the whole review.

@@ -34,6 +34,8 @@ export interface Case extends CaseSummary {
   readonly answers: Answers;
   readonly tier: Tier | null;
   readonly triage: TriageResult | null;
+  /** What the requester said it does, in their words, if they said and it was not erased. */
+  readonly purpose: string | null;
   readonly createdAt: Date;
 }
 
@@ -84,7 +86,12 @@ export interface CaseRow {
   triage: TriageResult | null;
   decided_at: Date | null;
   created_at: Date;
+  /** Joined from the purpose note, where a query asks for it. */
+  purpose?: string | null;
 }
+
+/** Cases with the requester's purpose, from its note. */
+export const CASES_WITH_PURPOSE = "SELECT c.*, pn.body AS purpose FROM cases c LEFT JOIN notes pn ON pn.id = c.purpose_note_id";
 
 export const toAsset = (r: AssetRow): Asset => ({
   id: r.id,
@@ -108,6 +115,7 @@ export const toCase = (r: CaseRow): Case => ({
   answers: r.answers,
   tier: r.tier,
   triage: r.triage,
+  purpose: r.purpose ?? null,
   decidedAt: r.decided_at ? new Date(r.decided_at) : null,
   createdAt: new Date(r.created_at),
 });

@@ -13,6 +13,9 @@ import { UUID, actorId, type Kernel } from "./model";
  */
 
 export const API_SCOPES = ["evidence:write"] as const;
+
+/** Calls per key: enough for a busy pipeline, not for a flood. */
+export const API_KEY_RATE = { limit: 120, windowMs: 60_000 } as const;
 export type ApiScope = (typeof API_SCOPES)[number];
 
 export interface ApiKeyView {

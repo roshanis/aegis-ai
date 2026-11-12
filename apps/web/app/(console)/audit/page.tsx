@@ -25,12 +25,19 @@ const VERB: Record<string, string> = {
   rejected: "Rejected",
 };
 
-function ChainLine({ chain }: { chain: ChainStatus }) {
+function ChainLine({ chain, verifyHref }: { chain: ChainStatus; verifyHref?: string }) {
+  const how = chain.full ? "every event recomputed" : chain.walked < chain.events ? `${chain.walked} new since the last checkpoint` : "every event recomputed";
   return (
     <p className={`mono-s ${chain.intact ? "muted" : "status-bad"}`}>
       {chain.intact
-        ? `Hash chain verified · ${chain.events} events · latest #${hash4(chain.latest)}`
+        ? `Hash chain verified · ${chain.events} events, ${how} · latest #${hash4(chain.latest)}`
         : `Hash chain broken at event ${chain.brokenAt}. Something changed the log outside Aegis.`}
+      {verifyHref && chain.intact && !chain.full ? (
+        <>
+          {" · "}
+          <Link href={verifyHref}>Recompute every event</Link>
+        </>
+      ) : null}
     </p>
   );
 }
@@ -186,7 +193,7 @@ function Log({ events, who, labels }: { events: readonly HistoryEntry[]; who: st
   );
 }
 
-export default async function AuditPage({ searchParams }: { searchParams: Promise<{ q?: string; case?: string; who?: string; more?: string }> }) {
+export default async function AuditPage({ searchParams }: { searchParams: Promise<{ q?: string; case?: string; who?: string; more?: string; verify?: string }> }) {
   const query = await searchParams;
   const { principal } = await requireViewer();
   const gov = await governance();
@@ -203,10 +210,13 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
       if (refusal(error)?.code !== "not_found") throw error;
     }
   }
-  const { events, chain } = await gov.auditLog(principal, {
+  const log = await gov.auditLog(principal, {
     limit: query.more ? 200 : 12,
     ...(who !== "all" ? { actorKind: who as HistoryEntry["actor"]["kind"] } : {}),
   });
+  const events = log.events;
+  // The quick check starts from the latest checkpoint; asking walks the whole chain.
+  const chain = query.verify === "full" ? await gov.verifyAuditLog(principal) : log.chain;
   const related = record ? [] : await gov.recentDecisions(principal, 4);
   const pack = await gov.policyPack(principal, { caseKind: "risk_review" });
   const labels = pack?.kind === "initiative" ? { ...pack.domains } : {};
@@ -275,7 +285,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
               Show more
             </Link>
           ) : null}
-          <ChainLine chain={chain} />
+          <ChainLine chain={chain} verifyHref="/audit?verify=full" />
         </>
       ) : null}
 

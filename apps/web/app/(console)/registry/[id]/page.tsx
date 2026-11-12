@@ -152,6 +152,8 @@ export default async function CasePage({
   const intakePack = mustAnswer ? ((await gov.policyPack(principal, { caseId: openCase.id })) as InitiativePack) : null;
   const assistant = mustAnswer ? await gov.agentOn(principal, "intake") : false;
   const previous = view.cases.filter((c) => Object.keys(c.answers).length > 0).at(-1)?.answers ?? {};
+  const previousPurpose = view.cases.filter((c) => c.purpose).at(-1)?.purpose ?? null;
+  const purposeShown = isContent ? null : previousPurpose;
   const step = nextStep(view);
   const drafting = assurance.reviews.some((r) => r.draft.status === "queued");
   const labels = Object.fromEntries([...assurance.reviews.map((r) => [r.domain, r.label]), ...assurance.controls.map((c) => [c.domain, c.domainLabel])]);
@@ -193,6 +195,11 @@ export default async function CasePage({
               {latest ? ` · ${latest.packId}@${latest.packVersion}` : ""}
             </span>
           </div>
+          {purposeShown ? (
+            <p className="case-purpose" title={`In ${view.ownerName ?? "the owner"}'s words`}>
+              &ldquo;{purposeShown}&rdquo;
+            </p>
+          ) : null}
           {step ? (
             <p className="row" style={{ gap: 10 }}>
               <span className="eyebrow">Your next step</span>
@@ -213,7 +220,7 @@ export default async function CasePage({
             {caseLabel(openCase.number)} · {TRIGGER[openCase.trigger]} · your intake
           </span>
           {Object.keys(previous).length > 0 ? <p className="muted">Last answers filled in.</p> : null}
-          <Intake pack={{ ...intakePack, goldenSets: undefined }} mode={{ kind: "case", caseId: openCase.id, previous }} assistant={assistant} />
+          <Intake pack={{ ...intakePack, goldenSets: undefined }} mode={{ kind: "case", caseId: openCase.id, previous, previousPurpose }} assistant={assistant} />
         </section>
       ) : !isContent && openCase && (openCase.state === "draft" || openCase.state === "changes_requested") ? (
         <p className="notice">

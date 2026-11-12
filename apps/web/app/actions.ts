@@ -1,15 +1,28 @@
 "use server";
 
-import { SANDBOX_LIFETIME_MS, createSandbox, purgeExpiredSandboxes, sandboxPersonas } from "@aegis/core";
+import { SANDBOX_LIFETIME_MS, SANDBOX_RATE, createSandbox, purgeExpiredSandboxes, sandboxAllowed, sandboxPersonas } from "@aegis/core";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { database } from "@/lib/db";
-import { clearSession, writeSession } from "@/lib/session";
+import { clearSession, clientKey, writeSession } from "@/lib/session";
 import { THEMES, writeTheme, type Theme } from "@/lib/theme";
 import { getViewer } from "@/lib/viewer";
 
 /** Give this visitor a private, seeded tenant and sign them in as its requester. */
 export async function startSandbox(): Promise<void> {
   const db = await database();
+  // Behind a proxy the client is the first forwarded address; Aegis keeps only a keyed hash of it.
+  const h = await headers();
+  const address = (h.get("x-forwarded-for") ?? "").split(",")[0]!.trim() || h.get("x-real-ip") || "";
+  const perHour = (name: string, fallback: number) => {
+    const n = Number(process.env[name]);
+    return Number.isInteger(n) && n > 0 ? n : fallback;
+  };
+  const allowed = await sandboxAllowed(db, address ? clientKey(address) : null, new Date(), {
+    perClient: { ...SANDBOX_RATE.perClient, limit: perHour("AEGIS_SANDBOXES_PER_CLIENT_HOUR", SANDBOX_RATE.perClient.limit) },
+    overall: { ...SANDBOX_RATE.overall, limit: perHour("AEGIS_SANDBOXES_PER_HOUR", SANDBOX_RATE.overall.limit) },
+  });
+  if (!allowed.ok) redirect(`/?busy=${Math.ceil(allowed.retryAfter / 60)}`);
   try {
     await purgeExpiredSandboxes(db);
   } catch (error) {
