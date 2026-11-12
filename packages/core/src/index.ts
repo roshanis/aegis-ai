@@ -54,3 +54,16 @@ export {
   type Steps,
 } from "./jobs";
 export { keyring, keyringFromEnv, type Keyring } from "./secrets";
+export type { PeopleOverview, PersonChange, PersonRecord } from "./people";
+export {
+  configureSso,
+  normalizeDomains,
+  ssoConfig,
+  ssoSignIn,
+  type SsoConfig,
+  type SsoIdentity,
+  type SsoInput,
+  type SsoOutcome,
+  type SsoRefusal,
+  type SsoSettings,
+} from "./sso";

@@ -56,14 +56,19 @@ export default async function Landing() {
               Continue as {viewer.principal.displayName}
             </Link>
           ) : (
-            <form action={startSandbox}>
-              <button className="btn btn-primary btn-lg" type="submit">
-                Open a sandbox
-              </button>
-            </form>
+            <>
+              <form action={startSandbox}>
+                <button className="btn btn-primary btn-lg" type="submit">
+                  Open a sandbox
+                </button>
+              </form>
+              <Link className="btn btn-lg" href="/signin">
+                Sign in
+              </Link>
+            </>
           )}
           <span className="hint">
-            {viewer ? viewer.tenant.name : "Sample data · 7 days · no sign-up"}
+            {viewer ? viewer.tenant.name : "Sandbox: sample data · 7 days · no sign-up"}
           </span>
         </div>
       </main>

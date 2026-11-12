@@ -9,7 +9,7 @@ Aegis succeeds two earlier projects and folds both in:
 [Jeeves](https://github.com/roshanis/jeeves) (AI initiative governance) and
 Cleared (pre-publication content compliance review).
 
-> **Status: work in progress, phases 0 to 2 built, on the Aegis design system.** The foundation, the governance core, and agents with their evals are tested.
+> **Status: work in progress, phases 0 to 2 built, on the Aegis design system, with single sign-on for customer tenants.** The foundation, the governance core, and agents with their evals are tested.
 > The plan and the decisions behind it are in [docs/PLAN.md](docs/PLAN.md).
 
 ## What exists today
@@ -22,7 +22,7 @@ Cleared (pre-publication content compliance review).
 | `packages/db` | SQL migrations (checksummed, so an applied one can't be edited) with Postgres row-level security on every tenant table, a `withTenant` helper that is the only route to tenant data, and a per-tenant, hash-chained, append-only audit log. |
 | `packages/core` | Governance services: tenant provisioning, people, registering assets, opening and submitting cases (triage and fast lane run on submit), domain sign-offs, evidence, control exceptions, decisions with conditions, activating and pausing assets, and each asset's history. Records for the audit log: the tenant's events with their hashes and chain verification, search by name or case number, one case told from the log (decision, rule, sign-offs, conditions, fast lane), recent decisions, and an auditor's evidence-pack export that is itself audited. Every change and its audit event commit together. Agents: model connections with keys sealed per tenant, the golden-set gate, intake suggestions, and review drafting as workflow steps that hold only IDs. Also sandbox tenants: created per visitor, seeded through the same rules, purged when they expire. |
 | `packages/workflows` | Durable agent jobs on DBOS, in the same Postgres. A draft or an evaluation cut off by a crash or a deploy resumes where it stopped, without paying for a finished model call twice. |
-| `apps/web` | The console (Next.js), built on the Aegis design system: dark first, light, or following the system; Instrument Serif, Geist and Geist Mono, self-hosted; actor marks (a person is a filled seal, a system job a square, an agent a dashed ring); the risk dial; and the dashed frame every agent draft sits in. **Today** is the front page, built to scan rather than read: four counts (waiting for you, in use, in review, not cleared), anything paused, the systems waiting on you, the latest decisions, bar charts of systems by stage and by risk tier that link into the registry, each agent's golden-set score, and whether the audit chain verifies. **The Sentence** is intake: the system described in one sentence whose highlighted phrases answer the pack's questions, triaged live, with the intake assistant's suggestions outlined in dashes and a question view for anyone who prefers it. **The Table** is the case page: each review team's seat around the system, the drafter outside with no seat, the decision at the head, and the selected seat beside it, where a reviewer keeps or dismisses the draft's findings, ticks the conditions they want, and signs. Also a registry with stages, a reviews queue, an audit page that answers "who decided CASE-0142, and why" with the event chain and an evidence-pack download, the policy packs in force, and the Agents page. ⌘K jumps anywhere. A visitor opens a private sandbox and switches between requester, two domain reviewers, approver, admin and auditor to see each seat. |
+| `apps/web` | The console (Next.js), built on the Aegis design system: dark first, light, or following the system; Instrument Serif, Geist and Geist Mono, self-hosted; actor marks (a person is a filled seal, a system job a square, an agent a dashed ring); the risk dial; and the dashed frame every agent draft sits in. **Today** is the front page, built to scan rather than read: four counts (waiting for you, in use, in review, not cleared), anything paused, the systems waiting on you, the latest decisions, bar charts of systems by stage and by risk tier that link into the registry, each agent's golden-set score, and whether the audit chain verifies. **The Sentence** is intake: the system described in one sentence whose highlighted phrases answer the pack's questions, triaged live, with the intake assistant's suggestions outlined in dashes and a question view for anyone who prefers it. **The Table** is the case page: each review team's seat around the system, the drafter outside with no seat, the decision at the head, and the selected seat beside it, where a reviewer keeps or dismisses the draft's findings, ticks the conditions they want, and signs. Also a registry with stages, a reviews queue, an audit page that answers "who decided CASE-0142, and why" with the event chain and an evidence-pack download, the policy packs in force, and the Agents page. ⌘K jumps anywhere. A visitor opens a private sandbox and switches between requester, two domain reviewers, approver, admin and auditor to see each seat. Customer tenants sign in through their own provider at `/signin`, and admins manage who may do what on the People page. |
 
 Guarantees covered by tests:
 
@@ -40,6 +40,7 @@ Guarantees covered by tests:
 - An auditor gets who decided, why, and under which policy version from one call, and on one screen, searching by case number or name. Case numbers count up per tenant, are assigned by the database under a lock, and never change.
 - An evidence pack carries the decision, sign-offs, controls and evidence, conditions, every event with its hash, and the chain's verification; exporting one needs `audit.export` and is itself recorded with the pack's SHA-256.
 - Sessions are signed: editing the cookie to become someone else signs you out. Switching people is possible only inside a live sandbox.
+- Customer tenants sign in through their own OpenID Connect provider, with PKCE and checked state, nonce, issuer, audience and signature. The provider's word is not enough: the address must be verified and at one of the tenant's domains, and the person must have been added by an admin unless the tenant lets people join (never as admin or approver). A person is linked to the provider's subject the first time, so a reissued address cannot take over their account. Switching someone off ends their sessions at their next request, and a tenant always keeps one active admin. A tenant cannot change its own provider from the console.
 - An agent may only move a domain review into "drafted". The lifecycle engine refuses, when a lifecycle is defined, any rule that lets an agent into a state that is not a draft state, and no case, asset, exception or condition rule admits one.
 - An agent stays off until it passes its policy pack's golden set on the tenant's current model and an admin turns it on. A different model or endpoint turns it off; a new key for the same model does not.
 - The golden-set gate fails any intake assistant whose suggestions would have under-triaged a case, and any drafter that states a decision, cites a control the case lacks, misses a bare gate control, or repeats instructions planted in evidence.
@@ -80,8 +81,30 @@ E2E_DATABASE_URL=postgres://postgres:postgres@localhost:5432/aegis_e2e pnpm --fi
 | `AEGIS_MASTER_KEY` | 32 random bytes, base64 (`openssl rand -base64 32`). Wraps each tenant's data key, which seals model keys. Required in production; development uses a fixed, public key. `AEGIS_MASTER_KEY_PREVIOUS` keeps an old key readable while you rotate. |
 | `AEGIS_ALLOW_PRIVATE_MODEL_ENDPOINTS` | `1` lets model endpoints use http and private addresses, for a model server on your own network. Off by default. |
 | `AEGIS_PGLITE_DIR` | Where the local PGlite database lives. Default `.data/pglite`. |
+| `AEGIS_PUBLIC_URL` | The console's public URL, for sign-in redirects. Required in production. Every tenant registers `<AEGIS_PUBLIC_URL>/sso/callback` with its provider. |
+| `AEGIS_SESSION_HOURS` | How long a single sign-on session lasts. Default 12, at most 24. |
+| `AEGIS_SSO_ALLOW_HTTP` | `1` lets a provider on `localhost` use plain http, for the e2e mock provider. Off by default. |
 
 `pnpm dev` and `pnpm start` apply pending migrations before the server starts.
+
+### Customer tenants
+
+Customer tenants are created and connected to their sign-in provider by the
+people who operate Aegis, from `apps/web`, never from inside the console:
+
+```sh
+pnpm platform create --slug acme-health --name "Acme Health" \
+  --admin-email ada@acme-health.com --admin-name "Ada Lovelace"
+ACME_SSO_SECRET=… pnpm platform sso --slug acme-health \
+  --issuer https://login.acme-health.com --client-id aegis \
+  --client-secret-env ACME_SSO_SECRET --domains acme-health.com
+pnpm platform offboard --slug acme-health --confirm acme-health
+```
+
+The first admin then signs in at `/signin` with the organization name and
+adds everyone else on the People page. `--join-roles requester` lets anyone
+at the tenant's domains join as a requester without being added first.
+Offboarding deletes everything the tenant owns, audit log included.
 
 ## License
 

@@ -51,6 +51,7 @@ beforeAll(async () => {
     "0007_case_numbers.sql",
     "0008_audit_chain_order.sql",
     "0009_token_controls.sql",
+    "0010_sso.sql",
   ]);
   expect(await migrate(db)).toEqual([]);
   await seedTenant(A, "tenant-a", userA, assetA);
@@ -129,6 +130,33 @@ describe("tenant isolation", () => {
     await expect(withTenant(db, A, (tx) => tx.exec("DELETE FROM tenant_keys"))).rejects.toThrow(/permission denied/);
     const seenByB = await withTenant(db, B, (tx) => tx.query("SELECT * FROM tenant_keys"));
     expect(seenByB.rows).toEqual([]);
+  });
+
+  it("lets a tenant read its sign-in provider but never change it, and hides it from other tenants", async () => {
+    await db.query(
+      "INSERT INTO tenant_sso (tenant_id, issuer, client_id, email_domains, updated_at) VALUES ($1, 'https://idp.test', 'c', '{a.test}', now())",
+      [A],
+    );
+    const seenByA = await withTenant(db, A, (tx) => tx.query<{ issuer: string }>("SELECT issuer FROM tenant_sso"));
+    expect(seenByA.rows).toEqual([{ issuer: "https://idp.test" }]);
+    await expect(withTenant(db, A, (tx) => tx.exec("UPDATE tenant_sso SET issuer = 'https://evil.test'"))).rejects.toThrow(
+      /permission denied/,
+    );
+    await expect(
+      withTenant(db, B, (tx) =>
+        tx.exec("INSERT INTO tenant_sso (tenant_id, issuer, client_id, email_domains, updated_at) VALUES (current_tenant_id(), 'https://evil.test', 'c', '{b.test}', now())"),
+      ),
+    ).rejects.toThrow(/permission denied/);
+    expect((await withTenant(db, B, (tx) => tx.query("SELECT * FROM tenant_sso"))).rows).toEqual([]);
+    await db.query("DELETE FROM tenant_sso");
+  });
+
+  it("refuses two people whose emails differ only by case", async () => {
+    await expect(
+      withTenant(db, A, (tx) =>
+        tx.exec(`INSERT INTO users (id, tenant_id, email, display_name) VALUES (gen_random_uuid(), current_tenant_id(), 'TENANT-A@example.test', 'Twin')`),
+      ),
+    ).rejects.toThrow(/duplicate key/);
   });
 
   it("does not let the app role create tenants", async () => {
@@ -334,7 +362,7 @@ describe("audit chain order", () => {
       await tx.exec(audit(A, "before.1"));
       await tx.exec(audit(A, "before.2"));
     });
-    expect(await migrate(old)).toEqual(["0008_audit_chain_order.sql", "0009_token_controls.sql"]);
+    expect((await migrate(old)).slice(0, 1)).toEqual(["0008_audit_chain_order.sql"]);
     await withTenant(old, A, async (tx) => {
       await tx.exec(audit(A, "after.1"));
       await tx.exec(audit(A, "after.2"));

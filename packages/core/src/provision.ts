@@ -91,6 +91,7 @@ export async function purgeTenant(platform: Connection, tenant: TenantId): Promi
       "agent_settings",
       "agent_evals",
       "model_connections",
+      "tenant_sso",
       "tenant_keys",
       "evidence",
       "control_exceptions",

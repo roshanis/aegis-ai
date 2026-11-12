@@ -27,9 +27,11 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   ]);
   const me = { userId: principal.userId, displayName: principal.displayName, title: null, roles: principal.roles };
   const canRegister = can(principal, "asset.register");
+  const canManage = can(principal, "tenant.manage");
   const palette: PaletteItem[] = [
     ...(canRegister ? [{ href: "/registry/new", label: "Register a system", group: "Pages" } as PaletteItem] : []),
     ...PAGES,
+    ...(canManage ? [{ href: "/people", label: "People", group: "Pages" } as PaletteItem] : []),
     ...views.map((v) => {
       const review = currentReview(v);
       return {
@@ -62,7 +64,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
         <span className="grow" />
         <PersonMenu current={me} personas={personas} theme={theme} />
       </header>
-      <Rail reviews={views.filter((v) => nextStep(v) !== null).length} canRegister={canRegister} />
+      <Rail reviews={views.filter((v) => nextStep(v) !== null).length} canRegister={canRegister} canManage={canManage} />
       <main className="main" id="main">
         {children}
       </main>

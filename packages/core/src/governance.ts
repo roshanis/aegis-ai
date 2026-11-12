@@ -37,6 +37,7 @@ import type { InitiativePack, PolicyPack } from "@aegis/frameworks";
 import { createAgents, type AgentOptions } from "./agents";
 import { createAssurance, type Assurance, type NewCondition } from "./assurance";
 import { GovernanceError } from "./errors";
+import { createPeople } from "./people";
 import { createRecords } from "./records";
 import {
   PACK_KIND,
@@ -237,6 +238,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
   const agents = createAgents(kernel, db, options);
   const assurance = createAssurance(kernel, agents);
   const records = createRecords(kernel, assurance);
+  const people = createPeople(kernel);
 
   /** Deterministic triage, then the fast lane or a full review. No model is involved. */
   async function triageCase(tx: Connection, submitted: Case, pack: InitiativePack, tenant: TenantId): Promise<SubmitResult> {
@@ -319,7 +321,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
       return db.run((conn) =>
         withTenant(conn, tenant, async (tx) => {
           const { rows } = await tx.query<{ display_name: string; roles: Role[]; review_domains: string[] }>(
-            "SELECT display_name, roles, review_domains FROM users WHERE id = $1",
+            "SELECT display_name, roles, review_domains FROM users WHERE id = $1 AND active",
             [user],
           );
           const row = rows[0];
@@ -389,9 +391,14 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
         if (!can(actor, "tenant.manage")) throw new GovernanceError("forbidden", "managing people needs tenant.manage");
         const unknown = input.roles.filter((r) => !ROLES.includes(r));
         if (unknown.length > 0) throw new GovernanceError("invalid", `unknown roles: ${unknown.join(", ")}`);
+        if (input.roles.length === 0) throw new GovernanceError("invalid", "give everyone at least one role");
         const conflicts = roleConflicts(input.roles);
         if (conflicts.length > 0) throw new GovernanceError("invalid", conflicts.join("; "));
-        const taken = await tx.query("SELECT 1 FROM users WHERE email = $1", [input.email]);
+        const email = input.email.trim();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new GovernanceError("invalid", "give a work email address");
+        const displayName = input.displayName.trim();
+        if (!displayName) throw new GovernanceError("invalid", "give the person's name");
+        const taken = await tx.query("SELECT 1 FROM users WHERE lower(email) = lower($1)", [email]);
         if (taken.rows.length > 0) throw new GovernanceError("conflict", "someone in this tenant already has that email");
 
         const id = randomUUID();
@@ -399,7 +406,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
         await tx.query(
           `INSERT INTO users (id, tenant_id, email, display_name, title, roles, review_domains)
            VALUES ($1, current_tenant_id(), $2, $3, $4, $5, $6)`,
-          [id, input.email, input.displayName, input.title ?? null, input.roles, input.reviewDomains ?? []],
+          [id, email, displayName, input.title ?? null, input.roles, input.reviewDomains ?? []],
         );
         await appendAudit(tx, {
           actorKind: actor.kind,
@@ -668,6 +675,9 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
     recentDecisions: records.recentDecisions,
     policyPacks: records.policyPacks,
     exportEvidencePack: records.exportEvidencePack,
+
+    people: people.people,
+    updatePerson: people.updatePerson,
   };
 }
 

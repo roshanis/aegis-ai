@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { signSession, verifySession } from "./token";
+import { signPending, signSession, verifyPending, verifySession } from "./token";
 
 const secret = "s".repeat(32);
 const payload = { t: "00000000-0000-4000-8000-00000000000a", u: "00000000-0000-4000-8000-000000000001", exp: 2_000 };
@@ -18,5 +18,19 @@ describe("session tokens", () => {
     expect(verifySession(token, secret, 2_000)).toBeNull();
     expect(verifySession("garbage", secret, 1_000)).toBeNull();
     expect(verifySession(`${token}.x`, secret, 1_000)).toBeNull();
+  });
+});
+
+describe("pending sign-ins", () => {
+  const pending = { o: "acme-health", state: "st", nonce: "no", v: "verifier", exp: 2_000 };
+
+  it("round-trips, and cannot be passed off as a session or the other way round", () => {
+    expect(verifyPending(signPending(pending, secret), secret, 1_000)).toEqual(pending);
+    expect(verifySession(signPending(pending, secret), secret, 1_000)).toBeNull();
+    expect(verifyPending(signSession(payload, secret), secret, 1_000)).toBeNull();
+  });
+
+  it("expires", () => {
+    expect(verifyPending(signPending(pending, secret), secret, 2_000)).toBeNull();
   });
 });

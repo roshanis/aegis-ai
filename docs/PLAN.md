@@ -94,19 +94,33 @@
    answers by case number with the event chain, an audited evidence-pack
    export, a policy pack viewer, ⌘K, and a person-chosen theme. Checked in
    dark, light and at phone width.
+   **Single sign-on** *(done)*. Each customer tenant signs in through its
+   own OpenID Connect provider (authorization code with PKCE; the ID
+   token's signature, issuer, audience, expiry and nonce are checked). A
+   verified address at one of the tenant's domains is matched to a person
+   an admin added, then linked to the provider's subject; a tenant may let
+   people join as requesters or reviewers, never as admins or approvers.
+   Admins manage people and their roles on the People page and can switch
+   someone off, which ends their sessions at once. Platform commands
+   create, connect and offboard tenants. Deferred: SAML, SCIM provisioning,
+   and finding a tenant by email domain instead of by name.
 3. **Member communications review.** Cleared's engine with a CMS pack.
 4. **Differentiators.** Agent and MCP tool inventory, evidence connectors,
    more frameworks, dedicated and BYOC deployment.
 
 ## Known gaps
 
-- **No real sign-in yet.** The console knows sandbox sessions only. SSO
-  (OIDC/SAML) per tenant comes before the first customer tenant.
+- **Sign-in is OpenID Connect only.** SAML-only providers need a broker
+  (most identity providers can front SAML with OIDC). People are added on
+  the People page or join on first sign-in; SCIM is not built, so someone
+  removed at the provider keeps their Aegis record until an admin switches
+  it off, though they can no longer sign in once their session ends.
 - **Sandbox creation is not rate-limited.** Expired sandboxes are purged,
   but nothing stops one visitor opening many.
-- **Offboarding a customer tenant** needs a platform command and a retention
-  decision. The purge path already exists (sandboxes use it): the audit log
-  accepts deletes only for the tenant named in `app.purge_tenant`.
+- **Offboarding a customer tenant** is a platform command
+  (`pnpm platform offboard`) that deletes everything, audit log included.
+  What a departing customer keeps, and for how long, is still a contract
+  decision; export their evidence packs first.
 - **Agents read only what they are handed.** The drafter's context is built
   from one case under row-level security; it has no tools and no database
   access. Jeeves' rule still lets a conditional approval rest on drafts

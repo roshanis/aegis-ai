@@ -12,7 +12,7 @@ import { ActorMark, Icon } from "./ds";
 
 type RailItem = { href: string; label: string; icon: Parameters<typeof Icon>[0]["name"] };
 
-export function Rail({ reviews, canRegister }: { reviews: number; canRegister: boolean }) {
+export function Rail({ reviews, canRegister, canManage }: { reviews: number; canRegister: boolean; canManage: boolean }) {
   const path = usePathname();
   const items: RailItem[] = [
     { href: "/today", label: "Today", icon: "today" },
@@ -22,6 +22,7 @@ export function Rail({ reviews, canRegister }: { reviews: number; canRegister: b
     { href: "/audit", label: "Audit", icon: "audit" },
     { href: "/packs", label: "Packs", icon: "packs" },
     { href: "/agents", label: "Agents", icon: "agents" },
+    ...(canManage ? [{ href: "/people", label: "People", icon: "people" } as RailItem] : []),
   ];
   const current = (href: string) =>
     href === "/registry" ? path === "/registry" || /^\/registry\/[0-9a-f-]{36}/.test(path) : path === href || path.startsWith(`${href}/`);
