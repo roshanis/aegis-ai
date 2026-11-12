@@ -47,6 +47,7 @@ describe("sandbox", () => {
       ["Meeting-notes summarizer", "active", null, true],
       ["Call transcription API", "registered", null, false],
       ["Claims triage agent", "paused", "draft", false],
+      ["Provider directory assistant", "active", null, true],
       ["Provider fraud-scoring model", "registered", null, false],
       ["Member benefits chat assistant", "registered", "in_review", false],
       ["Diabetes eye exam reminder postcard", "active", null, true],
@@ -68,6 +69,18 @@ describe("sandbox", () => {
       [2, "needs_human_review", []],
     ]);
     expect(flyer.actions.openCase).toEqual(["approve", "request_changes", "reject"]);
+  });
+
+  it("seeds the agents' tools before their decisions, so the approvals cover them", async () => {
+    const rows = await gov.toolInventory(await as("Aubrey Kim"));
+    expect(rows.map((r) => `${r.assetName}: ${r.server}/${r.name}${r.sinceApproval ? " (late)" : ""}`)).toEqual([
+      "Claims triage agent: claims-core/get_claim",
+      "Claims triage agent: claims-core/search_policies",
+      "Claims triage agent: claims-core/set_claim_queue",
+      "Claims triage agent: provider-directory/find_provider",
+      "Provider directory assistant: provider-directory/find_provider",
+      "Provider directory assistant: provider-directory/list_specialties",
+    ]);
   });
 
   it("leaves each persona something to do", async () => {

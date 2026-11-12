@@ -1,9 +1,10 @@
-import type { AssetView, CommunicationView } from "@aegis/core";
+import type { AgentToolsView, AssetView, CommunicationView } from "@aegis/core";
 import { caseLabel } from "@aegis/domain";
 import type { ContentPack, InitiativePack } from "@aegis/frameworks";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ToolsTab } from "@/components/AgentTools";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { CaseTable } from "@/components/CaseTable";
 import { ConditionsTab, ControlsTab, HistoryTab } from "@/components/CaseTabs";
@@ -23,6 +24,7 @@ const TABS = [
   { id: "table", label: "The table" },
   { id: "controls", label: "Controls & evidence" },
   { id: "conditions", label: "Conditions" },
+  { id: "tools", label: "Tools" },
   { id: "history", label: "History" },
 ] as const;
 type Tab = (typeof TABS)[number]["id"];
@@ -137,6 +139,9 @@ export default async function CasePage({
   const isContent = asset.kind === "content_item";
   const communication: CommunicationView | null = isContent && latest ? await gov.communication(principal, latest.id) : null;
   if (isContent && tab !== "history") tab = "table";
+  const isAgent = asset.kind === "agent";
+  if (!isAgent && tab === "tools") tab = "table";
+  const agentTools: AgentToolsView | null = isAgent ? await gov.agentTools(principal, asset.id) : null;
   const writing = isContent && openCase && (actions.openCase.includes("submit") || actions.openCase.includes("resubmit"));
   const writerPack = writing ? ((await gov.policyPack(principal, { caseId: openCase.id })) as ContentPack) : null;
   const triaged = view.cases.filter((c) => c.triage !== null).at(-1) ?? null;
@@ -157,10 +162,13 @@ export default async function CasePage({
     table: assurance.reviews.length > 0 ? `${signed}/${assurance.reviews.length}` : null,
     controls: assurance.controls.length > 0 ? `${covered}/${assurance.controls.length}` : null,
     conditions: openConditions > 0 ? `${openConditions} open` : null,
+    tools: agentTools && agentTools.tools.length > 0 ? String(agentTools.tools.length) : null,
     history: String(history.length),
   };
   const base = `/registry/${id}`;
-  const tabs = isContent ? [{ id: "table" as const, label: "The communication" }, TABS[3]] : TABS;
+  const tabs = isContent
+    ? [{ id: "table" as const, label: "The communication" }, TABS[4]]
+    : TABS.filter((t) => t.id !== "tools" || isAgent);
   const state = ASSET_STATE[asset.state];
   const fastLane = latest ? history.find((e) => e.caseId === latest.id && e.action === "case.fast_lane_approve") : undefined;
 
@@ -261,6 +269,7 @@ export default async function CasePage({
       ) : null}
       {tab === "controls" ? <ControlsTab view={view} /> : null}
       {tab === "conditions" ? <ConditionsTab view={view} /> : null}
+      {tab === "tools" && agentTools ? <ToolsTab view={agentTools} assetId={asset.id} /> : null}
       {tab === "history" ? <HistoryTab history={history.slice().reverse()} labels={labels} /> : null}
     </>
   );

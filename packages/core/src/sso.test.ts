@@ -86,7 +86,8 @@ describe("configuring a provider", () => {
     await expect(configureSso(db, ring, rows[0]!.slug, base)).rejects.toThrow(/sandbox/);
     expect(await ssoConfig(serialized(db), ring, rows[0]!.slug)).toBeNull();
     await purgeTenant(db, sandbox.tenantId);
-  });
+    // Seeding a sandbox runs the agents' golden sets and a dozen reviews; give it the time the sandbox tests do.
+  }, 60_000);
 
   it("finds nothing for a tenant without a provider or a malformed name", async () => {
     await provisionTenant(db, {

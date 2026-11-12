@@ -1,6 +1,6 @@
 "use server";
 
-import type { IntakeSuggestion } from "@aegis/domain";
+import { parseMcpToolList, type IntakeSuggestion, type ToolEffect } from "@aegis/domain";
 import type { NewCondition } from "@aegis/core";
 import {
   type AssetAction,
@@ -225,4 +225,33 @@ export async function submitCommunication(_: ActionState, form: FormData): Promi
   return attempt(() =>
     gov.submitCommunication(principal, text(form, "caseId"), { body: String(form.get("body") ?? ""), markets: markets(form) }),
   );
+}
+
+/** Add one tool to an agent by hand. */
+export async function addAgentTool(_: ActionState, form: FormData): Promise<ActionState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  const effect = text(form, "effect") as ToolEffect;
+  return attempt(() =>
+    gov.addAgentTools(principal, text(form, "assetId"), [
+      { server: text(form, "server"), name: text(form, "name"), effect, phi: form.get("phi") === "on", description: optional(form, "description") ?? null },
+    ]),
+  );
+}
+
+/** Add every tool an MCP server lists, from the result of its tools/list call. */
+export async function importMcpTools(_: ActionState, form: FormData): Promise<ActionState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  const { tools, problems } = parseMcpToolList(text(form, "manifest"), text(form, "server"));
+  if (problems.length > 0) return { error: problems.join("; ") };
+  if (tools.length === 0) return { error: "that manifest lists no tools" };
+  const phi = form.get("phi") === "on";
+  return attempt(() => gov.addAgentTools(principal, text(form, "assetId"), tools.map((t) => ({ ...t, phi }))));
+}
+
+export async function removeAgentTool(_: ActionState, form: FormData): Promise<ActionState> {
+  const { principal } = await requireViewer();
+  const gov = await governance();
+  return attempt(() => gov.removeAgentTool(principal, text(form, "assetId"), text(form, "toolId")));
 }

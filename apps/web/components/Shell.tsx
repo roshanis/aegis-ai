@@ -25,7 +25,7 @@ export function Rail({ reviews, canRegister, canManage }: { reviews: number; can
     ...(canManage ? [{ href: "/people", label: "People", icon: "people" } as RailItem] : []),
   ];
   const current = (href: string) =>
-    href === "/registry" ? path === "/registry" || /^\/registry\/[0-9a-f-]{36}/.test(path) : path === href || path.startsWith(`${href}/`);
+    href === "/registry" ? path === "/registry" || path === "/registry/tools" || /^\/registry\/[0-9a-f-]{36}/.test(path) : path === href || path.startsWith(`${href}/`);
   return (
     <nav className="rail" aria-label="Primary">
       {items.map((item) => (

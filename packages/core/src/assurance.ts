@@ -306,15 +306,20 @@ export function createAssurance(k: Kernel, drafts: Pick<Agents, "queueDraft" | "
     if (!decided.cleared) return decided;
     const clearing = cases.find((c) => c.id === decided.caseId)!;
     const { controls } = await controlsFor(tx, clearing);
-    const [evidence, exceptions, pending] = await Promise.all([
+    const [evidence, exceptions, pending, added] = await Promise.all([
       evidenceRows(tx, clearing.assetId),
       exceptionRows(tx, clearing.assetId),
       tx.query<{ n: number }>(
         "SELECT count(*)::int AS n FROM conditions WHERE case_id = $1 AND due = 'before_use' AND state NOT IN ('met', 'waived')",
         [clearing.id],
       ),
+      tx.query<{ server: string; name: string }>(
+        "SELECT server, name FROM agent_tools WHERE asset_id = $1 AND removed_at IS NULL AND added_at > $2 ORDER BY added_at, server, name",
+        [clearing.assetId, clearing.decidedAt!.toISOString()],
+      ),
     ]);
     const blockers = useBlockers({
+      toolsSinceApproval: added.rows.map((t) => `${t.server}/${t.name}`),
       pendingConditions: pending.rows[0]!.n,
       uncoveredGates: uncoveredGates(controls, coverage(evidence, exceptions, k.now())),
     });

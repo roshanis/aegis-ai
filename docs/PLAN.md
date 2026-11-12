@@ -116,8 +116,23 @@
    reviewer for the rules code cannot check, and attachments (PDFs, images).
 4. **Differentiators.** Agent and MCP tool inventory, evidence connectors,
    more frameworks, dedicated and BYOC deployment.
+   - *Agent and MCP tool inventory: done.* Each agent records the tools it
+     may call, by server, with what each can do (read, change data, act
+     outside) and whether it sees PHI. An owner adds them by hand or
+     imports an MCP server's `tools/list` result, whose annotations set
+     the effect, cautious when they say nothing. A tool added after the
+     agent's approval takes its clearance away until a change review is
+     approved or the tool is removed. Rows are stamped on removal, never
+     edited or deleted. One page lists every agent's tools. Deferred:
+     reading a live MCP server directly, and giving the review drafter
+     the tool list.
 
 ## Known gaps
+
+- **The tool inventory is what owners record.** Aegis does not see what an
+  agent actually calls at runtime, and MCP annotations are the server's
+  own claims. Losing clearance to a new tool does not pause an agent that
+  is in use; an operator decides that.
 
 - **Communications are checked by rules, not read by a model.** Rules that
   need judgment (benefits matching the Evidence of Coverage, plain

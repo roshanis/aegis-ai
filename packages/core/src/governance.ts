@@ -39,6 +39,7 @@ import { createAssurance, type Assurance, type NewCondition } from "./assurance"
 import { GovernanceError } from "./errors";
 import { createContent } from "./content";
 import { createPeople } from "./people";
+import { createTools } from "./tools";
 import { createRecords } from "./records";
 import {
   PACK_KIND,
@@ -241,6 +242,7 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
   const records = createRecords(kernel, assurance);
   const people = createPeople(kernel);
   const content = createContent(kernel);
+  const tools = createTools(kernel);
 
   /** Deterministic triage, then the fast lane or a full review. No model is involved. */
   async function triageCase(tx: Connection, submitted: Case, pack: InitiativePack, tenant: TenantId): Promise<SubmitResult> {
@@ -680,6 +682,10 @@ export function createGovernance(db: Database, options: GovernanceOptions = {}) 
 
     submitCommunication: content.submitCommunication,
     communication: content.communication,
+    agentTools: tools.agentTools,
+    addAgentTools: tools.addAgentTools,
+    removeAgentTool: tools.removeAgentTool,
+    toolInventory: tools.toolInventory,
 
     people: people.people,
     updatePerson: people.updatePerson,

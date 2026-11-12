@@ -63,12 +63,17 @@ export default async function RegistryPage({ searchParams }: { searchParams: Pro
             Registered <em>AI systems</em>
           </h1>
         </div>
+        <div className="row" style={{ gap: 8 }}>
+          <Link className="btn" href="/registry/tools">
+            Agent tools
+          </Link>
         {can(principal, "asset.register") ? (
           <Link className="btn btn-primary" href="/registry/new">
             <Icon name="intake" size={16} />
             Register a system
           </Link>
         ) : null}
+        </div>
       </div>
 
       <nav className="pills" aria-label="Filter by state">
