@@ -65,7 +65,7 @@ test("an AI system goes from a one-sentence intake through the table to use, and
   await page.getByRole("button", { name: "Submit for review" }).click();
   await expect(page).toHaveURL(/\/registry\/[0-9a-f-]{36}$/);
   const asset = page.url();
-  await expect(page.getByText("CASE-0008 · Initial review · In review")).toBeVisible();
+  await expect(page.getByText("CASE-0010 · Initial review · In review")).toBeVisible();
   await expect(page.getByText("Add evidence for 3 controls")).toBeVisible();
 
   // Requester: evidence for the three gate controls.
@@ -153,7 +153,7 @@ test("an AI system goes from a one-sentence intake through the table to use, and
 
   // The audit log answers by case number, and exports the evidence pack.
   await page.getByRole("navigation", { name: "Primary" }).getByRole("link", { name: "Audit" }).click();
-  await page.getByLabel("Search the audit log").fill("CASE-0008");
+  await page.getByLabel("Search the audit log").fill("CASE-0010");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   const answer = page.getByRole("region", { name: /Conditionally approved/ });
   await expect(answer).toContainText("Conditionally approved by Avery Brooks");
@@ -161,10 +161,10 @@ test("an AI system goes from a one-sentence intake through the table to use, and
   await expect(answer).toContainText("5 of 5 signed");
   await expect(page.getByText(/^Hash chain verified/)).toBeVisible();
   const [download] = await Promise.all([page.waitForEvent("download"), answer.getByRole("link", { name: "Export evidence pack" }).click()]);
-  expect(download.suggestedFilename()).toBe("CASE-0008-evidence-pack.json");
+  expect(download.suggestedFilename()).toBe("CASE-0010-evidence-pack.json");
   const pack = JSON.parse(await readFile((await download.path())!, "utf8"));
   expect(pack).toMatchObject({
-    case: { label: "CASE-0008", policy: "healthcare-ai@1.3.0", tierRule: { id: "member-facing" } },
+    case: { label: "CASE-0010", policy: "healthcare-ai@1.3.0", tierRule: { id: "member-facing" } },
     decision: { state: "conditionally_approved", by: { name: "Avery Brooks" } },
     chain: { intact: true },
   });

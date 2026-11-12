@@ -207,9 +207,8 @@ describe("intake", () => {
     const asset = await gov.registerAsset(a.requester, { kind: "content_item", name: "Quarterly newsletter draft" });
     const draft = await gov.openCase(a.requester, { assetId: asset.id });
     expect(draft).toMatchObject({ kind: "content_review", packId: financialCommunicationsPack.id });
-    const { case: submitted } = await gov.submitCase(a.requester, draft.id);
-    expect(submitted.state).toBe("submitted");
-    await expect(gov.actOnCase(a.approver, draft.id, "approve", "fine")).rejects.toThrow(/no 'approve' from 'submitted'/);
+    await expect(gov.submitCase(a.requester, draft.id)).rejects.toThrow(/communication's text/);
+    await expect(gov.actOnCase(a.approver, draft.id, "approve", "fine")).rejects.toThrow(/no 'approve' from 'draft'/);
   });
 });
 

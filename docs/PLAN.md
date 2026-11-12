@@ -104,11 +104,25 @@
    someone off, which ends their sessions at once. Platform commands
    create, connect and offboard tenants. Deferred: SAML, SCIM provisioning,
    and finding a tenant by email domain instead of by name.
-3. **Member communications review.** Cleared's engine with a CMS pack.
+3. **Member communications review.** Done. The `cms-member-communications`
+   pack carries fourteen rules for Medicare Advantage and Part D materials,
+   twelve of them checked in code (forbidden phrases, required statements,
+   rules that only apply to one market or when a topic comes up) and two
+   left to the officer. The writer pastes the text, sees the rules run as
+   they type, and sends it; the server checks it again in the same
+   transaction and keeps each version as written, with its hash and check.
+   The officer sees each broken rule marked in the text and approves, asks
+   for changes, or rejects, always with a reason. Deferred: a model-based
+   reviewer for the rules code cannot check, and attachments (PDFs, images).
 4. **Differentiators.** Agent and MCP tool inventory, evidence connectors,
    more frameworks, dedicated and BYOC deployment.
 
 ## Known gaps
+
+- **Communications are checked by rules, not read by a model.** Rules that
+  need judgment (benefits matching the Evidence of Coverage, plain
+  language) go to the officer, and low-confidence matches are flagged, not
+  failed. Only pasted text is reviewed, up to 40,000 characters.
 
 - **Sign-in is OpenID Connect only.** SAML-only providers need a broker
   (most identity providers can front SAML with OIDC). People are added on

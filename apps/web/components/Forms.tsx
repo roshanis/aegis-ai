@@ -444,6 +444,7 @@ export function DecisionForm({
   readiness,
   proposals,
   labels,
+  reasonAlways = false,
 }: {
   caseId: string;
   actions: readonly string[];
@@ -451,6 +452,8 @@ export function DecisionForm({
   proposals: readonly string[];
   /** Review domain names, to say what approving waits on. */
   labels: Readonly<Record<string, string>>;
+  /** Every decision needs a written reason, as content decisions do. */
+  reasonAlways?: boolean;
 }) {
   const [state, submit, pending] = useActionState(decide, IDLE);
   const [rows, setRows] = useState<Row[]>(() => proposals.map((text) => ({ text, due: "before_use" })));
@@ -481,7 +484,7 @@ export function DecisionForm({
       style={{ gap: 14 }}
       onSubmit={(event) => {
         const action = ((event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null)?.value ?? "";
-        if (DECISIONS[action]?.needsReason && !reason.trim()) {
+        if ((reasonAlways || DECISIONS[action]?.needsReason) && !reason.trim()) {
           event.preventDefault();
           setMissing(`Write a reason first. ${DECISIONS[action]!.label} needs one.`);
         } else setMissing(null);
@@ -492,7 +495,9 @@ export function DecisionForm({
       {readiness ? <p className={readiness.canApprove || readiness.canConditionallyApprove ? "" : "hint"}>{readiness.reason}</p> : null}
       {actions.includes("conditionally_approve") ? <ConditionsEditor rows={rows} setRows={setRows} /> : null}
       <div className="field">
-        <label htmlFor={`reason-${caseId}`}>Reason {conditional ? "(required)" : "(required to reject or to attach conditions)"}</label>
+        <label htmlFor={`reason-${caseId}`}>
+          Reason {reasonAlways || conditional ? "(required)" : "(required to reject or to attach conditions)"}
+        </label>
         <textarea id={`reason-${caseId}`} name="reason" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
       </div>
       {missing ? <p className="error">{missing}</p> : null}

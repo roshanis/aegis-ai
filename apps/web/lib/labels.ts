@@ -43,7 +43,7 @@ export const CASE_STATE: Record<string, { label: string; tone: Tone }> = {
   submitted: { label: "Submitted", tone: "neutral" },
   triaged: { label: "Triaged", tone: "neutral" },
   in_review: { label: "In review", tone: "neutral" },
-  ai_reviewed: { label: "AI reviewed", tone: "neutral" },
+  ai_reviewed: { label: "Checked · with the officer", tone: "neutral" },
   changes_requested: { label: "Changes requested", tone: "warn" },
   fast_lane_approved: { label: "Approved in the fast lane", tone: "ok" },
   approved: { label: "Approved", tone: "ok" },
@@ -321,9 +321,12 @@ export function nextStep(view: AssetView): NextStep | null {
   const caseActions = view.actions.openCase;
   const { reviews, readiness, controls, conditions } = view.assurance;
   const trigger = view.openCase ? TRIGGER[view.openCase.trigger].toLowerCase() : "";
+  const content = view.openCase?.kind === "content_review";
   if (caseActions.includes("submit") || caseActions.includes("resubmit")) {
+    if (content) return { label: caseActions.includes("resubmit") ? "Revise the communication" : "Submit the communication", tone: "warn" };
     return { label: `Answer the ${trigger} intake`, tone: "warn" };
   }
+  if (content && caseActions.includes("approve")) return { label: "Decide on this communication", tone: "seal" };
   if (reviews.some((r) => r.actions.includes("respond"))) return { label: "Answer a reviewer's question", tone: "warn" };
   const toSign = reviews.filter((r) => r.actions.includes("sign"));
   if (toSign.length > 0) {
@@ -449,3 +452,18 @@ export const initials = (name: string) =>
     .join("")
     .slice(0, 2)
     .toUpperCase();
+
+export const VERDICT: Record<string, { label: string; tone: Tone }> = {
+  pass: { label: "Meets every rule", tone: "ok" },
+  fail: { label: "Breaks a rule", tone: "bad" },
+  needs_human_review: { label: "A person must check", tone: "warn" },
+};
+
+/** Who a content pack's markets are, in words. */
+export const MARKET: Record<string, string> = {
+  MA: "Medicare Advantage",
+  PDP: "Part D (PDP)",
+  US: "United States",
+  UK: "United Kingdom",
+  EU: "European Union",
+};

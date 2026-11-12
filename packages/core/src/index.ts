@@ -67,3 +67,4 @@ export {
   type SsoRefusal,
   type SsoSettings,
 } from "./sso";
+export type { CommunicationView, ContentVersionView, CriterionView } from "./content";

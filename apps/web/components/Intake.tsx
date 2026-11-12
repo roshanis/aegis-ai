@@ -2,6 +2,7 @@
 
 import { fastLaneEligibility, triage, type AssetKind, type IntakeSuggestion } from "@aegis/domain";
 import type { InitiativePack, IntakeQuestion } from "@aegis/frameworks";
+import { useRouter } from "next/navigation";
 import { Fragment, startTransition, useActionState, useEffect, useMemo, useState } from "react";
 import { registerAndSubmit, submitIntake, suggestAnswers, type SuggestState } from "@/app/(console)/registry/actions";
 import { IDLE } from "@/lib/action-state";
@@ -15,7 +16,7 @@ const KINDS: { kind: AssetKind; available: boolean }[] = [
   { kind: "ai_system", available: true },
   { kind: "agent", available: true },
   { kind: "vendor_model", available: true },
-  { kind: "content_item", available: false },
+  { kind: "content_item", available: true },
 ];
 
 const NO_SUGGESTIONS: SuggestState = { error: null };
@@ -82,6 +83,7 @@ export function Intake({
   mode: Mode;
   assistant?: boolean;
 }) {
+  const router = useRouter();
   const [state, action, pending] = useActionState(mode.kind === "register" ? registerAndSubmit : submitIntake, IDLE);
   const [name, setName] = useState("");
   const [assetKind, setAssetKind] = useState<AssetKind>("ai_system");
@@ -138,8 +140,7 @@ export function Intake({
                     type="button"
                     aria-pressed={assetKind === kind}
                     disabled={!available}
-                    title={available ? undefined : "Member communications review arrives in a later release"}
-                    onClick={() => setAssetKind(kind)}
+                    onClick={() => (kind === "content_item" ? router.push("/registry/new/communication") : setAssetKind(kind))}
                   >
                     {ASSET_KIND[kind]}
                   </button>

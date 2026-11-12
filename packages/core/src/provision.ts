@@ -97,6 +97,7 @@ export async function purgeTenant(platform: Connection, tenant: TenantId): Promi
       "control_exceptions",
       "conditions",
       "domain_reviews",
+      "content_versions",
       "notes",
       "cases",
       "assets",

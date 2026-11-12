@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { withTenant, type Database } from "@aegis/db";
 import { draftMemo, tenantId, userId, type HumanPrincipal, type Role, type SystemPrincipal, type TenantId } from "@aegis/domain";
-import { healthcareAiPack } from "@aegis/frameworks";
+import { cmsMemberCommunicationsPack, healthcareAiPack } from "@aegis/frameworks";
 import { createGovernance } from "./governance";
 import { inlineJobs } from "./jobs";
 import { provisionTenant, purgeTenant } from "./provision";
@@ -50,7 +50,7 @@ export async function createSandbox(
           sandboxExpiresAt: new Date(now.getTime() + SANDBOX_LIFETIME_MS),
         },
         admin: { email: mail("ada"), displayName: "Ada Morgan", title: "AI platform admin" },
-        packs: [healthcareAiPack],
+        packs: [healthcareAiPack, cmsMemberCommunicationsPack],
       },
       tick(),
     ),
@@ -229,8 +229,47 @@ export async function createSandbox(
     days: 60,
   });
 
+  // Member communications: one approved and sent, one back with the officer after a first round of changes.
+  async function communication(name: string, body: string, markets: string[]) {
+    const asset = await gov.registerAsset(riley, { kind: "content_item", name });
+    const opened = await gov.openCase(riley, { assetId: asset.id });
+    await gov.submitCommunication(riley, opened.id, { body, markets });
+    return { assetId: asset.id, caseId: opened.id };
+  }
+  const postcard = await communication("Diabetes eye exam reminder postcard", SANDBOX_POSTCARD, ["MA"]);
+  await gov.actOnCase(avery, postcard.caseId, "approve", "Checked against the 2027 Evidence of Coverage; the eye exam is covered at $0.");
+  await gov.actOnAsset(admin, postcard.assetId, "activate");
+
+  const flyer = await communication("2027 benefits flyer", `${SANDBOX_FLYER}
+Rated the best plan in Ohio and endorsed by Medicare.`, ["MA", "PDP"]);
+  await gov.actOnCase(avery, flyer.caseId, "request_changes", "Remove the endorsement and the superlative, and add Extra Help for the Part D version.");
+  await gov.submitCommunication(riley, flyer.caseId, {
+    body: `${SANDBOX_FLYER}
+With limited income, you may qualify for Extra Help paying for prescriptions.`,
+    markets: ["MA", "PDP"],
+  });
+
   return { tenantId: tenant, personas: await sandboxPersonas(db, tenant, now) };
 }
+
+const SANDBOX_POSTCARD = `Northwind Health Advantage (HMO)
+
+Time for your yearly diabetic eye exam. It's covered at $0 with an in-network eye doctor.
+Call Member Services at 1-800-555-0177 (TTY 711), 8 a.m. to 8 p.m., seven days a week, to find a doctor near you.
+Free language assistance and interpreter services are available.
+
+Northwind Health is an HMO plan with a Medicare contract. Enrollment in Northwind Health depends on contract renewal.
+H4321_EYEPC27_C`;
+
+const SANDBOX_FLYER = `Northwind Health Advantage (HMO)
+
+Your 2027 benefits at a glance: a $0 monthly premium, $5 primary care visits, and $0 preventive dental.
+Call Member Services at 1-800-555-0177 (TTY 711), 8 a.m. to 8 p.m., seven days a week.
+Free language assistance and interpreter services are available.
+Every year, Medicare evaluates plans based on a 5-star rating system. Northwind Health Advantage earned 4 stars for 2027.
+
+Northwind Health is an HMO plan with a Medicare contract. Enrollment in Northwind Health depends on contract renewal.
+H4321_FLYER27_C`;
 
 /**
  * The people a visitor may switch between. Empty unless the tenant is a

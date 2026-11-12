@@ -1,6 +1,17 @@
-import { ASSET_KINDS, TIERS, controlApplies, fastLaneEligibility, referencedFields, requiredControls, triage, type Tier } from "@aegis/domain";
+import {
+  ASSET_KINDS,
+  TIERS,
+  checkCommunication,
+  controlApplies,
+  fastLaneEligibility,
+  referencedFields,
+  requiredControls,
+  rubricProblems,
+  triage,
+  type Tier,
+} from "@aegis/domain";
 import { describe, expect, it } from "vitest";
-import { BUILT_IN_PACKS, financialCommunicationsPack, healthcareAiPack } from "./index";
+import { BUILT_IN_PACKS, cmsMemberCommunicationsPack, financialCommunicationsPack, healthcareAiPack } from "./index";
 
 /* Reference oracle: Jeeves' original hard-coded rules, verbatim in logic. */
 interface Flags {
@@ -218,5 +229,80 @@ describe("built-in packs", () => {
     const ids = BUILT_IN_PACKS.map((p) => p.id);
     expect(new Set(ids).size).toBe(ids.length);
     for (const pack of BUILT_IN_PACKS) expect(pack.version).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
+
+/** A Medicare Advantage flyer that says everything it must and nothing it must not. */
+const COMPLIANT_FLYER = `Sunrise Health Advantage (HMO)
+
+Your 2027 benefits at a glance: $0 premium, $5 primary care copays, and dental coverage.
+Call Member Services at 1-800-555-0142 (TTY 711), 8 a.m. to 8 p.m., seven days a week.
+Free language assistance and interpreter services are available. Call the number above.
+Every year, Medicare evaluates plans based on a 5-star rating system. Sunrise Health Advantage earned 4 stars for 2027.
+Sunrise Health is an HMO plan with a Medicare contract. Enrollment in Sunrise Health depends on contract renewal.
+H1234_FLYER27_C`;
+
+describe("cms-member-communications pack", () => {
+  const { rubric, markets } = cmsMemberCommunicationsPack;
+
+  it("compiles every rule, names every criterion, and tags only markets it supports", () => {
+    expect(rubricProblems(rubric)).toEqual([]);
+    for (const c of rubric.criteria) {
+      expect(c.title, c.id).toBeTruthy();
+      expect(c.recommendation, c.id).toBeTruthy();
+      for (const j of c.jurisdictions ?? []) expect(markets).toContain(j);
+    }
+    expect(new Set(rubric.criteria.map((c) => c.id)).size).toBe(rubric.criteria.length);
+  });
+
+  it("finds nothing wrong with a compliant flyer, but leaves the rules only a person can check open", () => {
+    const result = checkCommunication(rubric, COMPLIANT_FLYER, ["MA"]);
+    expect(result.findings).toEqual([]);
+    expect(result.coverage.filter((c) => c.status === "uncertain").map((c) => c.criterionId)).toEqual(["M11", "M12"]);
+    expect(result.verdict).toBe("needs_human_review");
+  });
+
+  it("fails a flyer that drops a required statement, and quotes the claim that breaks a rule", () => {
+    const missing = checkCommunication(rubric, COMPLIANT_FLYER.replace(/Sunrise Health is an HMO[^\n]+\n/, ""), ["MA"]);
+    expect(missing.findings.map((f) => f.criterionId)).toEqual(["M2"]);
+    expect(missing.verdict).toBe("fail");
+
+    const endorsed = checkCommunication(rubric, `${COMPLIANT_FLYER}\nOur plan is endorsed by Medicare for your peace of mind.`, ["MA"]);
+    expect(endorsed.findings).toEqual([
+      expect.objectContaining({ criterionId: "M1", severity: "critical", quote: "Our plan is endorsed by Medicare for your peace of mind.", confidence: "high" }),
+    ]);
+    expect(endorsed.verdict).toBe("fail");
+
+    const identifiers = checkCommunication(rubric, `${COMPLIANT_FLYER}\nReply to this email with your Medicare number to get started.`, ["MA"]);
+    expect(identifiers.findings.map((f) => f.criterionId)).toEqual(["M9"]);
+  });
+
+  it("sends claims that might be supported to a person rather than failing them", () => {
+    const result = checkCommunication(rubric, `${COMPLIANT_FLYER}\nThe best plan in Ohio, with a $50 gift card when you join. Act now!`, ["MA"]);
+    expect(result.findings.map((f) => [f.criterionId, f.confidence])).toEqual([
+      ["M7", "low"],
+      ["M8", "low"],
+      ["M10", "low"],
+    ]);
+    expect(result.verdict).toBe("needs_human_review");
+  });
+
+  it("asks for the Star Ratings disclaimer only when ratings are mentioned", () => {
+    const noStars = COMPLIANT_FLYER.replace(/Every year[^\n]+\n/, "");
+    expect(checkCommunication(rubric, noStars, ["MA"]).coverage.find((c) => c.criterionId === "M6")?.status).toBe("not_applicable");
+    const starsNoDisclaimer = noStars.replace("$0 premium", "$0 premium in a 4.5-star plan");
+    expect(checkCommunication(rubric, starsNoDisclaimer, ["MA"]).findings.map((f) => f.criterionId)).toEqual(["M6"]);
+  });
+
+  it("applies market rules only in their markets, and judges each market on its own", () => {
+    const result = checkCommunication(rubric, COMPLIANT_FLYER, ["MA", "PDP"]);
+    // The flyer talks about costs but never mentions Extra Help: a minor Part D finding.
+    expect(result.findings.map((f) => f.criterionId)).toEqual(["M14"]);
+    expect(result.byMarket).toEqual([
+      { jurisdiction: "MA", verdict: "needs_human_review" },
+      { jurisdiction: "PDP", verdict: "needs_human_review" },
+    ]);
+    const pdpOnly = checkCommunication(rubric, COMPLIANT_FLYER.replace("(HMO)", "").replace("an HMO plan", "a plan"), ["PDP"]);
+    expect(pdpOnly.coverage.map((c) => c.criterionId)).not.toContain("M13");
   });
 });

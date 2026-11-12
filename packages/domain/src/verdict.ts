@@ -19,6 +19,27 @@ export interface Criterion {
   readonly description: string;
   /** Markets this criterion applies to; absent means every market. */
   readonly jurisdictions?: readonly string[];
+  /** A short name for screens, e.g. "Federal contracting statement". */
+  readonly title?: string;
+  /** What the writer should do when the criterion is not met. */
+  readonly recommendation?: string;
+  /** A rule Aegis can check in code. Without one, a person (or a model) has to check it. */
+  readonly check?: CriterionCheck;
+}
+
+/**
+ * A text rule, as data. Patterns are regular expression sources, matched
+ * case-insensitively. `requires` means every pattern must appear; `forbids`
+ * means none may. `when` limits the rule to documents that match it, such
+ * as a disclaimer required only when Star Ratings are mentioned. A rule
+ * that cannot tell for sure says so with confidence "low", and a person
+ * decides.
+ */
+export interface CriterionCheck {
+  readonly when?: string;
+  readonly requires?: readonly string[];
+  readonly forbids?: readonly string[];
+  readonly confidence?: "high" | "low";
 }
 
 export interface Rubric {
@@ -74,21 +95,24 @@ export function worstVerdict(verdicts: readonly Verdict[]): Verdict {
   return verdicts.reduce<Verdict>((worst, v) => (rank[v] < rank[worst] ? v : worst), "pass");
 }
 
-/** Per-market verdicts: a finding counts in every market its criterion applies to. */
+/** Per-market verdicts: a finding, or a criterion nobody could check, counts in every market its criterion applies to. */
 export function verdictsByJurisdiction(
   findings: readonly Finding[],
   rubric: Rubric,
   jurisdictions: readonly string[],
+  coverage?: readonly Coverage[],
 ): { jurisdiction: string; verdict: Verdict }[] {
   const byId = new Map(rubric.criteria.map((c) => [c.id, c]));
+  const inMarket = (id: string, jurisdiction: string) => {
+    const criterion = byId.get(id);
+    return criterion !== undefined && (!criterion.jurisdictions || criterion.jurisdictions.includes(jurisdiction));
+  };
   return jurisdictions.map((jurisdiction) => ({
     jurisdiction,
     verdict: decideVerdict(
-      findings.filter((f) => {
-        const criterion = byId.get(f.criterionId);
-        return criterion && (!criterion.jurisdictions || criterion.jurisdictions.includes(jurisdiction));
-      }),
+      findings.filter((f) => inMarket(f.criterionId, jurisdiction)),
       rubric,
+      coverage?.filter((c) => inMarket(c.criterionId, jurisdiction)),
     ),
   }));
 }
